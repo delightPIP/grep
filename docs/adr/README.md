@@ -14,6 +14,7 @@
 | 접두어 | 플랫폼 | 폴더 |
 |---|---|---|
 | BCK | 백엔드 | `backend/` |
+| WEB | 웹 | `web/` |
 
 플랫폼이 정해지면 이 표에 행을 추가하고(예: 웹 `WEB`, 백엔드 `BCK`) 같은 이름의 하위 폴더를 만든다.
 
@@ -32,3 +33,5 @@
 | [ADR-BCK-003](backend/ADR-BCK-003-kotlin-spring-boot.md) | 서버 언어는 Kotlin, 프레임워크는 Spring Boot로 한다 | 채택 | 2026-11-25 |
 | [ADR-BCK-004](backend/ADR-BCK-004-modular-monolith-hexagonal.md) | 서버는 기능별 모듈러 모놀리스로 만들고, 모듈 안은 포트와 어댑터로 나눈다 | 채택 | 2026-11-25 |
 | [ADR-BCK-005](backend/ADR-BCK-005-image-text-llm-vision.md) | 이미지 글자 읽기(F16)는 서버가 LLM 비전으로 하고, 앱이 기기에서 읽은 글자는 함께 받는다 | 채택 | 2026-11-25 |
+| [ADR-BCK-006](backend/ADR-BCK-006-supabase-without-lock-in.md) | DB, 인증, 파일 저장소는 Supabase를 쓰고, Supabase 전용 기능에는 묶이지 않는다 | 채택 | 2026-11-25 |
+| [ADR-WEB-007](web/ADR-WEB-007-react-views-swift-core-tauri.md) | 웹 클라이언트는 React 뷰와 carti-RIBs-Swift 공유 코어로 만들고, 데스크톱은 Tauri로 감싼다 | 채택 | 2026-11-25 |
