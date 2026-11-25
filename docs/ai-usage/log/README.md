@@ -23,6 +23,7 @@
 | 015 | 2026-11-25 | [백엔드 기술 스택과 구조 결정](015-backend-stack-decisions.md) |
 | 015 | 2026-11-25 | [CLI 디자인 레퍼런스 2차 조사](015-cli-design-references.md) |
 | 016 | 2026-11-25 | [개발자 답변 검토와 PRD 0.4](016-dev-reply-review-prd-0-4.md) |
+| 016 | 2026-11-25 | [PO 메모 대응과 범위, 글자 읽기, 같은 링크 정책](016-po-memo-scope-ocr-link-policy.md) |
 | 017 | 2026-11-25 | [데모 필수 범위와 한글 명령어](017-demo-scope-korean-commands.md) |
 | 018 | 2026-11-25 | [서비스 이름 그렙, 팀 이름 Unwrap](018-service-name-grep-team-unwrap.md) |
 | 019 | 2026-11-25 | [터미널 디자인 시스템과 웹 화면 시안, 문구 말투](019-terminal-design-system-web-mockups.md) |

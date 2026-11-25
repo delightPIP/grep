@@ -31,3 +31,4 @@
 | [ADR-BCK-002](backend/ADR-BCK-002-postgres-and-object-storage.md) | 자료와 작업 큐는 Postgres 하나에, 파일은 오브젝트 스토리지에 둔다 | 채택 | 2026-11-25 |
 | [ADR-BCK-003](backend/ADR-BCK-003-kotlin-spring-boot.md) | 서버 언어는 Kotlin, 프레임워크는 Spring Boot로 한다 | 채택 | 2026-11-25 |
 | [ADR-BCK-004](backend/ADR-BCK-004-modular-monolith-hexagonal.md) | 서버는 기능별 모듈러 모놀리스로 만들고, 모듈 안은 포트와 어댑터로 나눈다 | 채택 | 2026-11-25 |
+| [ADR-BCK-005](backend/ADR-BCK-005-image-text-llm-vision.md) | 이미지 글자 읽기(F16)는 서버가 LLM 비전으로 하고, 앱이 기기에서 읽은 글자는 함께 받는다 | 채택 | 2026-11-25 |
