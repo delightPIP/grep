@@ -35,3 +35,4 @@
 | [ADR-BCK-005](backend/ADR-BCK-005-image-text-llm-vision.md) | 이미지 글자 읽기(F16)는 서버가 LLM 비전으로 하고, 앱이 기기에서 읽은 글자는 함께 받는다 | 채택 | 2026-11-25 |
 | [ADR-BCK-006](backend/ADR-BCK-006-supabase-without-lock-in.md) | DB, 인증, 파일 저장소는 Supabase를 쓰고, Supabase 전용 기능에는 묶이지 않는다 | 채택 | 2026-11-25 |
 | [ADR-WEB-007](web/ADR-WEB-007-react-views-swift-core-tauri.md) | 웹 클라이언트는 React 뷰와 carti-RIBs-Swift 공유 코어로 만들고, 데스크톱은 Tauri로 감싼다 | 채택 | 2026-11-25 |
+| [ADR-BCK-008](backend/ADR-BCK-008-server-small-llm-summary.md) | 요약은 서버 처리 워커에서 소형 LLM으로 만들고, 북마크로 가져온 자료는 처음 열거나 넘길 때 만든다 | 채택 | 2026-11-25 |

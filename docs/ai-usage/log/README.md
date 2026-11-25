@@ -29,6 +29,7 @@
 | 019 | 2026-11-25 | [터미널 디자인 시스템과 웹 화면 시안, 문구 말투](019-terminal-design-system-web-mockups.md) |
 | 020 | 2026-11-25 | [클라이언트 스택과 Supabase 결정](020-client-stack-supabase.md) |
 | 020 | 2026-11-25 | [마스코트 두더지와 공유용 디자인 시스템 페이지](020-mole-mascot.md) |
+| 021 | 2026-11-25 | [PO 결정 반영과 PR 정리(요약 방식, 외부 LLM 범위, 한글 명령어)](021-po-decisions-pr-cleanup.md) |
 | 025 | 2026-11-25 | [AI 로그 번호 충돌 대응 스킬 반영](025-ai-log-numbering-skill-update.md) |
 | 026 | 2026-11-25 | [가설 검증 설문 마감과 분석](026-survey-results-analysis.md) |
 
