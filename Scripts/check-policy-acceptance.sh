@@ -59,6 +59,20 @@ def check_invariants(platform, module_name, combined_text, rules):
 #         ("경계값 설명", r"정규식_패턴"),
 #     ])
 
+# COM-003 데스크톱 복사한 링크 알림: 기본 꺼짐, 알림 8초.
+# 데스크톱 앱 테스트 폴더(가정: Apps/Desktop)가 생기면 검사한다.
+desktop_dir = os.path.join(root, "Apps", "Desktop")
+if os.path.isdir(desktop_dir):
+    test_files = [p for p in glob.glob(os.path.join(desktop_dir, "**", "*"), recursive=True)
+                  if os.path.isfile(p) and re.search(r"(test|spec)", os.path.basename(p), re.IGNORECASE)]
+    if test_files:
+        audited_platforms.append("Desktop")
+        desktop_tests = chr(10).join(open(p, encoding="utf-8", errors="ignore").read() for p in sorted(test_files))
+        check_invariants("Desktop", "COM-003 복사한 링크 알림", desktop_tests, [
+            ("COM-003 기본 꺼짐", r"[Cc]lipboard.{0,200}(false|off|disabled)"),
+            ("COM-003 알림 8초", r"(8\s*(초|s|seconds?)|8000\s*(ms)?)"),
+        ])
+
 if violations:
     for v in violations:
         print(f"✖ {v}", file=sys.stderr)

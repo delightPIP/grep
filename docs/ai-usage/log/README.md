@@ -33,6 +33,7 @@
 | 029 | 2026-11-25 | [클라이언트 스택과 Supabase 결정](029-client-stack-supabase.md) |
 | 030 | 2026-11-25 | [PO 결정 반영과 PR 정리(요약 방식, 외부 LLM 범위, 한글 명령어)](030-po-decisions-pr-cleanup.md) |
 | 031 | 2026-11-25 | [한국어 부분 검색 스파이크](031-korean-search-spike.md) |
+| 032 | 2026-11-25 | [모바일과 데스크톱 두더지 화면 시안](032-mobile-desktop-mole-design.md) |
 | 033 | 2026-11-25 | [시점으로 다시 찾기(F22) 추가](033-time-range-search-f22.md) |
 | 034 | 2026-11-25 | [사용자 흐름도 정리](034-user-flow.md) |
 | 035 | 2026-11-25 | [넘길 글 형식과 데모 시드 자료](035-handoff-format-demo-seed.md) |
