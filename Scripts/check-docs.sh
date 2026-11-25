@@ -256,6 +256,9 @@ if has_log:
             continue
         date, _, name = first[2:].partition(" · ")
         number = os.path.basename(path)[:3]
+        if number in logs:
+            report(f"AI 로그 번호 중복: {number} ({logs[number]['values'][2]}, {os.path.basename(path)})")
+            continue
         logs[number] = {"fields": ["날짜", "제목", "링크"], "values": [date, name, os.path.basename(path)]}
     check_table("AI 로그", ("ai-usage", "log", "README.md"), "항목 목록",
                 re.compile(r"^\| (\d{3}) \| (\S+) \| \[(.+)\]\(([^)]+)\) \|$"), logs)

@@ -22,6 +22,7 @@
 | 014 | 2026-11-25 | [추가 설문 제외와 설문 마감](014-close-survey.md) |
 | 015 | 2026-11-25 | [CLI 디자인 레퍼런스 2차 조사](015-cli-design-references.md) |
 | 016 | 2026-11-25 | [개발자 답변 검토와 PRD 0.4](016-dev-reply-review-prd-0-4.md) |
+| 025 | 2026-11-25 | [AI 로그 번호 충돌 대응 스킬 반영](025-ai-log-numbering-skill-update.md) |
 | 026 | 2026-11-25 | [가설 검증 설문 마감과 분석](026-survey-results-analysis.md) |
 
 새 항목 파일을 만들 때 이 표에 한 줄을 추가한다. 파일명은 `NNN-<영문-슬러그>.md`이고 NNN은 다음 번호다.
