@@ -12,7 +12,7 @@
 
 ## 1. 먼저 볼 것: 시안에 넣을 후보 10개 (제안)
 
-| 번호 | 요소 | 빌려 올 곳 | 이 서비스에서 |
+| 번호 | 요소 | 빌려 올 곳 | 그렙에서 |
 |---|---|---|---|
 | 1 | 치는 대로 좁혀지는 목록, 여러 개 담기, 옆 미리보기 | fzf | 아카이브에서 자료를 골라 묶는 핵심 화면 |
 | 2 | `@`를 치면 저장 자료 후보가 뜨고, 고른 자료는 칩으로 들어감 | Claude Code, GitHub Copilot CLI | `@`로 자료 부르기, `[PDF #2]` 같은 칩 |
@@ -143,7 +143,7 @@
 | [Magic UI Terminal](https://magicui.design/docs/components/terminal) | 타자 연출과 순차 등장, 화면에 들어오면 시작 | React 소개 화면 | MIT | 열람 |
 | [Aceternity Terminal](https://ui.aceternity.com/components/terminal) | Mac 창 모양, bash 문법 색, 타자 연출, 키 소리(기본 켜짐) | 명령·인자 색 구분 | 라이선스·무료 여부 표기 없음. 소리는 끈다 | 열람 |
 | [react-terminal-ui](https://github.com/jonmbake/react-terminal-ui) | 빨강·노랑·초록 창 버튼에 기능 연결, 밝은·어두운, 프롬프트 문자 지정 | 창 버튼에 실제 기능 | MIT. 마지막 배포 약 1년 전 | 열람 |
-| [xterm.js](https://github.com/xtermjs/xterm.js) | 진짜 터미널 엔진(VS Code, Replit 등) | **이 서비스에는 과함.** 진짜 명령줄이 아니므로 일반 입력창 + 화면 출력이 한글·휴대폰에 유리 | MIT | 열람 |
+| [xterm.js](https://github.com/xtermjs/xterm.js) | 진짜 터미널 엔진(VS Code, Replit 등) | **그렙에는 과함.** 진짜 명령줄이 아니므로 일반 입력창 + 화면 출력이 한글·휴대폰에 유리 | MIT | 열람 |
 | [Charm VHS](https://github.com/charmbracelet/vhs) | 스크립트로 터미널 시연을 GIF·MP4로 녹화 | 발표 대비용 녹화(12/1 데모가 안 될 때) | MIT. 진짜 터미널용이라 웹 화면에는 브라우저 녹화를 쓴다 | 열람 |
 | [Nerd Fonts](https://github.com/ryanoasis/nerd-fonts) | 아이콘 글리프 1만 개 이상 | 링크·이미지·PDF 종류 아이콘 | 글꼴마다 라이선스 다름. 없으면 네모로 깨짐. 웹 용량 | 열람 |
 
