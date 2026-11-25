@@ -20,6 +20,7 @@
 | 012 | 2026-11-25 | [설문 결과 8명 기준 갱신](012-survey-update-8-responses.md) |
 | 013 | 2026-11-25 | [인터뷰 계획 제외](013-remove-interview-plan.md) |
 | 014 | 2026-11-25 | [추가 설문 제외와 설문 마감](014-close-survey.md) |
+| 015 | 2026-11-25 | [백엔드 기술 스택과 구조 결정](015-backend-stack-decisions.md) |
 | 015 | 2026-11-25 | [CLI 디자인 레퍼런스 2차 조사](015-cli-design-references.md) |
 | 016 | 2026-11-25 | [개발자 답변 검토와 PRD 0.4](016-dev-reply-review-prd-0-4.md) |
 | 017 | 2026-11-25 | [데모 필수 범위와 한글 명령어](017-demo-scope-korean-commands.md) |
