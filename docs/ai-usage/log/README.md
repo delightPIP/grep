@@ -21,13 +21,13 @@
 | 013 | 2026-11-25 | [인터뷰 계획 제외](013-remove-interview-plan.md) |
 | 014 | 2026-11-25 | [추가 설문 제외와 설문 마감](014-close-survey.md) |
 | 015 | 2026-11-25 | [CLI 디자인 레퍼런스 2차 조사](015-cli-design-references.md) |
-| 016 | 2026-11-25 | [백엔드 기술 스택과 구조 결정](016-backend-stack-decisions.md) |
 | 016 | 2026-11-25 | [개발자 답변 검토와 PRD 0.4](016-dev-reply-review-prd-0-4.md) |
 | 017 | 2026-11-25 | [데모 필수 범위와 한글 명령어](017-demo-scope-korean-commands.md) |
-| 017 | 2026-11-25 | [PO 메모 대응과 범위, 글자 읽기, 같은 링크 정책](017-po-memo-scope-ocr-link-policy.md) |
-| 018 | 2026-11-25 | [클라이언트 스택과 Supabase 결정](018-client-stack-supabase.md) |
+| 018 | 2026-11-25 | [백엔드 기술 스택과 구조 결정](018-backend-stack-decisions.md) |
 | 018 | 2026-11-25 | [서비스 이름 그렙, 팀 이름 Unwrap](018-service-name-grep-team-unwrap.md) |
+| 019 | 2026-11-25 | [PO 메모 대응과 범위, 글자 읽기, 같은 링크 정책](019-po-memo-scope-ocr-link-policy.md) |
 | 019 | 2026-11-25 | [터미널 디자인 시스템과 웹 화면 시안, 문구 말투](019-terminal-design-system-web-mockups.md) |
+| 020 | 2026-11-25 | [클라이언트 스택과 Supabase 결정](020-client-stack-supabase.md) |
 | 020 | 2026-11-25 | [마스코트 두더지와 공유용 디자인 시스템 페이지](020-mole-mascot.md) |
 | 025 | 2026-11-25 | [AI 로그 번호 충돌 대응 스킬 반영](025-ai-log-numbering-skill-update.md) |
 | 026 | 2026-11-25 | [가설 검증 설문 마감과 분석](026-survey-results-analysis.md) |

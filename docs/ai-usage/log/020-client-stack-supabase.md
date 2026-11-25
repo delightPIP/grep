@@ -2,7 +2,7 @@
 
 - 작성자: @carti1108
 - 이슈·PR: #4
-- 커밋: b626a6e
+- 커밋: 150ca31
 
 > **요약** 웹 클라이언트를 React 뷰와 carti-RIBs-Swift 공유 코어로 만들고 데스크톱은 Tauri로 감싸기로 했다(ADR-WEB-007). DB·인증·파일 저장소는 Supabase로 정하고, 다른 서비스로 옮길 수 있도록 Supabase 전용 기능에 묶이지 않는 규칙을 함께 정했다(ADR-BCK-006).
 
@@ -47,4 +47,4 @@ Claude Code(Claude Opus 5.5), docs 플러그인(adr-manager, ai-usage).
 
 ## 근거 링크
 
-PR #4, 커밋 b626a6e.
+PR #4, 커밋 150ca31.
