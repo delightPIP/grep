@@ -25,13 +25,13 @@
 | 017 | 2026-11-25 | [데모 필수 범위와 한글 명령어](017-demo-scope-korean-commands.md) |
 | 018 | 2026-11-25 | [서비스 이름 그렙, 팀 이름 Unwrap](018-service-name-grep-team-unwrap.md) |
 | 019 | 2026-11-25 | [터미널 디자인 시스템과 웹 화면 시안, 문구 말투](019-terminal-design-system-web-mockups.md) |
-| 020 | 2026-11-25 | [백엔드 기술 스택과 구조 결정](020-backend-stack-decisions.md) |
 | 020 | 2026-11-25 | [마스코트 두더지와 공유용 디자인 시스템 페이지](020-mole-mascot.md) |
-| 021 | 2026-11-25 | [PO 메모 대응과 범위, 글자 읽기, 같은 링크 정책](021-po-memo-scope-ocr-link-policy.md) |
-| 022 | 2026-11-25 | [클라이언트 스택과 Supabase 결정](022-client-stack-supabase.md) |
-| 023 | 2026-11-25 | [PO 결정 반영과 PR 정리(요약 방식, 외부 LLM 범위, 한글 명령어)](023-po-decisions-pr-cleanup.md) |
-| 024 | 2026-11-25 | [한국어 부분 검색 스파이크](024-korean-search-spike.md) |
 | 025 | 2026-11-25 | [AI 로그 번호 충돌 대응 스킬 반영](025-ai-log-numbering-skill-update.md) |
 | 026 | 2026-11-25 | [가설 검증 설문 마감과 분석](026-survey-results-analysis.md) |
+| 027 | 2026-11-25 | [백엔드 기술 스택과 구조 결정](027-backend-stack-decisions.md) |
+| 028 | 2026-11-25 | [PO 메모 대응과 범위, 글자 읽기, 같은 링크 정책](028-po-memo-scope-ocr-link-policy.md) |
+| 029 | 2026-11-25 | [클라이언트 스택과 Supabase 결정](029-client-stack-supabase.md) |
+| 030 | 2026-11-25 | [PO 결정 반영과 PR 정리(요약 방식, 외부 LLM 범위, 한글 명령어)](030-po-decisions-pr-cleanup.md) |
+| 031 | 2026-11-25 | [한국어 부분 검색 스파이크](031-korean-search-spike.md) |
 
 새 항목 파일을 만들 때 이 표에 한 줄을 추가한다. 파일명은 `NNN-<영문-슬러그>.md`이고 NNN은 다음 번호다.
