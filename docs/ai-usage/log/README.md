@@ -25,6 +25,7 @@
 | 017 | 2026-11-25 | [데모 필수 범위와 한글 명령어](017-demo-scope-korean-commands.md) |
 | 018 | 2026-11-25 | [서비스 이름 그렙, 팀 이름 Unwrap](018-service-name-grep-team-unwrap.md) |
 | 019 | 2026-11-25 | [터미널 디자인 시스템과 웹 화면 시안, 문구 말투](019-terminal-design-system-web-mockups.md) |
+| 020 | 2026-11-25 | [마스코트 두더지와 공유용 디자인 시스템 페이지](020-mole-mascot.md) |
 | 025 | 2026-11-25 | [AI 로그 번호 충돌 대응 스킬 반영](025-ai-log-numbering-skill-update.md) |
 | 026 | 2026-11-25 | [가설 검증 설문 마감과 분석](026-survey-results-analysis.md) |
 
