@@ -72,6 +72,12 @@ if os.path.isdir(desktop_dir):
             ("COM-003 기본 꺼짐", r"[Cc]lipboard.{0,200}(false|off|disabled)"),
             ("COM-003 알림 8초", r"(8\s*(초|s|seconds?)|8000\s*(ms)?)"),
         ])
+        # DSK-001~003 데스크톱 두더지: 숨기기 1시간, 로그 카드 3초, 기본 단축키 Ctrl+Shift+G.
+        check_invariants("Desktop", "DSK 데스크톱 두더지", desktop_tests, [
+            ("DSK-001 숨기기 1시간", r"(1\s*(시간|h|hours?)|60\s*(분|min|minutes?)|3600(000)?)"),
+            ("DSK-002 로그 카드 3초", r"(3\s*(초|s|seconds?)|3000\s*(ms)?)"),
+            ("DSK-003 기본 단축키", r"Ctrl\s*\+\s*Shift\s*\+\s*G|CommandOrControl\+Shift\+G"),
+        ])
 
 if violations:
     for v in violations:

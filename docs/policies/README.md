@@ -14,6 +14,7 @@
 | 접두어 | 영역 | 폴더 |
 |---|---|---|
 | COM | 공통 | [common/](common/README.md) |
+| DSK | 데스크톱 | [desktop/](desktop/README.md) |
 | ACC | 계정 | [account/](account/README.md) |
 | ARC | 자료 | [archive/](archive/README.md) |
 
@@ -26,6 +27,9 @@
 | [COM-001](common/COM-001-same-link-detection.md) | 같은 링크나 같은 파일을 다시 저장하면 새로 만들지 않고 기존 자료를 알린다 | 확정 | 공통 |
 | [COM-002](common/COM-002-external-llm-data.md) | 자료 내용은 학습에 쓰지 않는 조건의 유료 외부 LLM API로만 보낸다 | 확정 | 공통 |
 | [COM-003](common/COM-003-desktop-clipboard-link-prompt.md) | 데스크톱 앱은 복사한 링크를 사용자가 켰을 때만 알리고, 묻기 전에는 저장하지 않는다 | 확정 | 공통 |
+| [DSK-001](desktop/DSK-001-resident-mole.md) | 데스크톱 두더지는 화면 오른쪽 아래에 상주하고, 사용자가 숨기거나 끌 수 있다 | 확정 | 데스크톱 |
+| [DSK-002](desktop/DSK-002-drop-to-save.md) | 데스크톱 두더지에 끌어다 놓으면 묻지 않고 저장한다 | 확정 | 데스크톱 |
+| [DSK-003](desktop/DSK-003-quick-window-shortcut.md) | 빠른 창은 두더지를 누르거나 전역 단축키로 열고 닫는다 | 확정 | 데스크톱 |
 | [ACC-001](account/ACC-001-social-login-required.md) | Google 또는 GitHub로 로그인해야 그렙을 쓸 수 있다 | 확정 | 계정 |
 | [ACC-002](account/ACC-002-devices-and-connections.md) | 기기 수는 제한하지 않고, 모든 기기 로그아웃과 AI 도구 연결별 끊기를 제공한다 | 확정 | 계정 |
 | [ARC-001](archive/ARC-001-item-number.md) | 자료마다 사용자별 고유 번호를 붙이고, 모든 명령이 그 번호 하나로 자료를 가리킨다 | 확정 | 자료 |
