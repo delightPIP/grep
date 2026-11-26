@@ -52,17 +52,6 @@ Success: find saved Korean items and paste them into an AI tool's input in under
 - Not a real CLI.
 - The problem and its causes are still hypotheses. No interviews; a 12-person survey only shows direction.
 
-## Alternatives
-
-| Kind | Examples | How grep differs |
-|---|---|---|
-| Memory for agents | Supermemory, MyMemory, Basic Memory | The AI finds items through a connection (MCP). In grep, a person picks them |
-| Built into AI tools | ChatGPT and Claude projects, Copilot Spaces | Stays inside that tool. grep pastes into any AI tool's input |
-| AI connections of save apps | Raindrop.io, Readwise, Notion, Karakeep | One connection per save app. grep keeps everything in one place |
-| Korean link savers | 링포미, 딸깍, 블링크, 링크브레인 | No hand-off to outside AI tools in their descriptions (surface check only) |
-
-Source (Korean): [competitor scan](docs/planning/competitors.md)
-
 ## Stack
 
 | Area | Choice | ADR |
