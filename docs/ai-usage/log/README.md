@@ -79,5 +79,6 @@
 | 075 | 2026-11-26 | [`/toPolicy` 대신 정책 빈칸 셋 반영](075-policy-gaps-from-topolicy.md) |
 | 076 | 2026-11-26 | [개발 넘기기 전 이슈 점검과 COM-010 작업 연결](076-link-com010-to-tasks.md) |
 | 078 | 2026-11-26 | [서버 인증 /health, /me와 세션 만료 구현](078-server-auth-me-health.md) |
+| 079 | 2026-11-26 | [#31 B 갈래: Swift 코어 피처와 웹 wasm 브리지](079-issue-31-core-and-web-bridge.md) |
 
 새 항목 파일을 만들 때 이 표에 한 줄을 추가한다. 파일명은 `NNN-<영문-슬러그>.md`이고 NNN은 다음 번호다.
