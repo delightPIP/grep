@@ -64,5 +64,6 @@
 | 060 | 2026-11-26 | [공통 컴포넌트 페이지와 플랫폼 부품](060-common-components-page.md) |
 | 061 | 2026-11-26 | [남은 손그림을 공통 부품으로 빼기](061-extract-remaining-parts.md) |
 | 062 | 2026-11-26 | [부품으로 바꾼 화면 나머지 열어 보기](062-verify-remaining-screens.md) |
+| 063 | 2026-11-26 | [부품으로 바꾼 화면 눌러 보기](063-tap-test-interactive-screens.md) |
 
 새 항목 파일을 만들 때 이 표에 한 줄을 추가한다. 파일명은 `NNN-<영문-슬러그>.md`이고 NNN은 다음 번호다.
