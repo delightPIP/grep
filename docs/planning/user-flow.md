@@ -1,7 +1,7 @@
 # 사용자 흐름도
 
 - 작성일: 2026-11-25
-- 상태: 제안. [기획서](PRD.md) 0.6, [명령어 설명서](commands.md), [백엔드 설계](backend-design.md), 정책 [COM-001](../policies/common/COM-001-same-link-detection.md)·[COM-002](../policies/common/COM-002-external-llm-data.md), AI 활용 기록 001~033을 대조해 정리했다. 2026-11-26 PR #10의 정책 ACC-001(로그인)·ACC-002(기기·연결)·ARC-001(자료 번호)·ARC-002(자동 태그)·ARC-003(묶음)에 맞췄다
+- 상태: 제안. [기획서](PRD.md) 0.7, [명령어 설명서](commands.md), [백엔드 설계](backend-design.md), 정책 [COM-001](../policies/common/COM-001-same-link-detection.md)·[COM-002](../policies/common/COM-002-external-llm-data.md), AI 활용 기록 001~033을 대조해 정리했다. 2026-11-26 PR #10의 정책 [ACC-001](../policies/account/ACC-001-social-login-required.md)(로그인)·[ACC-002](../policies/account/ACC-002-devices-and-connections.md)(기기·연결)·[ARC-001](../policies/archive/ARC-001-item-number.md)(자료 번호)·[ARC-002](../policies/archive/ARC-002-auto-tags.md)(자동 태그)·[ARC-003](../policies/archive/ARC-003-bundles-as-folders.md)(묶음)에 맞췄다
 - 첫 플랫폼: 웹. 휴대폰 공유로 저장하기와 명령어 버튼(US-7)은 모바일 앱 단계다
 
 기획서 9절의 다섯 단계 흐름을 화면·명령·분기 단위까지 풀어 쓴 문서다. 새 결정은 없다. 문서끼리 다르면 기획서가 우선이고, 문구는 명령어 설명서 6절이 우선이다.
