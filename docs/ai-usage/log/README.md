@@ -46,6 +46,7 @@
 | 042 | 2026-11-26 | [기획 첨삭을 기획서와 발표 메모에 반영](042-planning-review-presentation.md) |
 | 043 | 2026-11-26 | [웹 화면 시안 디자이너 검토 대조](043-designer-mockup-review.md) |
 | 044 | 2026-11-26 | [디자이너 검토 새 제안 반영](044-designer-review-new-proposals.md) |
+| 045 | 2026-11-26 | [PO 작업 흐름 스킬로 빈칸 점검과 결정 반영](045-po-workflow-skills-gap-audit-decisions.md) |
 | 046 | 2026-11-26 | [디자이너 가이드 3종으로 AI 기능 UX 설계 스킬 만들기](046-ai-ux-design-skill.md) |
 
 새 항목 파일을 만들 때 이 표에 한 줄을 추가한다. 파일명은 `NNN-<영문-슬러그>.md`이고 NNN은 다음 번호다.
