@@ -48,6 +48,7 @@
 | 044 | 2026-11-26 | [디자이너 검토 새 제안 반영](044-designer-review-new-proposals.md) |
 | 045 | 2026-11-26 | [PO 작업 흐름 스킬로 빈칸 점검과 결정 반영](045-po-workflow-skills-gap-audit-decisions.md) |
 | 046 | 2026-11-26 | [디자이너 가이드 3종으로 AI 기능 UX 설계 스킬 만들기](046-ai-ux-design-skill.md) |
+| 047 | 2026-11-26 | [디자인 첨삭 요청 프롬프트와 시안 캡처](047-design-review-prompt-and-shots.md) |
 | 048 | 2026-11-26 | [PO·디자이너 에이전트 협업으로 po-workflow 스킬 전부 적용](048-po-designer-agent-collab.md) |
 | 049 | 2026-11-26 | [PO 답을 기획 문서·정책·설계·개발 전달 문서에 반영](049-po-answers-propagation.md) |
 
