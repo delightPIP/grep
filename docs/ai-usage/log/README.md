@@ -37,5 +37,6 @@
 | 034 | 2026-11-25 | [사용자 흐름도 정리](034-user-flow.md) |
 | 035 | 2026-11-25 | [넘길 글 형식과 데모 시드 자료](035-handoff-format-demo-seed.md) |
 | 036 | 2026-11-26 | [로그인·기기·자료 번호·태그·묶음 정책 확정](036-login-device-number-tag-bundle-policies.md) |
+| 037 | 2026-11-26 | [사용자 흐름도를 새 정책에 맞춤](037-align-user-flow-with-new-policies.md) |
 
 새 항목 파일을 만들 때 이 표에 한 줄을 추가한다. 파일명은 `NNN-<영문-슬러그>.md`이고 NNN은 다음 번호다.
