@@ -30,3 +30,6 @@
 | [ARC-001](archive/ARC-001-item-number.md) | 자료마다 사용자별 고유 번호를 붙이고, 모든 명령이 그 번호 하나로 자료를 가리킨다 | 확정 | 자료 |
 | [ARC-002](archive/ARC-002-auto-tags.md) | 태그는 서버가 자동으로만 붙이고, 사용자는 보고 `#태그`로 찾을 수 있다 | 확정 | 자료 |
 | [ARC-003](archive/ARC-003-bundles-as-folders.md) | 폴더는 따로 두지 않고, 한 단계짜리 묶음이 폴더 역할을 한다 | 확정 | 자료 |
+| [ARC-004](archive/ARC-004-ai-generated-label.md) | AI가 만든 요약과 태그는 화면, 넘길 글, AI 도구 연결 어디서나 AI 생성물로 구분해 보여 준다 | 확정 | 자료 |
+| [ARC-005](archive/ARC-005-save-vs-processing.md) | 저장 성공과 AI 처리 성공은 따로 다루고, 처리에 실패해도 저장한 자료는 남는다 | 확정 | 자료 |
+| [ARC-006](archive/ARC-006-link-fetch-scope.md) | 서버는 공개 웹 페이지만 열어 본문을 가져오고, 로그인·유료벽·접근 제한을 우회하지 않는다 | 확정 | 자료 |
