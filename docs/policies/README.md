@@ -14,6 +14,8 @@
 | 접두어 | 영역 | 폴더 |
 |---|---|---|
 | COM | 공통 | [common/](common/README.md) |
+| ACC | 계정 | [account/](account/README.md) |
+| ARC | 자료 | [archive/](archive/README.md) |
 
 기능 영역이 생기면 이 표에 행을 추가하고 같은 이름의 폴더를 만든다.
 
@@ -23,3 +25,8 @@
 |---|---|---|---|
 | [COM-001](common/COM-001-same-link-detection.md) | 같은 링크나 같은 파일을 다시 저장하면 새로 만들지 않고 기존 자료를 알린다 | 확정 | 공통 |
 | [COM-002](common/COM-002-external-llm-data.md) | 자료 내용은 학습에 쓰지 않는 조건의 유료 외부 LLM API로만 보낸다 | 확정 | 공통 |
+| [ACC-001](account/ACC-001-social-login-required.md) | Google 또는 GitHub로 로그인해야 그렙을 쓸 수 있다 | 확정 | 계정 |
+| [ACC-002](account/ACC-002-devices-and-connections.md) | 기기 수는 제한하지 않고, 모든 기기 로그아웃과 AI 도구 연결별 끊기를 제공한다 | 확정 | 계정 |
+| [ARC-001](archive/ARC-001-item-number.md) | 자료마다 사용자별 고유 번호를 붙이고, 모든 명령이 그 번호 하나로 자료를 가리킨다 | 확정 | 자료 |
+| [ARC-002](archive/ARC-002-auto-tags.md) | 태그는 서버가 자동으로만 붙이고, 사용자는 보고 `#태그`로 찾을 수 있다 | 확정 | 자료 |
+| [ARC-003](archive/ARC-003-bundles-as-folders.md) | 폴더는 따로 두지 않고, 한 단계짜리 묶음이 폴더 역할을 한다 | 확정 | 자료 |

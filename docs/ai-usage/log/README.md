@@ -33,5 +33,6 @@
 | 029 | 2026-11-25 | [클라이언트 스택과 Supabase 결정](029-client-stack-supabase.md) |
 | 030 | 2026-11-25 | [PO 결정 반영과 PR 정리(요약 방식, 외부 LLM 범위, 한글 명령어)](030-po-decisions-pr-cleanup.md) |
 | 031 | 2026-11-25 | [한국어 부분 검색 스파이크](031-korean-search-spike.md) |
+| 036 | 2026-11-26 | [로그인·기기·자료 번호·태그·묶음 정책 확정](036-login-device-number-tag-bundle-policies.md) |
 
 새 항목 파일을 만들 때 이 표에 한 줄을 추가한다. 파일명은 `NNN-<영문-슬러그>.md`이고 NNN은 다음 번호다.
