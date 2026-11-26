@@ -44,14 +44,6 @@ Full reference (Korean): [commands](docs/planning/commands.md)
 
 Success: find saved Korean items and paste them into an AI tool's input in under a minute.
 
-## Not doing
-
-- Does not recall forgotten items for you. It only shrinks what you must remember to one keyword.
-- Does not solve company data restrictions. Items go to our server and an external LLM.
-- Does not import items already saved in other apps, for now.
-- Not a real CLI.
-- The problem and its causes are still hypotheses. No interviews; a 12-person survey only shows direction.
-
 ## Stack
 
 | Area | Choice | ADR |
