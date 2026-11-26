@@ -57,11 +57,12 @@
 | 053 | 2026-11-26 | [개발자 첨삭 3종으로 개발 흐름 스킬 1차 만들기](053-dev-flow-skills.md) |
 | 054 | 2026-11-26 | [개발 흐름 스킬 3종 평가 시나리오 실행과 반영](054-dev-flow-skills-eval.md) |
 | 055 | 2026-11-26 | [개발 전달 문서(08) 착수 가능 검토와 반영](055-dev-handoff-readiness-review.md) |
-| 055 | 2026-11-26 | [처음부터 끝까지 사용자 흐름 점검과 어긋남 고치기](055-flow-inventory-and-conflict-fixes.md) |
-| 056 | 2026-11-26 | [발표 전 과정 P1~P5 결정과 정책 반영](056-po-decisions-p1-p5.md) |
-| 057 | 2026-11-26 | [빠졌던 화면을 플랫폼별로 모두 그리기](057-draw-missing-screens.md) |
-| 058 | 2026-11-26 | [화면 제안 14묶음 결정과 정책 반영](058-proposal-decisions.md) |
-| 059 | 2026-11-26 | [공통 컴포넌트 페이지와 플랫폼 부품](059-common-components-page.md) |
-| 060 | 2026-11-26 | [남은 손그림을 공통 부품으로 빼기](060-extract-remaining-parts.md) |
+| 056 | 2026-11-26 | [처음부터 끝까지 사용자 흐름 점검과 어긋남 고치기](056-flow-inventory-and-conflict-fixes.md) |
+| 057 | 2026-11-26 | [발표 전 과정 P1~P5 결정과 정책 반영](057-po-decisions-p1-p5.md) |
+| 058 | 2026-11-26 | [빠졌던 화면을 플랫폼별로 모두 그리기](058-draw-missing-screens.md) |
+| 059 | 2026-11-26 | [화면 제안 14묶음 결정과 정책 반영](059-proposal-decisions.md) |
+| 060 | 2026-11-26 | [공통 컴포넌트 페이지와 플랫폼 부품](060-common-components-page.md) |
+| 061 | 2026-11-26 | [남은 손그림을 공통 부품으로 빼기](061-extract-remaining-parts.md) |
+| 062 | 2026-11-26 | [부품으로 바꾼 화면 나머지 열어 보기](062-verify-remaining-screens.md) |
 
 새 항목 파일을 만들 때 이 표에 한 줄을 추가한다. 파일명은 `NNN-<영문-슬러그>.md`이고 NNN은 다음 번호다.
