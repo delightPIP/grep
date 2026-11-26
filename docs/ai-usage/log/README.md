@@ -40,5 +40,6 @@
 | 036 | 2026-11-26 | [로그인·기기·자료 번호·태그·묶음 정책 확정](036-login-device-number-tag-bundle-policies.md) |
 | 037 | 2026-11-26 | [사용자 흐름도를 새 정책에 맞춤](037-align-user-flow-with-new-policies.md) |
 | 038 | 2026-11-26 | [외부 전문가 검토로 빠진 정책 정리](038-expert-review-policy-gaps.md) |
+| 039 | 2026-11-26 | [플랫폼별 UI/UX 학습](039-platform-ui-study.md) |
 
 새 항목 파일을 만들 때 이 표에 한 줄을 추가한다. 파일명은 `NNN-<영문-슬러그>.md`이고 NNN은 다음 번호다.

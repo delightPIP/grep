@@ -110,4 +110,4 @@
 
 ---
 
-원본 문서: [기획서](PRD.md) · [사용자 저니맵](journey-map.md) · [설문 결과](survey-results.md) · [경쟁 서비스 조사](competitors.md) · [기획 상태 문서](STATE.md)
+원본 문서: [기획서](PRD.md) · [사용자 저니맵](journey-map.md) · [설문 결과](survey-results.md) · [경쟁 서비스 조사](competitors.md) · [기획 상태 문서](STATE.md) · [플랫폼별 UI/UX 학습 노트](platform-ui-study.md)
