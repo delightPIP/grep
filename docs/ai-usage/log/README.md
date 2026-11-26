@@ -66,5 +66,9 @@
 | 062 | 2026-11-26 | [부품으로 바꾼 화면 나머지 열어 보기](062-verify-remaining-screens.md) |
 | 063 | 2026-11-26 | [부품으로 바꾼 화면 눌러 보기](063-tap-test-interactive-screens.md) |
 | 064 | 2026-11-26 | [표시용 버튼에 동작 연결하기](064-wire-display-only-controls.md) |
+| 065 | 2026-11-26 | [저장된 자료 보기 흐름과 시안 (자세히 보기, 보관함)](065-archive-display-flow.md) |
+| 066 | 2026-11-26 | [저장한 찾기 명령과 화면 (찾아두기)](066-saved-search-command.md) |
+| 067 | 2026-11-26 | [저장한 찾기 명령 이름 확정](067-confirm-saved-search-name.md) |
+| 068 | 2026-11-26 | [이슈 만들기 전 점검과 열린 PR 정리](068-issue-readiness-and-pr-cleanup.md) |
 
 새 항목 파일을 만들 때 이 표에 한 줄을 추가한다. 파일명은 `NNN-<영문-슬러그>.md`이고 NNN은 다음 번호다.
