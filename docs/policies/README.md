@@ -17,6 +17,7 @@
 | DSK | 데스크톱 | [desktop/](desktop/README.md) |
 | ACC | 계정 | [account/](account/README.md) |
 | ARC | 자료 | [archive/](archive/README.md) |
+| MOB | 모바일 | [mobile/](mobile/README.md) |
 
 기능 영역이 생기면 이 표에 행을 추가하고 같은 이름의 폴더를 만든다.
 
@@ -40,3 +41,4 @@
 | [ARC-005](archive/ARC-005-save-vs-processing.md) | 저장 성공과 AI 처리 성공은 따로 다루고, 처리에 실패해도 저장한 자료는 남는다 | 확정 | 자료 |
 | [ARC-006](archive/ARC-006-link-fetch-scope.md) | 서버는 공개 웹 페이지만 열어 본문을 가져오고, 로그인·유료벽·접근 제한을 우회하지 않는다 | 확정 | 자료 |
 | [ARC-007](archive/ARC-007-archive-auto-groups.md) | 보관함은 자동 묶음과 사용자 묶음, 저장한 찾기로만 자료를 보여 주고, 따로 폴더를 두지 않는다 | 확정 | 자료 |
+| [MOB-001](mobile/MOB-001-bottom-tabs.md) | 모바일 화면은 하단 탭 세 개(터미널 · 보관함 · 설정)로 오가고, 설정은 탭으로 둔다 | 확정 | 모바일 |
