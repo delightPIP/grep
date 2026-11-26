@@ -1,0 +1,76 @@
+/* 그렙 디자인 시스템 스타일 중 #31 화면에 쓰는 것.
+   시안 아티팩트 project/ds/grep/components/bundle.css에서 그대로 옮겼다. 마지막 "화면" 절만 이 레포에서 더했다. */
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Nanum+Gothic+Coding:wght@400;700&family=Noto+Sans+KR:wght@400;500;700&display=swap");
+@import "./tokens.css";
+
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-mono); font-size: 14px; line-height: 22px; }
+
+/* Window */
+.gt-window { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+.gt-titlebar { display: flex; align-items: center; gap: var(--space-2); height: 36px; padding: 0 var(--space-3); background: var(--surface-raised); border-bottom: 1px solid var(--line); font-size: 12px; color: var(--ink-muted); }
+.gt-titlebar-name { color: var(--ink); font-weight: 700; }
+.gt-titlebar-name b { color: var(--prompt); }
+.gt-body { padding: var(--space-4); flex: 1; min-height: 0; overflow: auto; }
+.gt-body > * + * { margin-top: var(--space-1); }
+.gt-body > .gt-block + .gt-block { margin-top: var(--space-3); }
+.gt-block > * + * { margin-top: var(--space-1); }
+
+/* Prompt line */
+.gt-prompt { display: flex; gap: 1ch; white-space: pre-wrap; word-break: break-word; }
+.gt-prompt-head { flex: none; color: var(--prompt); font-weight: 700; }
+.gt-prompt-path { color: var(--ink-muted); font-weight: 400; }
+.gt-prompt-cmd { color: var(--ink); }
+.gt-prompt-cmd .gt-verb { color: var(--command); font-weight: 700; }
+.gt-prompt-cmd .gt-pipe { color: var(--ink-muted); }
+.gt-prompt-fail .gt-prompt-head { color: var(--danger); }
+
+/* Notice line */
+.gt-line { display: flex; gap: 1ch; white-space: pre-wrap; }
+.gt-line-sym { flex: none; width: 2ch; font-weight: 700; }
+.gt-ok .gt-line-sym { color: var(--prompt); }
+.gt-info .gt-line-sym { color: var(--command); }
+.gt-warn .gt-line-sym, .gt-warn .gt-line-text b { color: var(--notice); }
+.gt-error .gt-line-sym, .gt-error .gt-line-text b { color: var(--danger); }
+.gt-hint { color: var(--ink-muted); }
+
+/* Input */
+.gt-input { display: flex; gap: 1ch; align-items: baseline; }
+.gt-input-field { flex: 1; min-width: 0; font: inherit; color: var(--ink); background: transparent; border: 0; padding: 0; caret-color: var(--cursor); outline: none; }
+.gt-input-field::placeholder { color: var(--ink-muted); }
+/* 터치 기기와 좁은 화면: 입력줄 글자 16px. iOS는 16px 미만 입력칸을 누르면 화면을 확대하고 되돌리지 않는다. */
+@media (hover: none) and (pointer: coarse), (max-width: 560px) {
+  .gt-input-field { font-size: 16px; }
+}
+
+/* Dock: 입력줄을 화면 아래에 고정하고 옅은 테두리. */
+.gt-body:has(> .gt-dock) { display: flex; flex-direction: column; }
+.gt-dock { position: sticky; bottom: 0; margin-top: auto !important; padding-top: var(--space-3); background: var(--surface); }
+.gt-dock-line { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); background: var(--bg); }
+.gt-dock-line:focus-within { border-color: var(--command); }
+
+/* Status bar */
+.gt-status { display: flex; align-items: center; gap: var(--space-2); height: 28px; padding: 0 var(--space-3); background: var(--surface-raised); border-top: 1px solid var(--line); font-size: 12px; line-height: 18px; color: var(--ink-muted); white-space: nowrap; overflow: hidden; }
+.gt-status b { color: var(--ink); font-weight: 700; }
+.gt-status-sep { color: var(--line); }
+.gt-status-right { margin-left: auto; display: flex; gap: var(--space-2); }
+.gt-key { font: inherit; font-size: 11px; color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0 4px; background: var(--surface); }
+
+/* Mascot · Banner */
+.gt-mascot { display: block; flex: none; image-rendering: pixelated; }
+.gt-banner-row { display: flex; align-items: center; gap: var(--space-4); }
+.gt-banner { color: var(--prompt); font-weight: 700; font-size: 32px; line-height: 40px; }
+.gt-banner span { color: var(--ink-muted); font-size: 14px; line-height: 22px; font-weight: 400; display: block; }
+.gt-banner .gt-banner-lead { color: var(--ink); font-family: var(--font-read); font-size: 16px; line-height: 26px; font-weight: 500; margin-top: var(--space-1); word-break: keep-all; }
+
+/* Button: 시안 UiButton secondary md */
+.gt-button { box-sizing: border-box; min-height: 44px; padding: 0 16px; font-family: var(--font-mono); font-size: 14px; font-weight: 700; color: var(--command); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); cursor: pointer; white-space: nowrap; }
+.gt-button:disabled { color: var(--ink-muted); cursor: default; }
+.gt-button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* 화면: 창 하나가 화면을 채운다(시안 Main·Login 아트보드의 바깥 24px 여백). */
+html, body, #root, #app { height: 100%; }
+.gt-screen { box-sizing: border-box; height: 100%; padding: var(--space-6); display: flex; flex-direction: column; background: var(--bg); color: var(--ink); font-family: var(--font-mono); }
+.gt-screen-window { flex: 1; min-height: 0; }
+.gt-login-prompt-head { color: var(--prompt); font-weight: 700; }
+.gt-login-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3) !important; }
+@media (max-width: 560px) { .gt-screen { padding: var(--space-4); } }

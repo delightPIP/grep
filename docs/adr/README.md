@@ -40,3 +40,4 @@
 | [ADR-IOS-009](ios/ADR-IOS-009-share-sheet.md) | iOS에서 공유로 받기는 네이티브 공유 확장으로, 보내기는 시스템 공유 시트로 한다 | 제안 (개발자 확인 대기) | 2026-11-25 |
 | [ADR-0010](ADR-0010-monorepo-top-level-folders.md) | 앱 코드는 이 저장소에 두고 계약·서버·공유 코어·플랫폼별 앱을 최상위 폴더로 나눈다 | 채택 | 2026-11-26 |
 | [ADR-0011](ADR-0011-free-tier-deploy-portable.md) | 데모 단계 배포는 Render 무료(서버)·Cloudflare Pages(웹)·Supabase로 하고, 옮기기 쉽게 만든다 | 채택 | 2026-11-26 |
+| [ADR-WEB-012](web/ADR-WEB-012-popup-login-broadcast-channel.md) | 웹 로그인은 팝업으로 하고, 결과는 콜백 페이지가 BroadcastChannel로 넘긴다 | 채택 | 2026-11-26 |

@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <title>그렙 로그인</title>
+    <style>
+      body { margin: 0; padding: 24px; background: #0b0d10; color: #99a2ad;
+        font: 14px/22px "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace; }
+      @media (prefers-color-scheme: light) { body { background: #e9ebe6; color: #5b636c; } }
+    </style>
+  </head>
+  <body>
+    <p id="message">로그인 처리 중</p>
+    <script>
+      // web/auth/supabase-auth.ts의 CALLBACK_CHANNEL과 같은 이름이다.
+      // 로그인 결과(code 또는 error)를 여는 창에 넘기고 닫는다. code는 여는 창이 세션으로 바꾼다(PKCE 검증값은 그쪽에 있다).
+      const channel = new BroadcastChannel("grep-auth-callback");
+      channel.postMessage({ search: location.search, hash: location.hash });
+      channel.close();
+      // 주소에 남은 code를 지운다.
+      history.replaceState(null, "", location.pathname);
+      window.close();
+      // Google의 COOP 때문에 스크립트로 닫히지 않을 수 있다.
+      document.getElementById("message").textContent = "이 창을 닫아도 됩니다";
+    </script>
+  </body>
+</html>
