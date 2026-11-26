@@ -82,5 +82,6 @@
 | 079 | 2026-11-26 | [#31 B 갈래: Swift 코어 피처와 웹 wasm 브리지](079-issue-31-core-and-web-bridge.md) |
 | 080 | 2026-11-26 | [#31 웹 로그인 화면·터미널 껍데기·로그인 모듈](080-web-login-views-auth.md) |
 | 081 | 2026-11-26 | [#31 통합본 실제 로그인 확인(Mac)](081-issue-31-live-login-check.md) |
+| 082 | 2026-11-27 | [#31 로그인: 계획·뼈대·병렬 통합·검증 반영](082-issue-31-plan-scaffold-integration.md) |
 
 새 항목 파일을 만들 때 이 표에 한 줄을 추가한다. 파일명은 `NNN-<영문-슬러그>.md`이고 NNN은 다음 번호다.
