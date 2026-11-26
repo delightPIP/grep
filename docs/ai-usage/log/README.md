@@ -42,5 +42,6 @@
 | 038 | 2026-11-26 | [외부 전문가 검토로 빠진 정책 정리](038-expert-review-policy-gaps.md) |
 | 039 | 2026-11-26 | [플랫폼별 UI/UX 학습](039-platform-ui-study.md) |
 | 041 | 2026-11-26 | [웹 화면 시안 디자이너 검토 대조](041-designer-mockup-review.md) |
+| 042 | 2026-11-26 | [디자이너 검토 새 제안 반영](042-designer-review-new-proposals.md) |
 
 새 항목 파일을 만들 때 이 표에 한 줄을 추가한다. 파일명은 `NNN-<영문-슬러그>.md`이고 NNN은 다음 번호다.
