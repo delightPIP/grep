@@ -74,6 +74,27 @@ function makeDeps(overrides: Partial<AuthClient> = {}) {
 }
 
 describe("supabase AuthService signIn", () => {
+  it("브라우저에_Google로그인이_남아있을때_Google로_로그인하면_계정선택화면을_요구하는지", async () => {
+    // given
+    const { deps, auth, callback } = makeDeps();
+    const service = createSupabaseAuthService(deps);
+
+    // when
+    const pending = service.signIn("google");
+    await callback({ search: "?code=abc", hash: "" });
+    await pending;
+
+    // then
+    expect(auth.signInWithOAuth).toHaveBeenCalledWith({
+      provider: "google",
+      options: {
+        redirectTo: REDIRECT_TO,
+        skipBrowserRedirect: true,
+        queryParams: { prompt: "select_account" },
+      },
+    });
+  });
+
   it("로그인창에서_인증을마치면_코드를_세션으로바꾸고_성공을_돌려주는지", async () => {
     // given
     const { deps, auth, popup, unsubscribe, callback } = makeDeps();

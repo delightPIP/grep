@@ -112,9 +112,12 @@ async function authorizeUrl(
   provider: AuthProvider,
 ): Promise<{ url: string | null; error: unknown }> {
   try {
+    const options = { redirectTo: deps.redirectTo, skipBrowserRedirect: true };
     const { data, error } = await deps.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: deps.redirectTo, skipBrowserRedirect: true },
+      // `로그아웃`은 그렙 세션만 지우고 브라우저의 Google 로그인은 남긴다. 계정 선택 없이 남은 계정으로
+      // 들어가지 않게 항상 고르게 한다(데모 계정 B 전환, AI 로그 081 발견 사항 4).
+      options: provider === "google" ? { ...options, queryParams: { prompt: "select_account" } } : options,
     });
     return { url: data.url, error };
   } catch (error) {
