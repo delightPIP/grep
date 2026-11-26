@@ -51,5 +51,6 @@
 | 047 | 2026-11-26 | [디자인 첨삭 요청 프롬프트와 시안 캡처](047-design-review-prompt-and-shots.md) |
 | 048 | 2026-11-26 | [PO·디자이너 에이전트 협업으로 po-workflow 스킬 전부 적용](048-po-designer-agent-collab.md) |
 | 049 | 2026-11-26 | [PO 답을 기획 문서·정책·설계·개발 전달 문서에 반영](049-po-answers-propagation.md) |
+| 050 | 2026-11-26 | [설문 "8건 중 6건" 확인 반영](050-survey-six-confirmed.md) |
 
 새 항목 파일을 만들 때 이 표에 한 줄을 추가한다. 파일명은 `NNN-<영문-슬러그>.md`이고 NNN은 다음 번호다.
