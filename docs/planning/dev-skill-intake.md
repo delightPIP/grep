@@ -1,7 +1,7 @@
 # 개발 흐름 스킬 — 개발자 첨삭 수집 노트
 
 - 작성일: 2026-11-26
-- 상태: 수집 끝, PO 결정 대기. 스킬은 아직 쓰지 않음
+- 상태: 수집 끝, PO 결정(2026-11-26, 추천안 수용), 1차 스킬 작성함. `delightPIP/po-workflow-skills`의 `feat/dev-flow` 브랜치(`skills/dev-flow/`, `skills/dev-requirements-intake/`, `skills/dev-technical-design/`). 그렙 팀 설정은 [dev-team-config.md](../dev-team-config.md)
 - 목적: 개발자 첨삭 자료에서 "개발 전반 흐름 스킬"에 넣을 것, 바꿀 것, 버릴 것을 미리 정리해 둔다
 - 원칙: 외부 자료는 첨언으로 본다. 그렙의 정책·ADR·명령어 설명서와 부딪히면 그렙 쪽을 기준으로 두고 부딪힘을 적는다. 형식은 [디자인 스킬 수집 노트](design-skill-intake.md)를 따른다
 
@@ -171,7 +171,27 @@ references/                  템플릿, 착수·완료 조건 4단, 단계별 �
 - 결정 기록 → `docs/policies/`, 질의서의 미정 → 영역 `open-questions.md`, 기술 결정 → `docs/adr/`, AI 활용 → `docs/ai-usage/log/`, 문서 검사 → `Scripts/check-docs.sh`, 작업 전 최신화 → 루트 `AGENTS.md`의 Freshness Gate
 - 세 자료가 "규격 확인 필요"로 남긴 부분은 Claude Code 규격(SKILL.md, name·description)으로 채운다. 스킬이 자기 폴더 밖 `_shared/`를 읽을 수 있는지는 확인이 필요하다. 읽을 수 없으면 C2처럼 각 스킬에 복사하고 원본은 한 곳에 둔다
 
-### 정할 것 (자료를 다 받은 뒤 한 번에 묻는다)
+### PO 결정 (2026-11-26)
+
+PO가 "추천안대로 진행"으로 네 가지를 모두 추천안대로 정했다.
+
+| 항목 | 결정 | 반영 |
+|---|---|---|
+| 스킬 위치 | `delightPIP/po-workflow-skills` | 플러그인 `po-workflow` 0.4.0에 dev 스킬 3개 추가 |
+| 범위 | 범용, 그렙은 첫 팀 설정 | 스킬에는 그렙 규칙을 넣지 않는다. 그렙 정보는 [dev-team-config.md](../dev-team-config.md)에 두고 스킬이 읽는다 |
+| 1차 범위 | 입구 + 요구사항 받기 + 기술 설계 | `dev-flow`, `dev-requirements-intake`, `dev-technical-design`. S04, S10~S12는 2차 |
+| 문서 ID | C2를 줄여서 | 문서는 C2의 목록과 순서(01~24)를 이름으로 부른다. 아래 "결정 뒤 바꾼 것" 참고 |
+
+### 결정 뒤 바꾼 것
+
+스킬을 쓰기 전에 기존 스킬 본문을 대조한 결과(서브에이전트, 2026-11-26)로 추천안 일부를 조정했다.
+
+- **`dev-handoff-docs`와 겹침.** 요구사항 받기의 입력 분류·차단 질문·미정 표기·ID 연결이 `dev-handoff-docs`와 거의 같았다. 그래서 두 스킬을 "PO가 쓰는 전달 문서(문서끼리만 대조)"와 "개발자가 받은 문서(코드·API와 대조, 질의서, 추적표)"로 나누고, 요구사항 ID와 표기는 `dev-handoff-docs`의 것(R → W → T, 질문 Q, 결정 D)을 그대로 쓴다.
+- **문서 ID의 `D` 충돌.** C2의 문서 번호 D01~D26은 `dev-handoff-docs`의 결정 ID `D`와 겹친다. 문서는 번호 대신 이름으로 부르고, 번호(01~24)는 순서를 보이는 데만 쓴다. D25(온보딩)·D26(기능 종료)은 2차로 미뤘다.
+- **공용 파일 위치.** `install.sh`가 스킬 폴더를 하나씩 복사하므로 `_shared/`를 따로 두지 않았다. 공통 규칙 원본은 `dev-flow/references/guardrails.md`에 두고, 다른 두 스킬은 본문에 요약을 넣어 그 파일이 없어도 지키게 했다.
+- **넘길 때 붙일 규칙.** 대조 결과 기존 스킬에 빠진 규칙이 있었다. `adr-manager` 템플릿의 기본 상태가 "채택", PR 스킬 템플릿에 미리 체크된 `[x]`, 리뷰 스킬의 "Verdict: Approve", core-dev·engineering 스킬 전반에 충돌 보존(G5)·실행 3분류(G6) 없음. `dev-flow/references/handoffs.md`에 단계별로 적었다.
+
+### 정할 것 (자료를 다 받은 뒤 한 번에 묻는다), 위 표로 모두 결정됨
 
 1. 스킬 위치: `delightPIP/po-workflow-skills`에 함께 둘지, 개발 스킬 레포를 따로 둘지. 지금 기울기: 같은 레포(디자인 스킬과 `guardrails.md`를 함께 쓸 수 있다)
 2. 범위: 범용만 쓸지, 그렙 규칙을 스킬 안에 넣을지. 지금 기울기: 범용, 그렙은 첫 팀 설정으로(디자인 스킬 결정과 같은 방식)
