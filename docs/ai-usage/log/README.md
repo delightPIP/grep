@@ -42,5 +42,6 @@
 | 038 | 2026-11-26 | [외부 전문가 검토로 빠진 정책 정리](038-expert-review-policy-gaps.md) |
 | 039 | 2026-11-26 | [플랫폼별 UI/UX 학습](039-platform-ui-study.md) |
 | 040 | 2026-11-26 | [프로젝트 범위·무료 운영 기준으로 정책 정리](040-free-tier-project-policies.md) |
+| 041 | 2026-11-26 | [기획 첨삭을 기획서와 발표 메모에 반영](041-planning-review-presentation.md) |
 
 새 항목 파일을 만들 때 이 표에 한 줄을 추가한다. 파일명은 `NNN-<영문-슬러그>.md`이고 NNN은 다음 번호다.
