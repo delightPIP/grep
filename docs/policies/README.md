@@ -39,3 +39,4 @@
 | [ARC-004](archive/ARC-004-ai-generated-label.md) | AI가 만든 요약과 태그는 화면, 넘길 글, AI 도구 연결 어디서나 AI 생성물로 구분해 보여 준다 | 확정 | 자료 |
 | [ARC-005](archive/ARC-005-save-vs-processing.md) | 저장 성공과 AI 처리 성공은 따로 다루고, 처리에 실패해도 저장한 자료는 남는다 | 확정 | 자료 |
 | [ARC-006](archive/ARC-006-link-fetch-scope.md) | 서버는 공개 웹 페이지만 열어 본문을 가져오고, 로그인·유료벽·접근 제한을 우회하지 않는다 | 확정 | 자료 |
+| [ARC-007](archive/ARC-007-archive-auto-groups.md) | 보관함은 자동 묶음과 사용자 묶음, 저장한 찾기로만 자료를 보여 주고, 따로 폴더를 두지 않는다 | 확정 | 자료 |
