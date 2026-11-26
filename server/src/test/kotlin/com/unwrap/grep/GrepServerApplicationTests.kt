@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Import
 class GrepServerApplicationTests {
 
 	@Test
-	fun `DB가_떠있을때_서버를_시작하면_마이그레이션과_함께_컨텍스트가_뜨는지`() {
+	fun `DB가떠있을때_서버를시작하면_마이그레이션과함께컨텍스트가뜨는지`() {
 		// given: Testcontainers Postgres(TestcontainersConfiguration)
 
 		// when: @SpringBootTest가 컨텍스트를 띄운다

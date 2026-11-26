@@ -23,7 +23,7 @@ function shownLine(element: Element): string {
 }
 
 describe("LoggedOutView", () => {
-  it("로그인하지않았을때_화면을그리면_로그인창에_로그인필요줄과_두버튼을_보여주는지", () => {
+  it("로그인하지않았을때_화면을그리면_로그인창에로그인필요줄과두버튼을보여주는지", () => {
     // given
     // when
     const { container } = renderView();
@@ -35,7 +35,7 @@ describe("LoggedOutView", () => {
     expect(button("GitHub로 계속").disabled).toBe(false);
   });
 
-  it("로그인화면을그리면_시안의_소개문장과_표어를_보여주는지", () => {
+  it("로그인하지않았을때_화면을그리면_시안의소개문장과표어를보여주는지", () => {
     // given
     // when
     renderView();
@@ -45,7 +45,7 @@ describe("LoggedOutView", () => {
     expect(screen.getByText("담기 → 찾기 → 넘기기")).toBeTruthy();
   });
 
-  it("로그인하지않았을때_화면을그리면_입력줄을_두지않는지", () => {
+  it("로그인하지않았을때_화면을그리면_입력줄을두지않는지", () => {
     // given
     // when
     renderView();
@@ -54,7 +54,7 @@ describe("LoggedOutView", () => {
     expect(screen.queryByRole("textbox")).toBeNull();
   });
 
-  it("로그인화면에서_Google버튼을누르면_google로_로그인을_요청하는지", () => {
+  it("로그인화면이떠있을때_Google버튼을누르면_google로로그인을요청하는지", () => {
     // given
     const { onSignIn } = renderView();
 
@@ -65,7 +65,7 @@ describe("LoggedOutView", () => {
     expect(onSignIn).toHaveBeenCalledExactlyOnceWith("google");
   });
 
-  it("로그인화면에서_GitHub버튼을누르면_github로_로그인을_요청하는지", () => {
+  it("로그인화면이떠있을때_GitHub버튼을누르면_github로로그인을요청하는지", () => {
     // given
     const { onSignIn } = renderView();
 
@@ -76,7 +76,7 @@ describe("LoggedOutView", () => {
     expect(onSignIn).toHaveBeenCalledExactlyOnceWith("github");
   });
 
-  it("로그인창이_열려있을때_버튼을다시누르면_로그인을_다시요청하지않는지", () => {
+  it("로그인창이열려있을때_버튼을다시누르면_로그인을다시요청하지않는지", () => {
     // given
     const { onSignIn } = renderView({ isSigningIn: true });
 
@@ -108,7 +108,7 @@ describe("LoggedOutView", () => {
     expect(status.querySelector("b")?.textContent).toBe(bold);
   });
 
-  it("알림이_없을때_화면을그리면_알림줄을_그리지않는지", () => {
+  it("알림이없을때_화면을그리면_알림줄을그리지않는지", () => {
     // given
     // when
     renderView();

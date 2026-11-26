@@ -10,14 +10,14 @@ public final class LoggedInBuilder: Builder<any LoggedInDependency>, LoggedInBui
         super.init(dependency: dependency)
     }
 
-    public func build(listener: any LoggedInListener, restoredInput: String) -> any ViewableRouting {
+    public func build(listener: any LoggedInListener, pendingInput: PendingInput?) -> any ViewableRouting {
         let view = viewFactory.makeLoggedInView()
         let interactor = LoggedInInteractor(
             presenter: view,
             authService: dependency.authService,
             httpTransport: dependency.httpTransport,
             listener: listener,
-            restoredInput: restoredInput
+            pendingInput: pendingInput
         )
         return LoggedInRouter(interactor: interactor, viewController: view)
     }
@@ -32,20 +32,24 @@ final class LoggedInInteractor: PresentableInteractor<any LoggedInPresentable>, 
     private let authService: any AuthService
     private let httpTransport: any HTTPTransport
     private weak var listener: (any LoggedInListener)?
-    private var viewState: LoggedInViewState
+    private var viewState = LoggedInViewState()
     private var isSigningOut = false
+    /// 만료 전에 치던 줄. 접근 토큰의 계정이 같을 때만 되살리고, 토큰을 받으면 비운다.
+    private var pendingInput: PendingInput?
+    /// 지금 로그인한 계정(접근 토큰의 `sub`). 토큰을 받기 전이거나 읽지 못하면 nil.
+    private var subject: String?
 
     init(
         presenter: any LoggedInPresentable,
         authService: any AuthService,
         httpTransport: any HTTPTransport,
         listener: any LoggedInListener,
-        restoredInput: String
+        pendingInput: PendingInput?
     ) {
         self.authService = authService
         self.httpTransport = httpTransport
         self.listener = listener
-        self.viewState = LoggedInViewState(input: restoredInput)
+        self.pendingInput = pendingInput
         super.init(presenter: presenter)
     }
 
@@ -76,6 +80,7 @@ final class LoggedInInteractor: PresentableInteractor<any LoggedInPresentable>, 
                 expire()
                 return
             }
+            restorePendingInput(for: token)
             let outcome = await MeAPI.load(transport: httpTransport, accessToken: token)
             guard !Task.isCancelled else { return }
             switch outcome {
@@ -86,11 +91,26 @@ final class LoggedInInteractor: PresentableInteractor<any LoggedInPresentable>, 
         }
     }
 
+    /// 같은 계정으로 다시 로그인했으면 만료 전에 치던 줄을 되살린다(ACC-001 규칙 7, COM-009 규칙 4).
+    /// 다른 계정이면 버린다(COM-009 규칙 3). 사용자가 그새 친 글이 있으면 덮어쓰지 않는다.
+    private func restorePendingInput(for token: String) {
+        subject = AccessTokenSubject.read(from: token)
+        defer { pendingInput = nil }
+        guard let pendingInput, let subject, pendingInput.subject == subject, viewState.input.isEmpty else { return }
+        update(viewState.with(input: pendingInput.text))
+    }
+
     /// 치던 줄을 들려 부모에게 보낸다. 부모가 로그인 화면으로 바꾼다(ACC-001 규칙 7).
+    /// 계정을 모르면(토큰을 못 받음) 받아 둔 되살릴 줄을 그대로 돌려준다.
     /// 로그아웃 중이면 알리지 않는다. 사용자가 끝낸 세션을 만료로 보이지 않게 한다.
     private func expire() {
         guard !isSigningOut else { return }
-        listener?.didExpire(pendingInput: viewState.input)
+        guard let subject else {
+            listener?.didExpire(pendingInput: pendingInput)
+            return
+        }
+        let text = viewState.input
+        listener?.didExpire(pendingInput: text.isEmpty ? nil : PendingInput(text: text, subject: subject))
     }
 
     private func submit(_ text: String) {

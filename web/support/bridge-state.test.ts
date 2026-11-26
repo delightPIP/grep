@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { toLoggedInState, toLoggedOutState } from "./bridge-state";
 
 describe("브리지 값을 뷰 상태로 바꾸기", () => {
-  it("알림이_없을때_로그인화면_값을_바꾸면_알림없는_상태가_되는지", () => {
+  it("알림이없을때_로그인화면값을바꾸면_알림없는상태가되는지", () => {
     // given
     const noticeKind = null;
 
@@ -27,7 +27,7 @@ describe("브리지 값을 뷰 상태로 바꾸기", () => {
     },
   );
 
-  it("알림종류가_failed일때_로그인화면_값을_바꾸면_이유가_함께_들어가는지", () => {
+  it("알림종류가failed일때_로그인화면값을바꾸면_이유가함께들어가는지", () => {
     // given
     const failureReason = "timedOut";
 
@@ -38,7 +38,7 @@ describe("브리지 값을 뷰 상태로 바꾸기", () => {
     expect(state.notice).toEqual({ kind: "failed", reason: "timedOut" });
   });
 
-  it("계약에_없는_알림종류일때_로그인화면_값을_바꾸면_오류를_던지는지", () => {
+  it("계약에없는알림종류일때_로그인화면값을바꾸면_오류를던지는지", () => {
     // given
     const unknownKind = "banned";
 
@@ -49,7 +49,7 @@ describe("브리지 값을 뷰 상태로 바꾸기", () => {
     expect(convert).toThrow("banned");
   });
 
-  it("실패알림에_이유가_없을때_로그인화면_값을_바꾸면_오류를_던지는지", () => {
+  it("실패알림에이유가없을때_로그인화면값을바꾸면_오류를던지는지", () => {
     // given
     const failureReason = null;
 
@@ -60,7 +60,7 @@ describe("브리지 값을 뷰 상태로 바꾸기", () => {
     expect(convert).toThrow("failed");
   });
 
-  it("출력줄이_섞여있을때_터미널_값을_바꾸면_종류별_줄로_순서대로_바뀌는지", () => {
+  it("출력줄이섞여있을때_터미널값을바꾸면_종류별줄로순서대로바뀌는지", () => {
     // given
     const rows = [
       { kind: "prompt", text: "찻기 결제" },
@@ -81,7 +81,7 @@ describe("브리지 값을 뷰 상태로 바꾸기", () => {
     });
   });
 
-  it("자료수를_아직_못받았을때_터미널_값을_바꾸면_자료수가_null로_남는지", () => {
+  it("자료수를아직못받았을때_터미널값을바꾸면_자료수가null로남는지", () => {
     // given
     const itemCount = null;
 
@@ -92,7 +92,7 @@ describe("브리지 값을 뷰 상태로 바꾸기", () => {
     expect(state.itemCount).toBeNull();
   });
 
-  it("계약에_없는_줄종류일때_터미널_값을_바꾸면_오류를_던지는지", () => {
+  it("계약에없는줄종류일때_터미널값을바꾸면_오류를던지는지", () => {
     // given
     const rows = [{ kind: "saved", text: "x" }];
 

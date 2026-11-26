@@ -62,8 +62,9 @@ class JdbcSessionRepository(private val jdbc: JdbcClient) : SessionRepository {
 			.single()
 	}
 
+	/** 동시 요청이 늦게 쓰더라도 마지막 사용 시각을 되돌리지 않는다. */
 	override fun touch(sessionId: UUID, now: Instant) {
-		jdbc.sql("UPDATE sessions SET last_seen_at = :now WHERE id = :id")
+		jdbc.sql("UPDATE sessions SET last_seen_at = GREATEST(last_seen_at, :now) WHERE id = :id")
 			.param("now", now.toUtc())
 			.param("id", sessionId)
 			.update()

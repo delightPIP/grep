@@ -1,3 +1,8 @@
+#if canImport(FoundationEssentials)
+import FoundationEssentials
+#else
+import Foundation
+#endif
 import GrepCore
 import RIBs
 
@@ -5,6 +10,16 @@ import RIBs
 @MainActor
 public func runCurrent() async {
     for _ in 0..<50 { await Task.yield() }
+}
+
+/// `sub`만 든 JWT 모양의 접근 토큰. 서명은 가짜다(코어는 서명을 보지 않는다).
+public func fakeAccessToken(subject: String) -> String {
+    let json = #"{"sub":"\#(subject)"}"#
+    let payload = Data(json.utf8).base64EncodedString()
+        .replacing("+", with: "-")
+        .replacing("/", with: "_")
+        .replacing("=", with: "")
+    return "eyJhbGciOiJFUzI1NiJ9.\(payload).c2ln"
 }
 
 /// 로그인 창이 닫히는 시점과 결과를 테스트가 정하는 인증 서비스.
@@ -30,7 +45,7 @@ public final class FakeAuthService: AuthService {
     }
 
     /// 열려 있는 로그인 창을 `result`로 끝낸다. 성공이면 토큰이 생긴다.
-    public func respond(_ result: SignInResult, token: String = "token") {
+    public func respond(_ result: SignInResult, token: String = fakeAccessToken(subject: "user-a")) {
         guard let continuation = pending else { return }
         pending = nil
         if result == .success { self.token = token }

@@ -60,7 +60,7 @@ final class RootComponent: EmptyComponent, LoggedOutDependency, LoggedInDependen
 protocol RootRouting: AnyObject {
     func routeToLoggedOut(notice: LoggedOutViewState.Notice?)
     func routeAwayFromLoggedOut()
-    func routeToLoggedIn(restoredInput: String)
+    func routeToLoggedIn(pendingInput: PendingInput?)
     func routeAwayFromLoggedIn()
 }
 
@@ -68,8 +68,8 @@ protocol RootRouting: AnyObject {
 final class RootInteractor: Interactor, LoggedOutListener, LoggedInListener {
     weak var router: (any RootRouting)?
     private let authService: any AuthService
-    /// 로그인 만료 때 입력줄에 치던 줄. 다시 로그인하면 되살린다(ACC-001 규칙 7).
-    private var pendingInput = ""
+    /// 로그인 만료 때 입력줄에 치던 줄과 그 계정. 같은 계정으로 다시 로그인하면 되살린다(ACC-001 규칙 7).
+    private var pendingInput: PendingInput?
 
     init(authService: any AuthService) {
         self.authService = authService
@@ -83,7 +83,7 @@ final class RootInteractor: Interactor, LoggedOutListener, LoggedInListener {
             let hasSession = await authService.accessToken() != nil
             guard !Task.isCancelled else { return }
             if hasSession {
-                router?.routeToLoggedIn(restoredInput: "")
+                router?.routeToLoggedIn(pendingInput: nil)
             } else {
                 router?.routeToLoggedOut(notice: nil)
             }
@@ -91,23 +91,30 @@ final class RootInteractor: Interactor, LoggedOutListener, LoggedInListener {
     }
 
     func didSignIn() {
-        let restoredInput = pendingInput
-        pendingInput = ""
+        let restored = pendingInput
+        pendingInput = nil
         router?.routeAwayFromLoggedOut()
-        router?.routeToLoggedIn(restoredInput: restoredInput)
+        router?.routeToLoggedIn(pendingInput: restored)
     }
 
     /// 터미널 화면을 떼면 출력과 치던 줄이 함께 사라진다(COM-009 규칙 2).
     func didSignOut() {
-        pendingInput = ""
+        pendingInput = nil
         router?.routeAwayFromLoggedIn()
         router?.routeToLoggedOut(notice: .signedOut)
     }
 
-    func didExpire(pendingInput: String) {
+    /// 서버가 거부한 세션을 이 기기에서도 지운다. 남겨 두면 새로 고침할 때 터미널이 잠깐 떴다가 다시 만료로 간다.
+    /// 지운 뒤에 로그인 화면을 붙여, 새 로그인이 늦게 끝난 로그아웃에 지워지지 않게 한다.
+    func didExpire(pendingInput: PendingInput?) {
         self.pendingInput = pendingInput
         router?.routeAwayFromLoggedIn()
-        router?.routeToLoggedOut(notice: .expired)
+        startTask { [weak self] in
+            guard let self else { return }
+            await authService.signOut()
+            guard !Task.isCancelled else { return }
+            router?.routeToLoggedOut(notice: .expired)
+        }
     }
 }
 
@@ -144,9 +151,9 @@ final class RootRouter<RootView: RootViewControllable>: LaunchRouter<RootInterac
         loggedOut = nil
     }
 
-    func routeToLoggedIn(restoredInput: String) {
+    func routeToLoggedIn(pendingInput: PendingInput?) {
         guard loggedIn == nil else { return }
-        let child = loggedInBuilder.build(listener: interactor, restoredInput: restoredInput)
+        let child = loggedInBuilder.build(listener: interactor, pendingInput: pendingInput)
         attachChild(child)
         viewController.showScreen(child.viewControllable)
         loggedIn = child

@@ -43,6 +43,9 @@ export const SIGN_IN_TIMEOUT_MS = 2 * 60_000;
 
 export const CALLBACK_CHANNEL = "grep-auth-callback";
 
+/** redirectTo에 붙이는 로그인 시도 번호. 제공자를 거쳐 콜백 주소에 그대로 돌아온다. */
+const ATTEMPT_PARAM = "attempt";
+
 const failed = (reason: SignInFailureReason): SignInResult => ({ kind: "failed", reason });
 
 function errorReason(error: unknown): SignInFailureReason {
@@ -69,6 +72,7 @@ async function finishWithCallback(auth: AuthClient, message: CallbackMessage): P
 function waitForCallback(
   deps: SupabaseAuthDeps,
   popup: Window,
+  attempt: string,
   authorizeUrl: Promise<{ url: string | null; error: unknown }>,
 ): Promise<SignInResult> {
   return new Promise((resolve) => {
@@ -90,7 +94,11 @@ function waitForCallback(
     };
     const unsubscribe = deps.subscribeCallback((message) => {
       if (settled) return;
+      // 취소로 끝난 앞 시도의 창이 남아 있다가 보낸 결과는 이번 시도의 PKCE 검증값과 맞지 않는다. 버린다.
+      if (readCallback(message).get(ATTEMPT_PARAM) !== attempt) return;
       received = true;
+      // 결과를 받았으면 교환이 늦어져도 시간 초과로 끝내지 않는다.
+      clearTimeout(timer);
       clearTimeout(graceTimer);
       finishWithCallback(deps.auth, message).then(settle, (error) => settle(failed(errorReason(error))));
     });
@@ -110,9 +118,12 @@ function waitForCallback(
 async function authorizeUrl(
   deps: SupabaseAuthDeps,
   provider: AuthProvider,
+  attempt: string,
 ): Promise<{ url: string | null; error: unknown }> {
   try {
-    const options = { redirectTo: deps.redirectTo, skipBrowserRedirect: true };
+    const redirectTo = new URL(deps.redirectTo);
+    redirectTo.searchParams.set(ATTEMPT_PARAM, attempt);
+    const options = { redirectTo: redirectTo.href, skipBrowserRedirect: true };
     const { data, error } = await deps.auth.signInWithOAuth({
       provider,
       // `로그아웃`은 그렙 세션만 지우고 브라우저의 Google 로그인은 남긴다. 계정 선택 없이 남은 계정으로
@@ -127,6 +138,9 @@ async function authorizeUrl(
 
 export function createSupabaseAuthService(deps: SupabaseAuthDeps): AuthService {
   let pending: Promise<SignInResult> | null = null;
+  let attempts = 0;
+  /** 마지막으로 받은 접근 토큰. 네트워크가 끊겨 갱신하지 못할 때 세션 만료로 오인하지 않으려고 둔다. */
+  let lastToken: string | null = null;
 
   return {
     signIn(provider) {
@@ -135,24 +149,32 @@ export function createSupabaseAuthService(deps: SupabaseAuthDeps): AuthService {
       // 팝업 차단을 피하려고 await 전에, 사용자 동작 안에서 빈 창부터 연다.
       const popup = deps.openPopup();
       if (!popup) return Promise.resolve(failed("denied"));
-      pending = waitForCallback(deps, popup, authorizeUrl(deps, provider)).finally(() => {
+      attempts += 1;
+      const attempt = String(attempts);
+      pending = waitForCallback(deps, popup, attempt, authorizeUrl(deps, provider, attempt)).finally(() => {
         pending = null;
       });
       return pending;
     },
 
     async signOut() {
+      lastToken = null;
       // local은 오프라인이어도 이 기기의 세션을 지운다. 지우지 못할 다른 실패는 없어서 결과를 따로 보지 않는다.
       await deps.auth.signOut({ scope: "local" });
     },
 
     async accessToken() {
       // getSession은 접근 토큰이 만료됐으면 갱신 토큰으로 조용히 새로 받는다(ACC-001 규칙 6).
+      // 갱신이 네트워크 문제로 실패하면 마지막 토큰을 돌려준다. 그 요청은 서버에 닿지 못해 `연결 끊김`이 되고,
+      // 세션 만료(로그인 화면)로 보내지 않는다. 서버에 닿으면 만료된 토큰은 서버가 401로 판정한다.
       try {
         const { data, error } = await deps.auth.getSession();
-        if (error || !data.session) return null;
-        return data.session.access_token;
-      } catch {
+        if (error && isAuthRetryableFetchError(error)) return lastToken;
+        lastToken = error || !data.session ? null : data.session.access_token;
+        return lastToken;
+      } catch (error) {
+        if (isAuthRetryableFetchError(error)) return lastToken;
+        lastToken = null;
         return null;
       }
     },

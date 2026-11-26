@@ -10,7 +10,7 @@ class SessionPolicyTest {
 	private val now = Instant.parse("2026-11-26T12:00:00Z")
 
 	@Test
-	fun `마지막요청뒤_정확히30일일때_판정하면_유지되는지`() {
+	fun `마지막요청뒤정확히30일일때_판정하면_유지되는지`() {
 		// given
 		val lastSeenAt = now.minus(Duration.ofDays(30))
 
@@ -22,7 +22,7 @@ class SessionPolicyTest {
 	}
 
 	@Test
-	fun `마지막요청뒤_30일을넘겼을때_판정하면_만료되는지`() {
+	fun `마지막요청뒤30일을넘겼을때_판정하면_만료되는지`() {
 		// given
 		val lastSeenAt = now.minus(Duration.ofDays(30)).minusSeconds(1)
 
@@ -34,7 +34,7 @@ class SessionPolicyTest {
 	}
 
 	@Test
-	fun `로그인뒤_정확히90일이고_계속썼을때_판정하면_유지되는지`() {
+	fun `로그인뒤정확히90일이고계속썼을때_판정하면_유지되는지`() {
 		// given
 		val startedAt = now.minus(Duration.ofDays(90))
 
@@ -46,7 +46,7 @@ class SessionPolicyTest {
 	}
 
 	@Test
-	fun `로그인뒤_90일을넘기고_계속썼을때_판정하면_만료되는지`() {
+	fun `로그인뒤90일을넘기고계속썼을때_판정하면_만료되는지`() {
 		// given
 		val startedAt = now.minus(Duration.ofDays(90)).minusSeconds(1)
 

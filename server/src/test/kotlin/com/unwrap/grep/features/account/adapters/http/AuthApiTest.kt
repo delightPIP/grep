@@ -64,7 +64,7 @@ class AuthApiTest {
 	}
 
 	@Test
-	fun `토큰이_없을때_health를_부르면_ok를_주는지`() {
+	fun `토큰이없을때_health를부르면_ok를주는지`() {
 		// given: 토큰 없음
 
 		// when
@@ -78,7 +78,7 @@ class AuthApiTest {
 	}
 
 	@Test
-	fun `토큰이_없을때_me를_부르면_unauthorized로_막는지`() {
+	fun `토큰이없을때_me를부르면_unauthorized로막는지`() {
 		// given: 토큰 없음
 
 		// when
@@ -92,7 +92,7 @@ class AuthApiTest {
 	}
 
 	@Test
-	fun `다른키로_서명된토큰일때_me를_부르면_unauthorized로_막는지`() {
+	fun `다른키로서명된토큰일때_me를부르면_unauthorized로막는지`() {
 		// given
 		val token = FakeSupabaseAuth.token(signedByStranger = true)
 
@@ -107,7 +107,7 @@ class AuthApiTest {
 	}
 
 	@Test
-	fun `만료된토큰일때_me를_부르면_unauthorized로_막는지`() {
+	fun `만료된토큰일때_me를부르면_unauthorized로막는지`() {
 		// given
 		val token = FakeSupabaseAuth.token(expiresIn = Duration.ofHours(-1))
 
@@ -122,7 +122,7 @@ class AuthApiTest {
 	}
 
 	@Test
-	fun `발급자나_대상이_다른토큰일때_me를_부르면_unauthorized로_막는지`() {
+	fun `발급자나대상이다른토큰일때_me를부르면_unauthorized로막는지`() {
 		// given
 		val wrongIssuer = FakeSupabaseAuth.token(issuer = "https://other.supabase.co/auth/v1")
 		val wrongAudience = FakeSupabaseAuth.token(audience = "anon")
@@ -140,7 +140,7 @@ class AuthApiTest {
 	}
 
 	@Test
-	fun `지원하지않는_로그인방식일때_me를_부르면_unauthorized로_막는지`() {
+	fun `지원하지않는로그인방식일때_me를부르면_unauthorized로막는지`() {
 		// given
 		val token = FakeSupabaseAuth.token(provider = "email")
 
@@ -155,7 +155,7 @@ class AuthApiTest {
 	}
 
 	@Test
-	fun `처음로그인했을때_me를_두번부르면_계정을_하나만만들고_같은사용자를_주는지`() {
+	fun `처음로그인했을때_me를두번부르면_계정을하나만만들고같은사용자를주는지`() {
 		// given
 		val sub = UUID.randomUUID().toString()
 		val token = FakeSupabaseAuth.token(sub = sub, provider = "github")
@@ -176,7 +176,7 @@ class AuthApiTest {
 	}
 
 	@Test
-	fun `같은이메일로_Google과_GitHub로_로그인했을때_me를_부르면_다른계정이되는지`() {
+	fun `같은이메일로Google과GitHub로로그인했을때_me를부르면_다른계정이되는지`() {
 		// given: 두 토큰 모두 email이 same@example.com이고, 외부 ID까지 같은 가장 나쁜 경우
 		val sub = UUID.randomUUID().toString()
 		val google = FakeSupabaseAuth.token(sub = sub, provider = "google")
@@ -191,7 +191,7 @@ class AuthApiTest {
 	}
 
 	@Test
-	fun `주소에_다른사용자ID를_넣었을때_me를_부르면_무시하고_토큰의사용자를_주는지`() {
+	fun `주소에다른사용자ID를넣었을때_me를부르면_무시하고토큰의사용자를주는지`() {
 		// given
 		val token = FakeSupabaseAuth.token()
 		val ownUserId = userIdOf(token)
@@ -204,7 +204,7 @@ class AuthApiTest {
 	}
 
 	@Test
-	fun `30일넘게_안쓴세션일때_me를_부르면_session_expired를_주고_갱신하지않는지`() {
+	fun `30일넘게안쓴세션일때_me를부르면_session_expired를주고갱신하지않는지`() {
 		// given
 		val sessionId = UUID.randomUUID()
 		val token = FakeSupabaseAuth.token(sessionId = sessionId.toString())
@@ -224,7 +224,7 @@ class AuthApiTest {
 	}
 
 	@Test
-	fun `로그인한지_90일넘은세션일때_me를_부르면_session_expired를_주는지`() {
+	fun `로그인한지90일넘은세션일때_me를부르면_session_expired를주는지`() {
 		// given
 		val sessionId = UUID.randomUUID()
 		val token = FakeSupabaseAuth.token(sessionId = sessionId.toString())
@@ -241,7 +241,7 @@ class AuthApiTest {
 	}
 
 	@Test
-	fun `웹주소에서_사전요청을보냈을때_me를_부르면_CORS를_허용하는지`() {
+	fun `웹주소에서사전요청을보냈을때_me를부르면_CORS를허용하는지`() {
 		// given: grep.web-origin = http://web.test
 
 		// when

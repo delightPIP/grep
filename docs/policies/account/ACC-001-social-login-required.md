@@ -56,7 +56,7 @@
 - PO 결정(2026-11-26): 처음부터 로그인 필수, 로그인 방식은 Google과 GitHub, 데모 필수 범위에 로그인을 넣고 동기화는 P1로 둔다
 - ADR-BCK-006(인증은 Supabase, 자체 `users` 테이블에 외부 인증 ID만 저장)
 - 기획서 F6, 백엔드 설계 10. 보안
-- 구현: 웹 로그인 화면과 로그인 모듈 `web/features/logged-out/view.tsx`, `web/auth/supabase-auth.ts`(#31 진행 중). 서버·코어는 아직 없음
+- 구현(#31): 서버 `server/src/main/kotlin/com/unwrap/grep/features/account/adapters/http/AccountSessionFilter.kt`·`MeController.kt`(계정 생성, 세션 30일·90일), 코어 `core/App/Sources/GrepApp.swift`·`core/Features/LoggedOut`·`core/Features/LoggedIn`(로그인 전 막기, 만료, 로그아웃), 웹 `web/features/logged-out/view.tsx`·`web/auth/supabase-auth.ts`
 
 ## 검증 방법
 
@@ -83,3 +83,4 @@
 | 2026-11-26 | 최초 등록 |
 | 2026-11-26 | 같은 이메일 계정 자동 합치기를 없애고, 세션에 미사용 30일·최대 90일 만료를 둠(PO 결정, 외부 전문가 검토 반영) |
 | 2026-11-26 | 동의 화면 거부를 `로그인 취소됨`으로 보는 기준을 비고에 적음(개발자 결정) |
+| 2026-11-27 | 근거의 구현 위치를 갱신(#31 통합) |

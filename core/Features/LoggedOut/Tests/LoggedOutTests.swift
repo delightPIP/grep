@@ -40,7 +40,7 @@ final class LoggedOutTests {
         await runCurrent()
     }
 
-    @Test func 알림없이_만들었을때_화면에_붙으면_알림없는_대기상태를_그리는지() {
+    @Test func 알림없이만들었을때_화면에붙으면_알림없는대기상태를그리는지() {
         // given
         let expected = [LoggedOutViewState()]
 
@@ -51,7 +51,7 @@ final class LoggedOutTests {
         #expect(view.states == expected)
     }
 
-    @Test func 만료알림으로_만들었을때_화면에_붙으면_만료알림을_그리는지() {
+    @Test func 만료알림으로만들었을때_화면에붙으면_만료알림을그리는지() {
         // given
         let expected = [LoggedOutViewState(notice: .expired)]
 
@@ -62,7 +62,7 @@ final class LoggedOutTests {
         #expect(view.states == expected)
     }
 
-    @Test func 알림이_떠있을때_로그인버튼을_누르면_알림을_지우고_로그인창을_여는지() async {
+    @Test func 알림이떠있을때_로그인버튼을누르면_알림을지우고로그인창을여는지() async {
         // given
         attach(notice: .signedOut)
 
@@ -74,7 +74,7 @@ final class LoggedOutTests {
         #expect(view.state == LoggedOutViewState(notice: nil, isSigningIn: true))
     }
 
-    @Test func 로그인창이_열려있을때_버튼을_다시누르면_창을_하나더_띄우지않는지() async {
+    @Test func 로그인창이열려있을때_버튼을다시누르면_창을하나더띄우지않는지() async {
         // given
         attach()
         await tap(.google)
@@ -86,7 +86,7 @@ final class LoggedOutTests {
         #expect(auth.signInRequests == [.google])
     }
 
-    @Test func 로그인창이_열려있을때_로그인에_성공하면_부모에게_한번_알리는지() async {
+    @Test func 로그인창이열려있을때_로그인에성공하면_부모에게한번알리는지() async {
         // given
         attach()
         await tap(.google)
@@ -100,7 +100,7 @@ final class LoggedOutTests {
         #expect(view.state == LoggedOutViewState())
     }
 
-    @Test func 로그인창이_열려있을때_사용자가_창을_닫으면_취소알림과_대기상태를_한번에_그리는지() async {
+    @Test func 로그인창이열려있을때_사용자가창을닫으면_취소알림과대기상태를한번에그리는지() async {
         // given
         attach()
         await tap(.google)
@@ -117,7 +117,7 @@ final class LoggedOutTests {
     }
 
     @Test(arguments: [SignInFailureReason.disconnected, .timedOut, .denied])
-    func 로그인창이_열려있을때_외부로그인이_실패하면_이유와_함께_실패알림을_그리는지(reason: SignInFailureReason) async {
+    func 로그인창이열려있을때_외부로그인이실패하면_이유와함께실패알림을그리는지(reason: SignInFailureReason) async {
         // given
         attach()
         await tap(.google)
@@ -131,7 +131,7 @@ final class LoggedOutTests {
         #expect(listener.signInCount == 0)
     }
 
-    @Test func 로그인에_실패했을때_버튼을_다시누르면_로그인창을_다시_여는지() async {
+    @Test func 로그인에실패했을때_버튼을다시누르면_로그인창을다시여는지() async {
         // given
         attach()
         await tap(.google)
@@ -145,7 +145,7 @@ final class LoggedOutTests {
         #expect(auth.signInRequests == [.google, .google])
     }
 
-    @Test func 로그인창이_열려있을때_화면이_떼어진뒤_로그인에_성공하면_부모에게_알리지않고_그리지도않는지() async {
+    @Test func 로그인창이열려있을때_화면이떼어진뒤로그인에성공하면_부모에게알리지않고그리지도않는지() async {
         // given
         attach()
         await tap(.google)

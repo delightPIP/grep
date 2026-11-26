@@ -62,10 +62,10 @@ final class GrepAppTests {
         await runCurrent()
     }
 
-    private func signIn() async {
+    private func signIn(as subject: String = "user-a") async {
         loggedOut.listener?.handle(.signInTapped(.google))
         await runCurrent()
-        auth.respond(.success)
+        auth.respond(.success, token: fakeAccessToken(subject: subject))
         await runCurrent()
     }
 
@@ -77,7 +77,7 @@ final class GrepAppTests {
         await runCurrent()
     }
 
-    @Test func 이_기기에_세션이_없을때_앱을_시작하면_로그인화면만_보이는지() async {
+    @Test func 이기기에세션이없을때_앱을시작하면_로그인화면만보이는지() async {
         // given
         auth.token = nil
 
@@ -92,7 +92,7 @@ final class GrepAppTests {
         #expect(transport.requests.isEmpty)
     }
 
-    @Test func 이_기기에_세션이_남아있을때_앱을_시작하면_로그인화면없이_터미널이_보이는지() async {
+    @Test func 이기기에세션이남아있을때_앱을시작하면_로그인화면없이터미널이보이는지() async {
         // given
         auth.token = "token-a"
 
@@ -104,7 +104,7 @@ final class GrepAppTests {
         #expect(factory.loggedOut.views.isEmpty)
     }
 
-    @Test func 로그인화면이_떠있을때_로그인에_성공하면_터미널로_바뀌고_자료수를_그리는지() async {
+    @Test func 로그인화면이떠있을때_로그인에성공하면_터미널로바뀌고자료수를그리는지() async {
         // given
         await start()
 
@@ -119,7 +119,7 @@ final class GrepAppTests {
         #expect(loggedOut.listener == nil)
     }
 
-    @Test func 터미널에_출력이_있을때_로그아웃을_치면_로그아웃알림과_함께_로그인화면으로_바뀌는지() async {
+    @Test func 터미널에출력이있을때_로그아웃을치면_로그아웃알림과함께로그인화면으로바뀌는지() async {
         // given
         await startSignedIn()
         loggedIn.listener?.handle(.submitted("찻기"))
@@ -134,7 +134,7 @@ final class GrepAppTests {
         #expect(auth.signOutCount == 1)
     }
 
-    @Test func 로그아웃한_뒤일때_다시_로그인하면_앞_출력과_치던_줄없이_빈_터미널이_보이는지() async {
+    @Test func 로그아웃한뒤일때_다시로그인하면_앞출력과치던줄없이빈터미널이보이는지() async {
         // given
         await startSignedIn()
         loggedIn.listener?.handle(.submitted("찻기"))
@@ -150,7 +150,7 @@ final class GrepAppTests {
         #expect(loggedIn.state == LoggedInViewState())
     }
 
-    @Test func 입력줄에_글을_치던중일때_세션이_만료되면_만료알림과_함께_로그인화면으로_바뀌는지() async {
+    @Test func 입력줄에글을치던중일때_세션이만료되면_만료알림과함께로그인화면으로바뀌는지() async {
         // given
         await start()
         await signIn()
@@ -163,10 +163,27 @@ final class GrepAppTests {
         // then
         #expect(factory.root.screen === loggedOut)
         #expect(loggedOut.state == LoggedOutViewState(notice: .expired))
-        #expect(auth.signOutCount == 0)
+        // 서버가 거부한 세션을 이 기기에 남기지 않는다(새로 고침해도 다시 만료 화면으로 가도록).
+        #expect(auth.signOutCount == 1)
     }
 
-    @Test func 치던_줄을_남기고_만료됐을때_다시_로그인하면_입력줄에_그_줄을_되살리는지() async {
+    @Test func 계정A가치던줄을남기고만료됐을때_계정B로로그인하면_그줄을되살리지않는지() async {
+        // given
+        await start()
+        await signIn(as: "user-a")
+        loggedIn.listener?.handle(.inputChanged("찾기 온보"))
+        transport.respond(status: 401, json: Self.sessionExpiredJSON)
+        await runCurrent()
+
+        // when
+        await signIn(as: "user-b")
+
+        // then
+        #expect(factory.root.screen === loggedIn)
+        #expect(loggedIn.state == LoggedInViewState())
+    }
+
+    @Test func 치던줄을남기고만료됐을때_다시로그인하면_입력줄에그줄을되살리는지() async {
         // given
         await start()
         await signIn()
@@ -182,7 +199,7 @@ final class GrepAppTests {
         #expect(loggedIn.state == LoggedInViewState(input: "찾기 온보"))
     }
 
-    @Test func 만료뒤_되살린_줄이_있을때_로그아웃하고_다시_로그인하면_그_줄을_다시_되살리지않는지() async {
+    @Test func 만료뒤되살린줄이있을때_로그아웃하고다시로그인하면_그줄을다시되살리지않는지() async {
         // given
         await start()
         await signIn()
@@ -200,7 +217,7 @@ final class GrepAppTests {
         #expect(loggedIn.state == LoggedInViewState())
     }
 
-    @Test func 터미널이_떠있을때_앱을_멈추면_화면을_내리고_입력을_끊는지() async {
+    @Test func 터미널이떠있을때_앱을멈추면_화면을내리고입력을끊는지() async {
         // given
         await startSignedIn()
         let terminal = loggedIn

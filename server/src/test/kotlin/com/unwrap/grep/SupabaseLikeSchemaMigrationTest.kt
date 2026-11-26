@@ -30,7 +30,7 @@ class SupabaseLikeSchemaMigrationTest {
 	lateinit var jdbc: JdbcClient
 
 	@Test
-	fun `public스키마에_함수가_미리있을때_서버를_시작하면_기준선뒤에_V1을_적용하는지`() {
+	fun `public스키마에함수가미리있을때_서버를시작하면_기준선뒤에V1을적용하는지`() {
 		// given: public.rls_auto_enable()이 있는 DB(supabase-like-public-schema.sql)
 
 		// when: @SpringBootTest가 서버를 시작하며 Flyway를 돌린다

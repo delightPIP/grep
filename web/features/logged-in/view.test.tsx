@@ -36,7 +36,7 @@ function outputLines(container: HTMLElement): Element[] {
 }
 
 describe("LoggedInView", () => {
-  it("자료수를_받았을때_화면을그리면_상태줄에_자료N과_도움말키를_보여주는지", () => {
+  it("자료수를받았을때_화면을그리면_상태줄에자료N과도움말키를보여주는지", () => {
     // given
     // when
     const { container } = renderView({ itemCount: 34 });
@@ -48,7 +48,7 @@ describe("LoggedInView", () => {
     expect(status.textContent).toContain("? 도움말");
   });
 
-  it("자료수를_아직모를때_화면을그리면_상태줄에_숫자없이_자료만_보여주는지", () => {
+  it("자료수를아직모를때_화면을그리면_상태줄에숫자없이자료만보여주는지", () => {
     // given
     // when
     const { container } = renderView({ itemCount: null });
@@ -59,7 +59,7 @@ describe("LoggedInView", () => {
     expect(status.querySelector("b")).toBeNull();
   });
 
-  it("출력줄이_있을때_화면을그리면_입력줄과_없는명령을_정책문구로_보여주는지", () => {
+  it("출력줄이있을때_화면을그리면_입력줄과없는명령을정책문구로보여주는지", () => {
     // given
     const lines: LoggedInState["lines"] = [
       { kind: "prompt", text: "ㅁㄴㅇ" },
@@ -73,7 +73,7 @@ describe("LoggedInView", () => {
     expect(outputLines(container).map(shownLine)).toEqual(["그렙 ~ $ ㅁㄴㅇ", "✗ 없는 명령: ㅁㄴㅇ"]);
   });
 
-  it("없는명령으로_끝난입력줄을_그리면_프롬프트를_실패색으로_그리는지", () => {
+  it("없는명령으로끝난입력줄이있을때_화면을그리면_프롬프트를실패색으로그리는지", () => {
     // given
     const lines: LoggedInState["lines"] = [
       { kind: "prompt", text: "최근" },
@@ -89,7 +89,7 @@ describe("LoggedInView", () => {
     expect(prompts.map((p) => p.classList.contains("gt-prompt-fail"))).toEqual([false, true]);
   });
 
-  it("출력줄이_비었을때_화면을그리면_창제목이_처음이고_출력이_없는지", () => {
+  it("출력줄이비었을때_화면을그리면_창제목이처음이고출력이없는지", () => {
     // given
     // when
     const { container } = renderView({ lines: [] });
@@ -99,7 +99,7 @@ describe("LoggedInView", () => {
     expect(outputLines(container)).toHaveLength(0);
   });
 
-  it("명령을_친뒤에_화면을그리면_창제목이_마지막명령_이름인지", () => {
+  it("명령을친뒤일때_화면을그리면_창제목이마지막명령이름인지", () => {
     // given
     const lines: LoggedInState["lines"] = [{ kind: "prompt", text: "최근 3주전" }];
 
@@ -110,7 +110,7 @@ describe("LoggedInView", () => {
     expect(container.querySelector(".gt-titlebar-name")?.textContent).toBe("그렙 — 최근");
   });
 
-  it("입력줄이_비었을때_화면을그리면_시안의_안내글을_보여주는지", () => {
+  it("입력줄이비었을때_화면을그리면_시안의안내글을보여주는지", () => {
     // given
     // when
     const { input } = renderView();
@@ -119,7 +119,7 @@ describe("LoggedInView", () => {
     expect(input.placeholder).toBe("링크 붙여 넣기 또는 명령");
   });
 
-  it("되살린입력이_있을때_화면을그리면_입력줄에_그대로_보여주는지", () => {
+  it("되살린입력이있을때_화면을그리면_입력줄에그대로보여주는지", () => {
     // given
     // when
     const { input } = renderView({ input: "최근" });
@@ -128,7 +128,7 @@ describe("LoggedInView", () => {
     expect(input.value).toBe("최근");
   });
 
-  it("입력줄에_글을치면_바뀐글을_알리는지", () => {
+  it("터미널이떠있을때_입력줄에글을치면_바뀐글을알리는지", () => {
     // given
     const { input, onInputChange } = renderView();
 
@@ -139,7 +139,7 @@ describe("LoggedInView", () => {
     expect(onInputChange).toHaveBeenCalledExactlyOnceWith("도움말");
   });
 
-  it("입력줄에서_엔터를누르면_입력한글로_제출하는지", () => {
+  it("터미널이떠있을때_입력줄에서엔터를누르면_입력한글로제출하는지", () => {
     // given
     const { input, onSubmit } = renderView({ input: "도움말" });
 
@@ -150,7 +150,7 @@ describe("LoggedInView", () => {
     expect(onSubmit).toHaveBeenCalledExactlyOnceWith("도움말");
   });
 
-  it("한글을_조합하는중일때_엔터를누르면_제출하지않는지", () => {
+  it("한글을조합하는중일때_엔터를누르면_제출하지않는지", () => {
     // given
     const { input, onSubmit } = renderView({ input: "도움" });
 
