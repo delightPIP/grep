@@ -36,3 +36,9 @@ GitHub README를 알아서 잘 꾸미고, 누가 만들었는지도 넣어 달�
 ## 근거 링크
 
 없음(커밋 전)
+
+## 추가 작업 (같은 날)
+
+- PO 요청으로 다른 README 10개(karakeep, linkwarden, glow, ripgrep, zoxide, fzf, bat, toss/slash, toss/es-toolkit, daangn/stackflow)를 `gh`로 읽어 구성·길이·말투를 비교했다.
+- PO가 AI 추천 두 가지를 골랐다: ripgrep식 "하지 않는 것", karakeep식 "비슷한 서비스". 내용은 PRD 3절과 경쟁 서비스 조사에서만 옮겼다.
+- 영문 README(`README.en.md`)를 추가하고 두 파일 맨 위에 언어 전환 링크를 달았다. 팀원 이름의 영문 표기(Taein Kim, Kiseok Park)는 AI가 정했고 본인 확인 전이다.
