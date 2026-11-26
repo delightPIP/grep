@@ -30,7 +30,7 @@
 |---|---|---|
 | 저장 | `POST /items`, `POST /uploads`(서명 URL 발급) | 멱등성 키, 중복 판정, 형식·용량 검증, 항목별 결과 |
 | 조회·검색 | `GET /items`, `GET /items/search?q=` | 사용자 범위, 최신순, 커서 페이징, 전체 건수 |
-| 수정·삭제 | `PATCH /items/{id}`, `DELETE /items/{id}` | 사용자가 고친 요약은 따로 보관. 삭제는 파생 데이터까지 지우고 삭제 표시를 남김 |
+| 수정·삭제 | `PATCH /items/{id}`, `DELETE /items/{id}` | 사용자가 고친 요약은 따로 보관. `DELETE`는 휴지통으로 옮김(`deleted_at`, ARC-008). 30일 뒤 영구 삭제할 때 파생 데이터까지 지우고 삭제 표시를 남김 |
 | 묶음 | `POST /bundles`, `PUT /bundles/{name}` | 이름 유일성, 빠진 자료 알림 |
 | 넘길 글 | `POST /handoff` | 형식을 한 곳에서 정의. 앱의 `넘기기`와 MCP가 같은 결과 |
 | 동기화 | `GET /sync?cursor=` | 단조 증가 커서, 변경분과 삭제 표시 |

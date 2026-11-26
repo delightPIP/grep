@@ -17,8 +17,9 @@
 - 서버: Kotlin, Spring Boot([ADR-BCK-003](adr/backend/ADR-BCK-003-kotlin-spring-boot.md)), 기능별 모듈러 모놀리스([ADR-BCK-004](adr/backend/ADR-BCK-004-modular-monolith-hexagonal.md))
 - 데이터·인증·파일: Supabase, 전용 기능에 묶이지 않음([ADR-BCK-006](adr/backend/ADR-BCK-006-supabase-without-lock-in.md))
 - 웹·데스크톱: React 뷰 + Swift 공유 코어, 데스크톱은 Tauri([ADR-WEB-007](adr/web/ADR-WEB-007-react-views-swift-core-tauri.md))
-- API 방식과 계약 원본: OpenAPI 계약, 서버가 최종 판정([ADR-0001](adr/ADR-0001-api-contract-first.md)). 계약 파일 위치: `{{}}`
-- 버전을 고정한 파일: `{{}}`(앱 저장소가 이 문서 저장소와 따로 있으면 그 위치)
+- API 방식과 계약 원본: OpenAPI 계약, 서버가 최종 판정([ADR-0001](adr/ADR-0001-api-contract-first.md)). 계약 파일 위치: `api/openapi.yaml`([ADR-0010](adr/ADR-0010-monorepo-top-level-folders.md))
+- 앱 저장소: 이 저장소([ADR-0010](adr/ADR-0010-monorepo-top-level-folders.md)). 배포: [ADR-0011](adr/ADR-0011-free-tier-deploy-portable.md)
+- 버전을 고정한 파일: `{{}}`(구현 시작 뒤 Gradle·SwiftPM·npm 잠금 파일 위치를 적는다)
 
 ## 역할과 결정권
 
