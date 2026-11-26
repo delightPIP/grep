@@ -1,0 +1,27 @@
+/* 그렙 터미널 — generated from tokens.json */
+:root, [data-theme="dark"] {
+  --bg: #0b0d10; --surface: #14171c; --surface-raised: #1c2027; --line: #2e343d;
+  --ink: #e7e9ec; --ink-muted: #99a2ad; --prompt: #7fe0a3; --command: #86c8ff;
+  --notice: #f2c86b; --danger: #ff8f86; --select: #1f3a52; --chip: #22303d;
+  --cursor: var(--prompt); --focus: var(--command);
+}
+[data-theme="light"] {
+  --bg: #e9ebe6; --surface: #fbfbf8; --surface-raised: #f0f1ec; --line: #d6d9d1;
+  --ink: #1b1e23; --ink-muted: #5b636c; --prompt: #13723f; --command: #0a5c9e;
+  --notice: #835600; --danger: #b0281f; --select: #d4e5f4; --chip: #e1ebf3;
+  --cursor: var(--prompt); --focus: var(--command);
+}
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-6: 24px;
+  --radius-sm: 3px; --radius-md: 8px;
+  --font-mono: "JetBrains Mono", "Nanum Gothic Coding", ui-monospace, Menlo, Consolas, monospace;
+  --font-read: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+}
+.display { font-family: var(--font-mono); font-size: 32px; line-height: 40px; font-weight: 700; }
+.title { font-family: var(--font-mono); font-size: 16px; line-height: 24px; font-weight: 700; }
+.body { font-family: var(--font-mono); font-size: 14px; line-height: 22px; font-weight: 400; }
+.body-strong { font-family: var(--font-mono); font-size: 14px; line-height: 22px; font-weight: 700; }
+.small { font-family: var(--font-mono); font-size: 12px; line-height: 18px; font-weight: 400; }
+.read-lead { font-family: var(--font-read); font-size: 16px; line-height: 26px; font-weight: 500; }
+.read-body { font-family: var(--font-read); font-size: 14px; line-height: 1.6; font-weight: 400; }
+.read-small { font-family: var(--font-read); font-size: 13px; line-height: 1.6; font-weight: 400; }

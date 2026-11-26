@@ -1,0 +1,83 @@
+openapi: 3.1.0
+info:
+  title: 그렙 API
+  version: 0.1.0
+  description: |
+    클라이언트(웹·iOS·Android)와 서버의 유일한 계약이다(ADR-0001).
+    서버는 오류 코드만 돌려주고, 사용자에게 보이는 문구는 클라이언트가 정책 원문(docs/policies)을 쓴다.
+    사용자 ID는 접근 토큰에서만 읽는다. 요청 본문이나 주소의 사용자 ID는 받지 않는다(COM-006 규칙 1).
+servers:
+  - url: http://localhost:8080
+security:
+  - supabaseJwt: []
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      summary: 서버 상태 확인
+      security: []
+      responses:
+        "200":
+          description: 서버가 요청을 받을 수 있다
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+  /me:
+    get:
+      operationId: getMe
+      summary: 현재 사용자. 처음 부르면 계정을 만든다(ACC-001 규칙 3)
+      responses:
+        "200":
+          description: 현재 사용자
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Me"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+components:
+  securitySchemes:
+    supabaseJwt:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Supabase Auth 접근 토큰. 서버는 JWKS(ES256)로 검증한다(ADR-BCK-006 결정 5)
+  responses:
+    Unauthorized:
+      description: |
+        토큰 없음·서명 틀림·토큰 만료는 `unauthorized`.
+        세션이 30일 미사용이거나 90일을 넘었으면 `session_expired`(ACC-001 값).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+  schemas:
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          const: ok
+    Me:
+      type: object
+      required: [userId, authProvider, itemCount]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        authProvider:
+          type: string
+          enum: [google, github]
+        itemCount:
+          type: integer
+          minimum: 0
+          description: 상태줄 `자료 N`. 휴지통에 있는 자료는 세지 않는다
+    Error:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
+          enum: [unauthorized, session_expired]

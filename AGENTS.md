@@ -8,6 +8,10 @@
 - **커밋 시점 최신성 유지**: 커밋 전에 `git pull --rebase origin main`으로 최신 상태를 유지한다. `.githooks/pre-commit`이 설치된 레포(`core-dev:commit-rules`가 설치)에서는 뒤처진 브랜치의 커밋이 차단된다.
 - **PR 및 푸시 전 Rebase**: `.githooks/pre-push`가 설치된 레포(`core-dev:commit-rules` 또는 `/team-workflow:init`이 설치)에서는 미리베이스 푸시가 차단된다. 훅이 없어도 푸시 전 반드시 `git fetch origin main && git rebase origin/main`을 실행해 `origin/main` 위에 리베이스된 상태를 확보한다.
 
+## 개발 규칙
+
+- 검사 명령, 테스트 작성 형식(given/when/then, `~했을때_~하면_~하는지`), 비밀키 규칙은 [docs/dev-team-config.md](docs/dev-team-config.md) "개발 규칙" 절을 따른다.
+
 ## 서비스 정책
 
 - 서비스 동작·값·문구의 근거는 [docs/policies/](docs/policies/README.md)다. 정책과 다른 구현을 하지 않는다. 정책이 없거나 모호하면 영역의 `open-questions.md`에 적고 사용자에게 묻는다.
