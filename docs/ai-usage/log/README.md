@@ -41,5 +41,6 @@
 | 037 | 2026-11-26 | [사용자 흐름도를 새 정책에 맞춤](037-align-user-flow-with-new-policies.md) |
 | 038 | 2026-11-26 | [외부 전문가 검토로 빠진 정책 정리](038-expert-review-policy-gaps.md) |
 | 039 | 2026-11-26 | [플랫폼별 UI/UX 학습](039-platform-ui-study.md) |
+| 040 | 2026-11-26 | [보관함·모바일 탭 정책과 시안의 하단 탭](040-archive-and-mobile-tab-policies.md) |
 
 새 항목 파일을 만들 때 이 표에 한 줄을 추가한다. 파일명은 `NNN-<영문-슬러그>.md`이고 NNN은 다음 번호다.
