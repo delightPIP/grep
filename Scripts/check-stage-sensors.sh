@@ -17,6 +17,10 @@
 # 종료 코드: 0 통과, 1 위반(blocking), 2 실행 환경 오류 또는 검사 대상 없음(잘못된 옵션·경로 포함)
 # 사용법:
 #   bash Scripts/check-stage-sensors.sh [루트 경로] [--target <파일또는폴더>] [--upstream <상위파일>] [--strict]
+#        [--changed-since <git 기준>]
+#   --changed-since: --target이 없을 때 검사를 기준 커밋 이후 바뀐 문서(커밋된 변경, 작업 트리 변경,
+#                    추적하지 않는 새 파일)로 좁힌다. 이번 작업과 무관한 기존 문서의 미결 표기가 게이트를 막지 않게 한다.
+#   .agents/flow/*/state.md 는 flow 엔진이 쓰는 상태판이라 검사하지 않는다.
 
 set -u
 
@@ -24,15 +28,20 @@ ROOT="."
 TARGET=""
 UPSTREAM=""
 STRICT=0
+CHANGED_SINCE=""
 
 while [ $# -gt 0 ]; do
     case "$1" in
-        --target|--upstream)
+        --target|--upstream|--changed-since)
             if [ $# -lt 2 ]; then
                 echo "오류: $1 옵션에는 값이 필요함" >&2
                 exit 2
             fi
-            if [ "$1" = "--target" ]; then TARGET="$2"; else UPSTREAM="$2"; fi
+            case "$1" in
+                --target) TARGET="$2" ;;
+                --upstream) UPSTREAM="$2" ;;
+                *) CHANGED_SINCE="$2" ;;
+            esac
             shift 2
             ;;
         --strict)
@@ -40,7 +49,7 @@ while [ $# -gt 0 ]; do
             shift
             ;;
         -*)
-            echo "오류: 알 수 없는 옵션: $1 (사용 가능: --target, --upstream, --strict)" >&2
+            echo "오류: 알 수 없는 옵션: $1 (사용 가능: --target, --upstream, --strict, --changed-since)" >&2
             exit 2
             ;;
         *)
@@ -63,8 +72,8 @@ if [ -z "$PYTHON" ]; then
     exit 2
 fi
 
-PYTHONIOENCODING=utf-8 "$PYTHON" - "$ROOT" "$TARGET" "$UPSTREAM" "$STRICT" <<'PY'
-import glob, json, os, re, sys
+PYTHONIOENCODING=utf-8 "$PYTHON" - "$ROOT" "$TARGET" "$UPSTREAM" "$STRICT" "$CHANGED_SINCE" <<'PY'
+import glob, json, os, re, subprocess, sys
 
 for stream in (sys.stdout, sys.stderr):
     if hasattr(stream, "reconfigure"):
@@ -74,6 +83,7 @@ root = os.path.abspath(sys.argv[1])
 target_arg = sys.argv[2]
 upstream_arg = sys.argv[3]
 strict = sys.argv[4] == "1"
+changed_since = sys.argv[5] if len(sys.argv) > 5 else ""
 
 blocking_findings = []
 advisory_findings = []
@@ -134,9 +144,32 @@ else:
     if os.path.isdir(flow_dir):
         files.extend(sorted(glob.glob(os.path.join(flow_dir, "**", "*.md"), recursive=True)))
 
-# README 템플릿 안내 및 open-questions.md는 TBD/빈 표 허용 예외
+def file_key(path):
+    return os.path.normcase(os.path.realpath(path))
+
+def git_lines(*args):
+    res = subprocess.run(["git", "-C", root, *args], capture_output=True, text=True, encoding="utf-8")
+    if res.returncode != 0:
+        print(f"오류: git {' '.join(args)} 실패: {res.stderr.strip()}")
+        sys.exit(2)
+    return [line for line in res.stdout.splitlines() if line]
+
+flow_key = file_key(os.path.join(root, ".agents", "flow")) + os.sep
+
+if changed_since and not target_arg:
+    changed = set(git_lines("diff", "--name-only", "--diff-filter=ACMR", f"{changed_since}...HEAD"))
+    changed |= set(git_lines("diff", "--name-only", "--diff-filter=ACMR", "HEAD"))
+    changed |= set(git_lines("ls-files", "--others", "--exclude-standard"))
+    changed_keys = {file_key(os.path.join(root, p)) for p in changed}
+    # .agents/flow 는 보통 git이 추적하지 않으므로 바뀐 문서 판정과 상관없이 그대로 검사한다.
+    files = [f for f in files if file_key(f) in changed_keys or file_key(f).startswith(flow_key)]
+
+def is_flow_state(path):
+    return os.path.basename(path) == "state.md" and file_key(path).startswith(flow_key)
+
+# README 템플릿 안내 및 open-questions.md는 TBD/빈 표 허용 예외. flow 상태판(state.md)은 엔진 소유라 검사하지 않는다.
 SKIP_BASENAMES = {"open-questions.md"}
-files = [f for f in files if os.path.basename(f) not in SKIP_BASENAMES and os.path.isfile(f)]
+files = [f for f in files if os.path.basename(f) not in SKIP_BASENAMES and not is_flow_state(f) and os.path.isfile(f)]
 
 # 대소문자를 구분하지 않는 파일 시스템(Windows, macOS)에서는 docs 와 Docs 가 같은 폴더라 두 번 잡힌다.
 seen = set()
@@ -149,6 +182,9 @@ for f in files:
 files = unique_files
 
 if not files:
+    if changed_since and not target_arg:
+        print(f"✅ [Stage Sensors: PASSED] {changed_since} 이후 바뀐 문서가 없음")
+        sys.exit(0)
     print("오류: 검사할 마크다운 파일이 없음 (통과가 아니라 미검사)")
     sys.exit(2)
 
@@ -159,7 +195,8 @@ def is_ai_log(path):
 # Sensor 1: no-tbd (Blocking)
 # ==========================================
 TBD_PATTERN = re.compile(r"(?<![A-Za-z0-9_-])(TBD|TODO|FIXME)(?![A-Za-z0-9_-])|추후\s*결정|미정(?!의)")
-COMMENT_PLACEHOLDER = re.compile(r"<!--\s*(?!learned\b).*?-->")
+# `<!--\s*(?!learned)`로 두면 \s*가 공백 0개로 물러나 learned 표시도 잡는다. 공백을 앞보기 안에 둔다.
+COMMENT_PLACEHOLDER = re.compile(r"<!--(?!\s*learned\b).*?-->")
 
 for fpath in files:
     rpath = rel(fpath)

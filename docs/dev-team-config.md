@@ -35,7 +35,7 @@
 
 - 요청·이슈: GitHub 이슈와 PR
 - 정책·결정 기록: [docs/policies/](policies/README.md). 정책이 서비스 동작·값·문구의 유일한 근거다. 새 결정 기록 문서를 따로 만들지 않는다
-- 미정 질문: 정책 영역별 `open-questions.md`
+- 열린 질문: 정책 영역별 `open-questions.md`
 - ADR: [docs/adr/](adr/README.md). 절차는 `docs:adr-manager`. 개발자 확인 전 ADR은 상태를 "제안"으로 둔다(예: ADR-IOS-009)
 - AI 활용 기록: [docs/ai-usage/log/](ai-usage/log/README.md)
 - 디자인: [디자인 검토](planning/design-review-2026-11-26.md), [모바일·데스크톱 디자인](planning/design-mobile-desktop.md)
