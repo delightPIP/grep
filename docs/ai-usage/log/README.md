@@ -65,5 +65,6 @@
 | 061 | 2026-11-26 | [남은 손그림을 공통 부품으로 빼기](061-extract-remaining-parts.md) |
 | 062 | 2026-11-26 | [부품으로 바꾼 화면 나머지 열어 보기](062-verify-remaining-screens.md) |
 | 063 | 2026-11-26 | [부품으로 바꾼 화면 눌러 보기](063-tap-test-interactive-screens.md) |
+| 064 | 2026-11-26 | [표시용 버튼에 동작 연결하기](064-wire-display-only-controls.md) |
 
 새 항목 파일을 만들 때 이 표에 한 줄을 추가한다. 파일명은 `NNN-<영문-슬러그>.md`이고 NNN은 다음 번호다.
