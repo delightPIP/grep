@@ -1,7 +1,7 @@
 import { toLoggedInState } from "../../support/bridge-state";
 import { ReactScreen } from "../../support/react-screen";
 import type { LoggedInScreenHandle, LoggedInViewBridge, TerminalLineRow } from "../../support/swift";
-import { TempLoggedInView as LoggedInView } from "../../support/temp-views";
+import { LoggedInView } from "./view";
 
 /** 어댑터. Swift `LoggedInViewBridge`(Sources/GrepWeb/LoggedInBridge.swift)를 구현하고 값을 순수 뷰에 넘긴다. */
 export class LoggedInAdapter implements LoggedInViewBridge {

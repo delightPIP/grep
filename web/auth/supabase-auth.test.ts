@@ -1,6 +1,7 @@
 import { AuthRetryableFetchError, AuthApiError } from "@supabase/supabase-js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  CANCEL_GRACE_MS,
   SIGN_IN_TIMEOUT_MS,
   createSupabaseAuthService,
   type AuthClient,
@@ -37,6 +38,10 @@ function makeDeps(overrides: Partial<AuthClient> = {}) {
   const unsubscribe = vi.fn(() => {
     deliver = null;
   });
+  let notifyReturn: (() => void) | null = null;
+  const unsubscribeReturn = vi.fn(() => {
+    notifyReturn = null;
+  });
   const deps: SupabaseAuthDeps = {
     auth,
     redirectTo: REDIRECT_TO,
@@ -45,13 +50,27 @@ function makeDeps(overrides: Partial<AuthClient> = {}) {
       deliver = onMessage;
       return unsubscribe;
     }),
+    subscribeReturn: vi.fn((onReturn) => {
+      notifyReturn = onReturn;
+      return unsubscribeReturn;
+    }),
   };
   /** 콜백 페이지가 보낸 것처럼 결과를 넣는다. 구독이 걸릴 때까지 기다린다. */
   async function callback(message: CallbackMessage) {
     await vi.waitFor(() => expect(deliver).not.toBeNull());
     deliver!(message);
   }
-  return { deps, auth, popup, unsubscribe, callback };
+  /** 가짜 타이머용. vi.waitFor는 가짜 타이머를 스스로 앞당기므로 기다리지 않고 바로 넣는다. */
+  function callbackNow(message: CallbackMessage) {
+    expect(deliver).not.toBeNull();
+    deliver!(message);
+  }
+  /** 로그인 창이 닫혀 그렙 창이 다시 포커스를 받은 것처럼 알린다. */
+  function returnToGrep() {
+    expect(notifyReturn).not.toBeNull();
+    notifyReturn!();
+  }
+  return { deps, auth, popup, unsubscribe, unsubscribeReturn, callback, callbackNow, returnToGrep };
 }
 
 describe("supabase AuthService signIn", () => {
@@ -238,6 +257,73 @@ describe("supabase AuthService signIn", () => {
       expect(await pending).toEqual({ kind: "failed", reason: "timedOut" });
       expect(popup.close).toHaveBeenCalled();
       expect(unsubscribe).toHaveBeenCalled();
+    });
+  });
+
+  // ACC-001 규칙 8. Google은 COOP 때문에 popup.closed를 볼 수 없어서, 그렙 창이 다시 포커스를 받는 것으로 닫힘을 안다.
+  describe("로그인 창을 닫음", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("로그인창이_열려있을때_결과없이_그렙창으로_돌아오면_유예시간뒤_취소를_돌려주는지", async () => {
+      // given
+      const { deps, popup, unsubscribe, unsubscribeReturn, returnToGrep } = makeDeps();
+      const service = createSupabaseAuthService(deps);
+      const pending = service.signIn("google");
+
+      // when
+      returnToGrep();
+      await vi.advanceTimersByTimeAsync(CANCEL_GRACE_MS);
+
+      // then
+      expect(await pending).toEqual({ kind: "cancelled" });
+      expect(popup.close).toHaveBeenCalled();
+      expect(unsubscribe).toHaveBeenCalled();
+      expect(unsubscribeReturn).toHaveBeenCalled();
+    });
+
+    it("그렙창으로_돌아온뒤_유예시간안에_결과가오면_성공을_돌려주는지", async () => {
+      // given
+      const { deps, auth, callbackNow, returnToGrep } = makeDeps();
+      const service = createSupabaseAuthService(deps);
+      const pending = service.signIn("google");
+
+      // when
+      returnToGrep();
+      await vi.advanceTimersByTimeAsync(CANCEL_GRACE_MS - 1);
+      callbackNow({ search: "?code=abc", hash: "" });
+      await vi.advanceTimersByTimeAsync(CANCEL_GRACE_MS);
+
+      // then
+      expect(await pending).toEqual({ kind: "success" });
+      expect(auth.exchangeCodeForSession).toHaveBeenCalledWith("abc");
+    });
+
+    it("취소로_끝난뒤에_늦게_결과가오면_세션으로바꾸지않는지", async () => {
+      // given
+      const { deps, auth, returnToGrep } = makeDeps();
+      let lateDeliver: ((message: CallbackMessage) => void) | null = null;
+      deps.subscribeCallback = vi.fn((onMessage) => {
+        lateDeliver = onMessage;
+        return () => {};
+      });
+      const service = createSupabaseAuthService(deps);
+      const pending = service.signIn("google");
+      returnToGrep();
+      await vi.advanceTimersByTimeAsync(CANCEL_GRACE_MS);
+      const result = await pending;
+
+      // when
+      lateDeliver!({ search: "?code=late", hash: "" });
+      await vi.advanceTimersByTimeAsync(0);
+
+      // then
+      expect(result).toEqual({ kind: "cancelled" });
+      expect(auth.exchangeCodeForSession).not.toHaveBeenCalled();
     });
   });
 });

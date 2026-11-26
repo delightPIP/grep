@@ -29,10 +29,16 @@ export type SupabaseAuthDeps = {
   openPopup: () => Window | null;
   /** 콜백 결과를 구독한다. 돌려준 함수로 구독을 끊는다. */
   subscribeCallback: (onMessage: (message: CallbackMessage) => void) => () => void;
+  /** 로그인 창에서 그렙 창으로 돌아온 때(포커스·보이기)를 구독한다. 돌려준 함수로 구독을 끊는다. */
+  subscribeReturn: (onReturn: () => void) => () => void;
 };
 
-// 창을 X로 닫으면 위 이유로 알 수 없어서, 이 시간이 지나면 `응답 없음`으로 끝낸다.
-// shortcut: 닫힘을 바로 알지 못한다. 사용자가 기다리기 길다고 하면 콜백 페이지가 heartbeat를 보내는 방식으로 바꾼다.
+// 창 닫힘은 popup.closed로 알 수 없다(위 COOP). 대신 그렙 창이 다시 포커스를 받고 이 시간 안에 결과가 없으면
+// 사용자가 창을 닫은 것으로 보고 `로그인 취소됨`으로 끝낸다(ACC-001 규칙 8, ADR-WEB-013).
+// 로그인 도중 그렙 창을 직접 누르면 취소로 오판한다. 그때 늦게 온 결과는 버리고 다시 누르게 한다.
+export const CANCEL_GRACE_MS = 1_500;
+
+// 포커스 신호가 없는 환경(창 대신 탭으로 연 경우 등)의 안전망. 이 시간이 지나면 `응답 없음`으로 끝낸다.
 export const SIGN_IN_TIMEOUT_MS = 2 * 60_000;
 
 export const CALLBACK_CHANNEL = "grep-auth-callback";
@@ -67,11 +73,15 @@ function waitForCallback(
 ): Promise<SignInResult> {
   return new Promise((resolve) => {
     let settled = false;
+    let received = false;
+    let graceTimer: ReturnType<typeof setTimeout> | undefined;
     const settle = (result: SignInResult) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      clearTimeout(graceTimer);
       unsubscribe();
+      unsubscribeReturn();
       resolve(result);
     };
     const giveUp = (result: SignInResult) => {
@@ -80,7 +90,14 @@ function waitForCallback(
     };
     const unsubscribe = deps.subscribeCallback((message) => {
       if (settled) return;
+      received = true;
+      clearTimeout(graceTimer);
       finishWithCallback(deps.auth, message).then(settle, (error) => settle(failed(errorReason(error))));
+    });
+    const unsubscribeReturn = deps.subscribeReturn(() => {
+      if (settled || received) return;
+      clearTimeout(graceTimer);
+      graceTimer = setTimeout(() => giveUp({ kind: "cancelled" }), CANCEL_GRACE_MS);
     });
     const timer = setTimeout(() => giveUp(failed("timedOut")), SIGN_IN_TIMEOUT_MS);
     authorizeUrl.then(({ url, error }) => {
@@ -150,6 +167,18 @@ function subscribeBroadcast(onMessage: (message: CallbackMessage) => void): () =
   return () => channel.close();
 }
 
+function subscribeWindowReturn(onReturn: () => void): () => void {
+  const onVisible = () => {
+    if (document.visibilityState === "visible") onReturn();
+  };
+  window.addEventListener("focus", onReturn);
+  document.addEventListener("visibilitychange", onVisible);
+  return () => {
+    window.removeEventListener("focus", onReturn);
+    document.removeEventListener("visibilitychange", onVisible);
+  };
+}
+
 /** 브라우저용 기본 조립. 환경 값은 web/.env.local(공개 값만)에서 읽는다. */
 export function createBrowserAuthService(): AuthService {
   const url = import.meta.env.VITE_SUPABASE_URL;
@@ -165,5 +194,6 @@ export function createBrowserAuthService(): AuthService {
     redirectTo: new URL("auth-callback.html", window.location.origin + import.meta.env.BASE_URL).href,
     openPopup: () => window.open("about:blank", "grep-login", "popup,width=480,height=640"),
     subscribeCallback: subscribeBroadcast,
+    subscribeReturn: subscribeWindowReturn,
   });
 }

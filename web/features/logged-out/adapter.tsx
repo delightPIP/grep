@@ -1,7 +1,7 @@
 import { toLoggedOutState } from "../../support/bridge-state";
 import { ReactScreen } from "../../support/react-screen";
 import type { LoggedOutScreenHandle, LoggedOutViewBridge } from "../../support/swift";
-import { TempLoggedOutView as LoggedOutView } from "../../support/temp-views";
+import { LoggedOutView } from "./view";
 
 /** 어댑터. Swift `LoggedOutViewBridge`(Sources/GrepWeb/LoggedOutBridge.swift)를 구현하고 값을 순수 뷰에 넘긴다. */
 export class LoggedOutAdapter implements LoggedOutViewBridge {
