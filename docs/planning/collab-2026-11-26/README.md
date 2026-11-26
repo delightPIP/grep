@@ -14,7 +14,7 @@ PO 에이전트와 디자이너 에이전트가 po-workflow 스킬 7개를 나�
 | `po-decision-gate` | PO | [04 PO 결정 질문](04-po-decision-questions.md) | 지금 정할 질문 12개(차단 6개), 나중에 정해도 되는 질문 9개, 개발 안 11개, 확인이 필요한 AI 결정 목록 |
 | `ai-ux-design` | 디자이너 | [05 AI UX 설계](05-designer-ai-ux-design.md), [05a 상태 보드](05a-designer-state-board.html) | 요약·태그·글자 추출을 AI 없는 대안과 비교함(결론: 자동 실행 + 사후 통제). 상태 ST-01~34, 수용 기준 AC-01~27, 시험 TC-01~27, 측정 이벤트 3개, AI 품질 평가 세트 |
 | `review-triage` | 디자이너 → PO, PO → 디자이너 | [06 디자이너의 PO 산출물 검토](06-designer-review-of-po.md), [07 PO의 검토 대조와 회신](07-po-review-triage.md) | 서로의 지적을 대조표로 정리함(공통 지적, 값이 갈리는 곳, 오독, 기존 결정과 충돌, 개발 확인). 회신 초안은 게시하지 않음 |
-| `dev-handoff-docs` | PO (디자이너가 대조) | [08 개발 전달 문서](08-po-dev-handoff.md) | 착수 가능 초안(PO 답 뒤). 판 0.6(PR #25·#23 반영, 작업 번호를 `T-NN`으로), 작업 T-01~18의 판정은 가능 11, 부분 가능 6, 보류 1. 데모 점검표와 불일치 표 포함 |
+| `dev-handoff-docs` | PO (디자이너가 대조) | [08 개발 전달 문서](08-po-dev-handoff.md) | 착수 가능 초안(PO 답 뒤). 판 0.6(PR #25·#23 반영, 작업 번호를 `T-NN`으로), 작업 T-01~18의 판정은 가능 11, 부분 가능 6, 보류 1. 작업마다 GitHub 이슈(#31~#48). 데모 점검표와 불일치 표 포함 |
 
 ## 피드백 라운드
 
