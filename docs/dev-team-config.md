@@ -38,7 +38,7 @@
 - ADR: [docs/adr/](adr/README.md). 절차는 `docs:adr-manager`. 개발자 확인 전 ADR은 상태를 "제안"으로 둔다(예: ADR-IOS-009)
 - AI 활용 기록: [docs/ai-usage/log/](ai-usage/log/README.md)
 - 디자인: [디자인 검토](planning/design-review-2026-11-26.md), [모바일·데스크톱 디자인](planning/design-mobile-desktop.md)
-- 문서 이름 대응: 결정 기록 → 정책 문서와 영역 `CHANGELOG.md`, 기능 명세 → 정책 + [PRD](planning/PRD.md), 개발 전달 형식 → [handoff-format](planning/handoff-format.md)
+- 문서 이름 대응: 결정 기록 → 정책 문서와 영역 `CHANGELOG.md`, 기능 명세 → 정책 + [PRD](planning/PRD.md)(위치 색인은 [SPEC](SPEC.md)), 개발 전달 형식 → [handoff-format](planning/handoff-format.md)
 
 ## 개발 규칙
 
@@ -47,6 +47,7 @@
 - 리뷰 스킬: `{{}}` / 필수 승인 수: `{{}}`
 - 필수 검사 명령: `{{}}`
 - 작은 개선 상한: `{{}}` / 긴급 기준: `{{}}`
+- 비밀키: API 키·토큰은 `.env` 같은 저장소 밖에서만 관리하고 커밋하지 않는다. LLM·Supabase 비밀 키는 클라이언트에 두지 않는다. 확인한 사람: AI 초안(2026-11-26 PO 승인), 개발자 확인 대기
 
 ## 데이터와 AI 사용
 

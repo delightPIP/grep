@@ -36,6 +36,7 @@
 | 서비스가 보장해야 하는 동작과 문구, 값 | `policies/` |
 | AI와 한 작업의 요청, 산출물, 판단, 검증 | `ai-usage/log/` |
 | dev 스킬이 읽는 팀 정보(다음 관문, 결정권, 원본 위치) | [dev-team-config.md](dev-team-config.md) |
+| 화면·데이터·로직·모듈이 어느 문서에 있는지(값은 옮기지 않는 색인) | [SPEC.md](SPEC.md) |
 
 ## 문서를 고친 뒤에
 
