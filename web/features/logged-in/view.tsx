@@ -53,6 +53,10 @@ const COMMAND_LABEL: Record<CommandName, string> = {
   guide: "도움말",
   about: "설명",
   signOut: "로그아웃",
+  revise: "고치기",
+  drop: "버리기",
+  revive: "되살리기",
+  bin: "휴지통",
 };
 
 /** COM-010·COM-008 이유 낱말. */

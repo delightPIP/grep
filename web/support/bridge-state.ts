@@ -68,6 +68,18 @@ const LINE_KINDS: Record<TerminalLine["kind"], true> = {
   guide: true,
   about: true,
   reconnected: true,
+  dropConfirm: true,
+  dropped: true,
+  revived: true,
+  binList: true,
+  binEmptyConfirm: true,
+  binEmptied: true,
+  revised: true,
+  tagsRemoved: true,
+  samplesSaved: true,
+  unpicked: true,
+  pickCleared: true,
+  signOutEverywhereConfirm: true,
 };
 
 /** 줄 안의 값은 Swift 브리지가 계약 모양으로 만든다. 여기서는 종류만 확인한다. */

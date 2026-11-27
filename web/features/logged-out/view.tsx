@@ -30,6 +30,9 @@ function noticeLine(notice: LoggedOutNotice): { tone: Tone; text: ReactNode } {
       return { tone: "warn", text: <><b>로그인 만료</b> → 다시 로그인</> };
     case "signedOut":
       return { tone: "ok", text: <b>로그아웃됨</b> };
+    // shortcut: #111 뷰에서 ACC-002 문구로 다듬는다. 계약(#93)만 먼저 받는다
+    case "signedOutEverywhere":
+      return { tone: "ok", text: <b>모든 기기에서 로그아웃됨</b> };
   }
 }
 
