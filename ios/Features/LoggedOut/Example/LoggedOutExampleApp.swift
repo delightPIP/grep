@@ -8,82 +8,114 @@ import RIBs
 import RIBsSwiftUI
 import SwiftUI
 
-/// 로그인 피처만 띄우는 Example 앱. 시나리오 버튼으로 ACC-001 상태(기본·취소·실패·만료·로그아웃·성공)를 확인한다.
+enum LoggedOutDemoScenario: String, CaseIterable, Identifiable {
+    case initialSuccess = "첫 화면 (로그인 성공)"
+    case expired = "로그인 만료 알림"
+    case signedOut = "로그아웃 완료 알림"
+    case cancelled = "로그인 취소 응답"
+    case disconnected = "로그인 실패: 연결 끊김"
+    case timedOut = "로그인 실패: 응답 없음"
+    case denied = "로그인 실패: 권한 거부"
+
+    var id: String { rawValue }
+}
+
+/// 로그인 피처 단독 Example 앱. 시나리오 목록에서 항목을 고르면 전체 화면으로 피처를 띄운다.
 @main
 struct LoggedOutExampleApp: App {
     @State private var harness = LoggedOutExampleHarness()
 
     var body: some Scene {
         WindowGroup {
-            VStack(spacing: 0) {
-                RIBSlotView(slot: harness.slot)
-                Divider()
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(harness.lastEvent)
-                        .font(.system(.footnote, design: .monospaced))
-                        .foregroundStyle(.secondary)
-                        .accessibilityIdentifier("exampleEvent")
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            scenarioButton("첫 화면") { harness.start(notice: nil, nextResult: .success) }
-                            scenarioButton("만료") { harness.start(notice: .expired, nextResult: .success) }
-                            scenarioButton("로그아웃") { harness.start(notice: .signedOut, nextResult: .success) }
-                            scenarioButton("취소") { harness.nextResult = .cancelled }
-                            scenarioButton("연결 끊김") { harness.nextResult = .failed(.disconnected) }
-                            scenarioButton("응답 없음") { harness.nextResult = .failed(.timedOut) }
-                            scenarioButton("권한 거부") { harness.nextResult = .failed(.denied) }
+            NavigationStack {
+                List {
+                    Section("시나리오") {
+                        ForEach(LoggedOutDemoScenario.allCases) { scenario in
+                            Button(scenario.rawValue) {
+                                harness.launch(scenario)
+                            }
                         }
                     }
+                    Section("마지막 부모 이벤트") {
+                        Text(harness.lastEvent)
+                            .font(.system(.footnote, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("exampleEvent")
+                    }
                 }
-                .padding(12)
-                .background(.bar)
+                .navigationTitle("LoggedOut Scenarios")
             }
-            .onAppear { harness.startIfNeeded() }
+            .fullScreenCover(item: $harness.activeScenario, onDismiss: { harness.stop() }) { _ in
+                ZStack(alignment: .topTrailing) {
+                    RIBSlotView(slot: harness.slot)
+                    Button("닫기") {
+                        harness.activeScenario = nil
+                    }
+                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .padding(.top, 54)
+                    .padding(.trailing, 12)
+                    .accessibilityIdentifier("closeScenarioButton")
+                }
+            }
         }
-    }
-
-    private func scenarioButton(_ title: String, action: @escaping () -> Void) -> some View {
-        Button(title, action: action)
-            .buttonStyle(.bordered)
-            .controlSize(.small)
     }
 }
 
 @MainActor @Observable
 final class LoggedOutExampleHarness: LoggedOutListener, LoggedOutDependency {
     let slot = RIBScreenSlot()
+    var activeScenario: LoggedOutDemoScenario?
+    private(set) var lastEvent = "부모 이벤트 없음"
+
     @ObservationIgnored private let exampleAuth = ExampleAuthService()
     var authService: any AuthService { exampleAuth }
-    var nextResult: SignInResult {
-        get { exampleAuth.nextResult }
-        set { exampleAuth.nextResult = newValue }
-    }
-    private(set) var lastEvent = "부모 이벤트 없음"
     @ObservationIgnored private let parent = TestParentRouter()
     @ObservationIgnored private var currentRouter: (any ViewableRouting)?
 
-    func startIfNeeded() {
-        guard currentRouter == nil else { return }
-        start(notice: nil, nextResult: .success)
-    }
-
-    func start(notice: LoggedOutViewState.Notice?, nextResult: SignInResult) {
-        if let existing = currentRouter {
-            parent.detach(existing)
-            slot.hide(existing.viewControllable)
-            currentRouter = nil
+    func launch(_ scenario: LoggedOutDemoScenario) {
+        stop()
+        let notice: LoggedOutViewState.Notice?
+        let nextResult: SignInResult
+        switch scenario {
+        case .initialSuccess:
+            notice = nil; nextResult = .success
+        case .expired:
+            notice = .expired; nextResult = .success
+        case .signedOut:
+            notice = .signedOut; nextResult = .success
+        case .cancelled:
+            notice = nil; nextResult = .cancelled
+        case .disconnected:
+            notice = nil; nextResult = .failed(.disconnected)
+        case .timedOut:
+            notice = nil; nextResult = .failed(.timedOut)
+        case .denied:
+            notice = nil; nextResult = .failed(.denied)
         }
+
         exampleAuth.nextResult = nextResult
         let router = LoggedOutBuilder(dependency: self, viewFactory: LoggedOutScreenFactory())
             .build(listener: self, notice: notice)
         parent.attach(router)
         slot.show(router.viewControllable)
         currentRouter = router
-        lastEvent = "시작(notice: \(String(describing: notice)))"
+        activeScenario = scenario
+    }
+
+    func stop() {
+        if let existing = currentRouter {
+            parent.detach(existing)
+            slot.hide(existing.viewControllable)
+            currentRouter = nil
+        }
     }
 
     func didSignIn() {
         lastEvent = "didSignIn() 수신"
+        activeScenario = nil
     }
 }
 
