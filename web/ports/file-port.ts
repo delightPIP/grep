@@ -5,9 +5,13 @@ export type FileUploadError = "cancelled" | "unreachable" | "timedOut" | "reject
 
 export type FileUploadResult = { kind: "uploaded" } | { kind: "failed"; error: FileUploadError };
 
+export type FileReadResult = { kind: "read"; text: string } | { kind: "failed"; error: FileUploadError };
+
 export interface FilePort {
   /** 서명 URL(`POST /uploads`의 uploadUrl)로 PUT한다. 형식 판정과 해시는 서버가 한다(COM-004 규칙 2, COM-001). */
   upload(fileId: string, uploadUrl: string): Promise<FileUploadResult>;
   /** 이 파일을 더 쓰지 않는다. 잡고 있던 File을 놓는다. */
   release(fileId: string): void;
+  /** 파일을 UTF-8 글로 읽는다. 북마크 가져오기(F8)가 HTML을 서버에 글로 보낼 때 쓴다. */
+  readText(fileId: string): Promise<FileReadResult>;
 }

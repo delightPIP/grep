@@ -199,6 +199,13 @@ private struct StoredRecovery: Codable {
     }
 }
 
+private struct StoredImportCounts: Codable {
+    let saved: Int
+    let skipped: Int
+    let failed: Int
+    let overLimit: Int
+}
+
 /// 출력 한 줄. 줄 종류마다 쓰는 칸만 채운다.
 private struct StoredLine: Codable {
     enum Kind: String, Codable {
@@ -210,7 +217,7 @@ private struct StoredLine: Codable {
         case bundleList, bundleAdded, bundleView, bundleNotFound, bundleUnpicked, notInBundle
         case bundleDeleteConfirm, bundleDeleted, bundleNameInvalid, itemDetail, oneNumberOnly
         case searchSaved, savedSearchList, savedSearchPeriod, savedSearchTooLong, savedSearchDeleteConfirm
-        case savedSearchDeleted, savedSearchNotFound
+        case savedSearchDeleted, savedSearchNotFound, importPrompt, importProgress, importFinished
     }
 
     let kind: Kind
@@ -240,6 +247,8 @@ private struct StoredLine: Codable {
     var detail: ItemDetail?
     var isSavedSearch: Bool?
     var searches: [SavedSearchEntry]?
+    var importCounts: StoredImportCounts?
+    var urls: [String]?
 
     /// 아직 남기지 않는 줄(계약 2, 각 이슈에서 더한다)이면 nil.
     init?(_ line: TerminalViewState.Line) {
@@ -424,8 +433,17 @@ private struct StoredLine: Codable {
             kind = .savedSearchNotFound
             text = query
         case .folderHint, .connectionList, .disconnectConfirm, .disconnected,
-             .connectionNotFound, .connectionEnded, .importPrompt, .importProgress, .importFinished:
+             .connectionNotFound, .connectionEnded:
             return nil
+        case .importPrompt: kind = .importPrompt
+        case .importProgress(let done, let total):
+            kind = .importProgress
+            count = done
+            self.total = total
+        case .importFinished(let saved, let skipped, let failed, let overLimit, let failedUrls):
+            kind = .importFinished
+            importCounts = StoredImportCounts(saved: saved, skipped: skipped, failed: failed, overLimit: overLimit)
+            urls = failedUrls
         }
     }
 
@@ -534,6 +552,16 @@ private struct StoredLine: Codable {
         case .savedSearchDeleteConfirm: return text.map { .savedSearchDeleteConfirm(query: $0) }
         case .savedSearchDeleted: return text.map { .savedSearchDeleted(query: $0) }
         case .savedSearchNotFound: return text.map { .savedSearchNotFound(query: $0) }
+        case .importPrompt: return .importPrompt
+        case .importProgress:
+            guard let count, let total else { return nil }
+            return .importProgress(done: count, total: total)
+        case .importFinished:
+            guard let importCounts, let urls else { return nil }
+            return .importFinished(
+                saved: importCounts.saved, skipped: importCounts.skipped, failed: importCounts.failed,
+                overLimit: importCounts.overLimit, failedUrls: urls
+            )
         default: return nil
         }
     }

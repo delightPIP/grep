@@ -3,10 +3,10 @@ import FeatureTerminalInterface
 /// 명령 오타 제안(#118, commands.md 207줄). 한글 자모 거리와 영문 문자 편집 거리로 가장 가까운 명령을 찾는다.
 enum CommandSuggester {
     private static let koreanCommands = [
-        "담기", "최근", "찾기", "고르기", "넘기기", "도움말", "설명", "로그아웃", "버리기", "되살리기", "휴지통", "고치기", "묶음", "열기", "찾아두기",
+        "담기", "최근", "찾기", "고르기", "넘기기", "도움말", "설명", "로그아웃", "버리기", "되살리기", "휴지통", "고치기", "묶음", "열기", "찾아두기", "가져오기",
     ]
     private static let englishCommands = [
-        "keep", "recent", "seek", "pick", "handoff", "guide", "about", "signout", "drop", "revive", "bin", "revise", "pack", "peek", "gather",
+        "keep", "recent", "seek", "pick", "handoff", "guide", "about", "signout", "drop", "revive", "bin", "revise", "pack", "peek", "gather", "bring",
     ]
     private static let excludedWords: Set<String> = ["login", "logout"]
 

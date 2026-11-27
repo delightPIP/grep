@@ -70,9 +70,9 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     let rawTransport: any HTTPTransport
     let httpTransport: ObservedTransport
     let clipboard: any ClipboardPort
-    private let files: any FilePort
+    let files: any FilePort
     let historyStore: any HistoryStore
-    private let sleeper: any Sleeper
+    let sleeper: any Sleeper
     private weak var listener: (any TerminalListener)?
     private(set) var viewState = TerminalViewState()
     /// 실패해 입력줄에 되돌린 저장 줄과 그때의 멱등성 키. 같은 줄을 다시 치면 같은 키로 보낸다.
@@ -92,6 +92,8 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     var pendingBundleDelete: PendingBundleDelete?
     /// 답을 기다리는 `찾아두기 <검색어> 지우기` 확인(ARC-012 규칙 7, COM-007).
     var pendingSavedSearchDelete: PendingSavedSearchDelete?
+    /// `가져오기`를 치고 북마크 파일을 기다린다. 다른 입력을 치면 놓는다.
+    var isAwaitingImport = false
     /// 답을 기다리는 `로그아웃 모든기기` 확인(ACC-002 규칙 4, COM-007).
     var pendingSignOutEverywhere = false
     /// 오타 제안(#118, commands.md 207줄). 빈 입력 엔터면 이 문자열을 실행하고, 다른 입력이면 지운다.
@@ -199,6 +201,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
 
     private func submit(_ text: String) {
         inputSequence += 1
+        isAwaitingImport = false
         if text.trimmingWhitespace().isEmpty, let suggested = pendingSuggestion {
             pendingSuggestion = nil
             submit(suggested)
@@ -273,6 +276,9 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             peek(command.argument, typed: text)
         case .gather:
             handleGather(command.argument, typed: text)
+        case .bring where command.argument.isEmpty:
+            isAwaitingImport = true
+            update(viewState.appending(lines: [.prompt(text), .importPrompt]).with(input: ""))
         case .revise:
             reviseItem(command.argument, typed: text)
         case .guide:
@@ -346,6 +352,11 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     /// shortcut: `GET /uploads/limits`로 보내기 전에 거르지 않고 서버 판정(413·415)만 쓴다. 큰 파일을 올리기 전에 막아야 할 때 더한다.
     private func drop(_ dropped: [DroppedFile]) {
         guard !dropped.isEmpty else { return }
+        if isAwaitingImport {
+            isAwaitingImport = false
+            importBookmarks(dropped)
+            return
+        }
         inputSequence += 1
         cancelPendingConfirmations()
         update(viewState.appending(lines: [.prompt((["담기"] + dropped.map(\.name)).joined(separator: " "))]))

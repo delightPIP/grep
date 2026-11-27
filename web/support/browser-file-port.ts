@@ -1,5 +1,5 @@
 // `web/ports/file-port.ts`의 브라우저 구현. 끌어다 놓은 File을 이름표(id)로 쥐고 있다가 서명 URL로 올린다.
-import type { FilePort, FileUploadResult } from "../ports/file-port";
+import type { FilePort, FileReadResult, FileUploadResult } from "../ports/file-port";
 import type { DroppedFile } from "./view-state";
 
 /**
@@ -37,6 +37,16 @@ export class BrowserFilePort implements FilePort {
     } catch (error) {
       const timedOut = error instanceof DOMException && error.name === TIMEOUT_ERROR_NAME;
       return { kind: "failed", error: timedOut ? "timedOut" : "unreachable" };
+    }
+  }
+
+  async readText(fileId: string): Promise<FileReadResult> {
+    const file = this.#files.get(fileId);
+    if (!file) return { kind: "failed", error: "missingFile" };
+    try {
+      return { kind: "read", text: await file.text() };
+    } catch {
+      return { kind: "failed", error: "missingFile" };
     }
   }
 

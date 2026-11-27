@@ -33,7 +33,8 @@ final class TerminalFixture: TerminalDependency {
     var authService: any AuthService { auth }
     var httpTransport: any HTTPTransport { transport }
     var clipboard: any ClipboardPort { fakeClipboard }
-    let files: any FilePort = FakeFilePort()
+    let fakeFiles = FakeFilePort()
+    var files: any FilePort { fakeFiles }
     var historyStore: any HistoryStore { fakeHistory }
     var sleeper: any Sleeper { fakeSleeper }
 
