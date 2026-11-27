@@ -31,15 +31,21 @@ function Block({ lines }: { lines: TerminalLine[] }) {
   const failed = lines.some((line) => line.kind === "unknownCommand");
   return (
     <div className="gt-block">
-      {lines.map((line, index) =>
-        line.kind === "prompt" ? (
-          <Prompt key={index} cmd={line.text} failed={failed} />
-        ) : (
-          <Line key={index} tone="error">
-            <b>없는 명령:</b> {line.name}
-          </Line>
-        ),
-      )}
+      {lines.map((line, index) => {
+        switch (line.kind) {
+          case "prompt":
+            return <Prompt key={index} cmd={line.text} failed={failed} />;
+          case "unknownCommand":
+            return (
+              <Line key={index} tone="error">
+                <b>없는 명령:</b> {line.name}
+              </Line>
+            );
+          default:
+            // 나머지 줄 종류(#56 계약)는 각 실행 이슈(#57~#68)가 정책 원문으로 그린다.
+            return null;
+        }
+      })}
     </div>
   );
 }

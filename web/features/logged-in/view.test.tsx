@@ -13,6 +13,9 @@ function renderView(state: Partial<LoggedInState> = {}) {
       itemCount={null}
       lines={[]}
       input=""
+      selection={[]}
+      processingCount={0}
+      isOffline={false}
       {...state}
       onInputChange={onInputChange}
       onSubmit={onSubmit}
@@ -159,5 +162,20 @@ describe("LoggedInView", () => {
 
     // then
     expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("아직그리는법이없는줄이있을때_화면을그리면_없는명령으로그리지않고친줄은그리는지", () => {
+    // given
+    const lines: LoggedInState["lines"] = [
+      { kind: "prompt", text: "도움말" },
+      { kind: "guide" },
+    ];
+
+    // when
+    const { container } = renderView({ lines });
+
+    // then
+    expect(container.textContent).toContain("도움말");
+    expect(container.textContent).not.toContain("없는 명령");
   });
 });

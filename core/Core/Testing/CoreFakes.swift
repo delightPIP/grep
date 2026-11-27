@@ -106,3 +106,50 @@ public final class TestParentRouter {
 
 /// 자식 Buildable 가짜가 돌려주는 빈 Router. 뷰만 가진다.
 public typealias StubRouter<View> = ViewableRouter<Interactor, View>
+
+/// 복사 결과를 테스트가 정하는 클립보드.
+@MainActor
+public final class FakeClipboard: ClipboardPort {
+    public private(set) var copied: [String] = []
+    public var result: ClipboardResult = .copied
+
+    public init() {}
+
+    public func copy(_ text: String) async -> ClipboardResult {
+        copied.append(text)
+        return result
+    }
+}
+
+/// 올린 파일을 모으는 파일 포트. `failure`가 있으면 그 오류로 실패한다.
+@MainActor
+public final class FakeFilePort: FilePort {
+    public private(set) var uploads: [(fileID: String, uploadURL: String)] = []
+    public private(set) var released: [String] = []
+    public var failure: FileUploadError?
+
+    public init() {}
+
+    public func upload(_ fileID: String, to uploadURL: String) async throws(FileUploadError) {
+        uploads.append((fileID, uploadURL))
+        if let failure { throw failure }
+    }
+
+    public func release(_ fileID: String) { released.append(fileID) }
+}
+
+/// 메모리에만 남기는 기록 저장소.
+@MainActor
+public final class FakeHistoryStore: HistoryStore {
+    public var record: HistoryRecord?
+
+    public init(record: HistoryRecord? = nil) {
+        self.record = record
+    }
+
+    public func load() -> HistoryRecord? { record }
+
+    public func save(_ record: HistoryRecord) { self.record = record }
+
+    public func clear() { record = nil }
+}

@@ -1,6 +1,6 @@
 // 계약(#31 0단계). core/Features/*/Interface의 Swift ViewState·ViewAction을 TS로 옮긴 것이다.
 // 순수 뷰(features/*/view.tsx)는 이 타입만 안다. 어댑터(features/*/adapter.tsx)가 BridgeJS 생성 타입을 이 타입으로 바꾼다.
-// Swift 쪽과 함께만 바꾼다. 바꿔야 하면 #31에 먼저 알린다.
+// Swift 쪽과 함께만 바꾼다. 계약은 #56에서 고정했다. 바꿔야 하면 #56에 먼저 알린다.
 
 export type AuthProvider = "google" | "github";
 
@@ -22,9 +22,89 @@ export type LoggedOutState = {
 
 export type LoggedOutAction = { kind: "signInTapped"; provider: AuthProvider };
 
+/** 데모 범위 명령(commands 2절). core `CommandName`. */
+export type CommandName = "keep" | "recent" | "seek" | "pick" | "handoff" | "guide" | "about" | "signOut";
+
+/** ARC-005 처리 상태 다섯 가지. */
+export type ItemStatus = "received" | "processing" | "ready" | "blocked" | "failed";
+
+/**
+ * `! 본문 못 가져옴: <이유>`. ARC-005 세 가지, COM-004 규칙 6 두 가지.
+ * 이 파일의 값은 Swift case 이름(camelCase)이다. API 값(`login_required`)은 코어가 읽고, 브리지가 case 이름으로 넘긴다.
+ */
+export type BlockedReason = "loginRequired" | "accessDenied" | "disallowedURL" | "encrypted" | "noText";
+
+/** 목록 한 줄의 값(api/openapi.yaml `ItemSummary`). 자료는 번호로만 가리킨다(ARC-001). */
+export type ItemSummary = {
+  number: number;
+  kind: "link" | "text" | "file";
+  title: string;
+  source: string | null;
+  status: ItemStatus;
+  blockedReason: BlockedReason | null;
+  listSummary: string | null;
+  /** ARC-004 규칙 5 */
+  summarySource: "ai" | "user" | null;
+  /** ARC-004 규칙 8 */
+  partialNote: string | null;
+  /** `#` 없이. 목록은 앞 3개만(ARC-002 규칙 4) */
+  tags: string[];
+  /** 찾기에서 일치한 곳. 요약 줄 끝에 흐리게. 찾기가 아니면 null */
+  matchedIn: "title" | "source" | "summary" | "body" | "imageText" | "tag" | null;
+  /** RFC 3339. 한국 시간으로 바꾸는 것은 뷰가 한다(ARC-004 규칙 7) */
+  savedAt: string;
+};
+
+export type ItemRef = { number: number; title: string };
+
+/** `찾기` 조건. 태그는 `#` 없이. text는 친 검색어 그대로(`· 0건: "<text>"`). */
+export type SearchQuery = { text: string; words: string; tags: string[] };
+
+export type HandoffResult = {
+  items: ItemRef[];
+  /** 줄바꿈 포함 글자 수 */
+  charCount: number;
+  missingSummaryCount: number;
+  /** 넘긴 글 전체. `펼치기`로 보인다 */
+  text: string;
+};
+
+/** 저장 실패 이유. 앞 셋은 ARC-005 `✗ 저장 안 됨: <이유>`, 뒤 둘은 COM-004 문구. */
+export type SaveFailure =
+  | { kind: "disconnected" }
+  | { kind: "timedOut" }
+  | { kind: "serverError" }
+  | { kind: "unsupportedFormat"; fileExtension: string }
+  | { kind: "tooLarge"; fileName: string; bytes: number };
+
+/** 명령 실패 이유(COM-008, COM-010). clipboardDenied는 넘기기만. */
+export type CommandFailure = "disconnected" | "timedOut" | "serverError" | "clipboardDenied";
+
+/** 출력 한 줄. core `LoggedInViewState.Line`. 문구는 뷰가 정책 원문으로 만든다. */
 export type TerminalLine =
   | { kind: "prompt"; text: string }
-  | { kind: "unknownCommand"; name: string };
+  | { kind: "unknownCommand"; name: string }
+  | { kind: "missingArgument"; command: CommandName }
+  | { kind: "missingTag" }
+  | { kind: "saved"; item: ItemSummary }
+  | { kind: "alreadySaved"; item: ItemSummary }
+  | { kind: "inTrash"; number: number }
+  | { kind: "saveFailed"; reason: SaveFailure }
+  | { kind: "recentList"; items: ItemSummary[]; hasMore: boolean }
+  | { kind: "searchResult"; query: SearchQuery; total: number; items: ItemSummary[]; hasMore: boolean }
+  | { kind: "noResults"; query: SearchQuery; recent: ItemSummary[] }
+  | { kind: "picked"; items: ItemRef[] }
+  | { kind: "notFound"; numbers: number[] }
+  | { kind: "invalidNumber"; input: string }
+  | { kind: "handedOff"; result: HandoffResult }
+  | { kind: "handoffFailed"; reason: CommandFailure; preview: string | null }
+  | { kind: "commandFailed"; command: CommandName; reason: CommandFailure; retry: string }
+  | { kind: "handoffConfirm"; total: number }
+  | { kind: "cancelled" }
+  | { kind: "welcome" }
+  | { kind: "guide" }
+  | { kind: "about"; command: CommandName }
+  | { kind: "reconnected" };
 
 /** 터미널 화면. */
 export type LoggedInState = {
@@ -33,8 +113,20 @@ export type LoggedInState = {
   lines: TerminalLine[];
   /** 입력줄. 로그인 만료 뒤 다시 로그인하면 되살린 값이 들어온다(ACC-001 규칙 7). */
   input: string;
+  /** 고른 자료, 고른 순서. 상태줄 `선택 N`, 입력줄 위 선택 줄, 목록 행의 `▸`. */
+  selection: ItemRef[];
+  /** 상태줄 `요약 생성 중 N`. 0이면 숨긴다. */
+  processingCount: number;
+  /** 상태줄 `연결 끊김`(COM-010). */
+  isOffline: boolean;
 };
+
+/** 끌어다 놓은 파일. 바이트는 FilePort가 id로 올린다. */
+export type DroppedFile = { id: string; name: string; size: number };
 
 export type LoggedInAction =
   | { kind: "inputChanged"; text: string }
-  | { kind: "submitted"; text: string };
+  | { kind: "submitted"; text: string }
+  | { kind: "pasted"; text: string }
+  | { kind: "filesDropped"; files: DroppedFile[] }
+  | { kind: "moreRequested" };

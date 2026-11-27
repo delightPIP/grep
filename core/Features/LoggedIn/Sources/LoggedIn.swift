@@ -1,3 +1,8 @@
+#if canImport(FoundationEssentials)
+import FoundationEssentials
+#else
+import Foundation
+#endif
 import FeatureLoggedInInterface
 import GrepCore
 import RIBs
@@ -26,8 +31,6 @@ public final class LoggedInBuilder: Builder<any LoggedInDependency>, LoggedInBui
 /// 터미널 화면. 붙으면 `GET /me`로 자료 수를 받고, 입력줄의 명령을 해석한다.
 /// #31에서 아는 명령은 로그아웃뿐이다. 나머지는 없는 명령으로 그린다.
 final class LoggedInInteractor: PresentableInteractor<any LoggedInPresentable>, LoggedInPresentableListener {
-    /// ACC-001 값 "로그아웃 명령". `login`·`logout`은 받지 않는다.
-    static let signOutCommands: Set<String> = ["로그아웃", "signout"]
 
     private let authService: any AuthService
     private let httpTransport: any HTTPTransport
@@ -38,6 +41,9 @@ final class LoggedInInteractor: PresentableInteractor<any LoggedInPresentable>, 
     private var pendingInput: PendingInput?
     /// 지금 로그인한 계정(접근 토큰의 `sub`). 토큰을 받기 전이거나 읽지 못하면 nil.
     private var subject: String?
+    /// 실패해 입력줄에 되돌린 저장 줄과 그때의 멱등성 키. 같은 줄을 다시 치면 같은 키로 보낸다.
+    /// 응답 없음 뒤 서버가 이미 저장했어도 두 번 만들지 않는다(글은 COM-001 판정이 없다).
+    private var retryableSave: (typed: String, key: UUID)?
 
     init(
         presenter: any LoggedInPresentable,
@@ -67,6 +73,8 @@ final class LoggedInInteractor: PresentableInteractor<any LoggedInPresentable>, 
         switch action {
         case .inputChanged(let text): update(viewState.with(input: text))
         case .submitted(let text): submit(text)
+        // 붙여 넣기 저장(#57), 끌어다 놓기(#57), 더 보기(#60·#61)는 각 실행 이슈에서 채운다.
+        case .pasted, .filesDropped, .moreRequested: break
         }
     }
 
@@ -114,13 +122,62 @@ final class LoggedInInteractor: PresentableInteractor<any LoggedInPresentable>, 
     }
 
     private func submit(_ text: String) {
-        let words = text.split(whereSeparator: \.isWhitespace)
-        guard let name = words.first.map(String.init) else { return }
-        if words.count == 1, Self.signOutCommands.contains(name) {
+        guard let command = InputCommand(text) else { return }
+        switch command.name {
+        case .signOut where command.argument.isEmpty:
             signOut()
-        } else {
-            update(viewState.appending(lines: [.prompt(text), .unknownCommand(name)]).with(input: ""))
+        case .keep where command.argument.isEmpty:
+            update(viewState.appending(lines: [.prompt(text), .missingArgument(.keep)]).with(input: ""))
+        case .keep:
+            keep(KeepCommand.request(for: command.argument), typed: text)
+        default:
+            update(viewState.appending(lines: [.prompt(text), .unknownCommand(command.word)]).with(input: ""))
         }
+    }
+
+    /// 저장 요청. 친 줄은 바로 찍고 입력줄을 비운다. 실패하면 친 줄을 입력줄에 되돌린다(ARC-005 규칙 2).
+    private func keep(_ request: ItemsAPI.SaveRequest, typed: String) {
+        update(viewState.appending(lines: [.prompt(typed)]).with(input: ""))
+        let key = retryableSave.flatMap { $0.typed == typed ? $0.key : nil } ?? UUID()
+        retryableSave = nil
+        startTask { [weak self] in
+            guard let self else { return }
+            let token = await authService.accessToken()
+            guard !Task.isCancelled else { return }
+            guard let token else {
+                restoreInput(typed)
+                expire()
+                return
+            }
+            let outcome = await ItemsAPI.save(
+                request, transport: httpTransport, accessToken: token, idempotencyKey: key
+            )
+            guard !Task.isCancelled else { return }
+            switch outcome {
+            case .saved(let item):
+                // shortcut: /me 응답과 순서가 엇갈리면 한 건 어긋날 수 있다. 상태줄 갱신을 정하는 #60에서 맞춘다.
+                update(viewState.appending(lines: [.saved(item)]).with(itemCount: viewState.itemCount.map { $0 + 1 }))
+            case .duplicate(let item):
+                update(viewState.appending(lines: [.alreadySaved(item)]))
+            case .inTrash(let item):
+                update(viewState.appending(lines: [.inTrash(number: item.number)]))
+            case .failed(let reason):
+                update(viewState.appending(lines: [.saveFailed(reason)]))
+                retryableSave = (typed, key)
+                restoreInput(typed)
+            case .sessionExpired:
+                restoreInput(typed)
+                expire()
+            case .cancelled:
+                break
+            }
+        }
+    }
+
+    /// 사용자가 그새 다른 글을 치고 있으면 덮어쓰지 않는다.
+    private func restoreInput(_ text: String) {
+        guard viewState.input.isEmpty else { return }
+        update(viewState.with(input: text))
     }
 
     private func signOut() {
@@ -144,15 +201,21 @@ final class LoggedInInteractor: PresentableInteractor<any LoggedInPresentable>, 
 
 extension LoggedInViewState {
     fileprivate func with(input: String) -> LoggedInViewState {
-        LoggedInViewState(itemCount: itemCount, lines: lines, input: input)
+        var next = self
+        next.input = input
+        return next
     }
 
-    fileprivate func with(itemCount: Int) -> LoggedInViewState {
-        LoggedInViewState(itemCount: itemCount, lines: lines, input: input)
+    fileprivate func with(itemCount: Int?) -> LoggedInViewState {
+        var next = self
+        next.itemCount = itemCount
+        return next
     }
 
     fileprivate func appending(lines added: [Line]) -> LoggedInViewState {
-        LoggedInViewState(itemCount: itemCount, lines: lines + added, input: input)
+        var next = self
+        next.lines += added
+        return next
     }
 }
 

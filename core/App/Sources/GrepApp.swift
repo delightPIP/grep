@@ -27,8 +27,9 @@ public protocol GrepAppViewFactory: LoggedOutViewFactory, LoggedInViewFactory {
 public final class GrepApp<Factory: GrepAppViewFactory> {
     private let router: RootRouter<Factory.RootView>
 
-    public init(viewFactory: Factory, authService: any AuthService, httpTransport: any HTTPTransport) {
-        let component = RootComponent(authService: authService, httpTransport: httpTransport)
+    public init(viewFactory: Factory, platform: PlatformServices) {
+        let authService = platform.authService
+        let component = RootComponent(platform: platform)
         router = RootRouter(
             interactor: RootInteractor(authService: authService),
             viewController: viewFactory.makeRootView(),
@@ -44,14 +45,44 @@ public final class GrepApp<Factory: GrepAppViewFactory> {
     public func stop() { router.shutdown() }
 }
 
+/// 플랫폼이 구현해 넘기는 것 전부.
+@MainActor
+public struct PlatformServices {
+    public let authService: any AuthService
+    public let httpTransport: any HTTPTransport
+    public let clipboard: any ClipboardPort
+    public let files: any FilePort
+    public let historyStore: any HistoryStore
+
+    public init(
+        authService: any AuthService,
+        httpTransport: any HTTPTransport,
+        clipboard: any ClipboardPort,
+        files: any FilePort,
+        historyStore: any HistoryStore
+    ) {
+        self.authService = authService
+        self.httpTransport = httpTransport
+        self.clipboard = clipboard
+        self.files = files
+        self.historyStore = historyStore
+    }
+}
+
 /// 피처 Dependency를 모두 채운다.
 final class RootComponent: EmptyComponent, LoggedOutDependency, LoggedInDependency {
     let authService: any AuthService
     let httpTransport: any HTTPTransport
+    let clipboard: any ClipboardPort
+    let files: any FilePort
+    let historyStore: any HistoryStore
 
-    init(authService: any AuthService, httpTransport: any HTTPTransport) {
-        self.authService = authService
-        self.httpTransport = httpTransport
+    init(platform: PlatformServices) {
+        authService = platform.authService
+        httpTransport = platform.httpTransport
+        clipboard = platform.clipboard
+        files = platform.files
+        historyStore = platform.historyStore
         super.init()
     }
 }

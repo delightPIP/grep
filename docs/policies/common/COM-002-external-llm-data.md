@@ -56,7 +56,12 @@
 
 - 개발자 확인할 것: 쓸 제공사와 플랜(무료 플랜이 데모 시드 자료를 처리할 만큼 되는지), 그 플랜이 입력을 학습에 쓰는지와 보관 기간. 확인하면 아래 기록에 적고 상태를 확정으로 바꾼다.
 - 외부 전문가 검토(2026-11-26): "학습에 쓰지 않음"과 "보관하지 않음"은 다르다. 제공사는 악용 감시용으로 입력을 일정 기간 보관할 수 있다. 연결(ARC-009)이나 넘기기로 AI 도구가 받은 내용에는 이 정책이 적용되지 않는다.
-- 허용 제공사 확인 기록: 아직 없음. 기본 제공사(ADR-BCK-003, Anthropic)의 약관 원문 확인이 필요하다.
+- 허용 제공사 확인 기록(2026-11-27, ADR-BCK-014): Google Gemini API 무료 등급. 약관(https://ai.google.dev/gemini-api/terms, 시행 2026-03-23) 원문 기준이다.
+  - "Google uses the content you submit to the Services and any generated responses to provide, improve, and develop Google products": 학습·개선에 쓴다
+  - "human reviewers may read, annotate, and process your API input and output": 사람이 볼 수 있다
+  - 악용 감시용으로 55일 보관한다(https://ai.google.dev/gemini-api/docs/usage-policies). 유료 등급은 학습에 쓰지 않는다
+  - 그래서 무료 등급은 규칙 3의 조건(팀 자료·공개 자료만)으로만 쓴다. 무료 한도가 시드 자료를 감당하는지는 #59에서 실측한다
+- 이전 비고의 기본 제공사 참조(ADR-BCK-003)는 잘못이었다. Anthropic 기본값은 ADR-BCK-008 결정 4에 있었고, ADR-BCK-014가 대체했다.
 
 ## 이력
 
@@ -64,3 +69,4 @@
 | :--- | :--- |
 | 2026-11-25 | 최초 등록 |
 | 2026-11-26 | 프로젝트 기간(실제 사용자 없음)에는 팀이 만든 자료만 넣는 조건으로 무료 플랜 허용, 약관 확인에 입력 보관 기간 추가. 상태를 검토 중으로 바꿈(PO 결정: 돈 안 드는 방향, 개발자 확인 뒤 확정) |
+| 2026-11-27 | 비고: 허용 제공사 확인 기록(Gemini 무료 등급 약관, ADR-BCK-014). 규칙 변경 없음 |

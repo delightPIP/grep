@@ -1,3 +1,8 @@
+#if canImport(FoundationEssentials)
+import FoundationEssentials
+#else
+import Foundation
+#endif
 import FeatureLoggedInInterface
 import FeatureLoggedInTesting
 import GrepCore
@@ -11,6 +16,9 @@ import Testing
 private final class Dependency: LoggedInDependency {
     let authService: any AuthService
     let httpTransport: any HTTPTransport
+    let clipboard: any ClipboardPort = FakeClipboard()
+    let files: any FilePort = FakeFilePort()
+    let historyStore: any HistoryStore = FakeHistoryStore()
     init(authService: any AuthService, httpTransport: any HTTPTransport) {
         self.authService = authService
         self.httpTransport = httpTransport
@@ -258,6 +266,198 @@ final class LoggedInTests {
         // then
         #expect(listener.signOutCount == 1)
         #expect(listener.expiredInputs.isEmpty)
+    }
+
+    // MARK: 담기(#56 계약, ARC-001·ARC-005·COM-001)
+
+    private static let linkItemJSON = #"""
+    {"number":30,"kind":"link","title":"카페 텀블러 할인, 올겨울 캠페인 늘었다","source":"carti1108.github.io","status":"received","blockedReason":null,"listSummary":null,"summarySource":null,"partialNote":null,"tags":[],"matchedIn":null,"savedAt":"2026-11-27T11:00:00+09:00"}
+    """#
+
+    private static let linkItem = ItemSummary(
+        number: 30,
+        kind: .link,
+        title: "카페 텀블러 할인, 올겨울 캠페인 늘었다",
+        source: "carti1108.github.io",
+        status: .received,
+        tags: [],
+        savedAt: "2026-11-27T11:00:00+09:00"
+    )
+
+    private struct SaveBody: Decodable, Equatable {
+        let kind: String
+        let url: String?
+        let text: String?
+    }
+
+    private func saveBody(of request: HTTPRequest) throws -> SaveBody {
+        try JSONDecoder().decode(SaveBody.self, from: Data((request.body ?? "").utf8))
+    }
+
+    @Test func 터미널이떠있을때_담기와링크를치면_토큰과멱등성키를붙여링크저장을요청하는지() async throws {
+        // given
+        await attachLoaded()
+
+        // when
+        await send(.submitted("담기 https://carti1108.github.io/grep-seed-demo/l1.html"))
+
+        // then
+        let request = try #require(transport.requests.last)
+        #expect(request.method == .post)
+        #expect(request.path == "/items")
+        #expect(request.headers["Authorization"] == "Bearer \(Self.tokenA)")
+        #expect(UUID(uuidString: request.headers["Idempotency-Key"] ?? "") != nil)
+        #expect(try saveBody(of: request) == SaveBody(kind: "link", url: "https://carti1108.github.io/grep-seed-demo/l1.html", text: nil))
+    }
+
+    @Test(arguments: ["담기 오늘 회의 메모: 텀블러 캠페인", "keep ftp://example.com/a"])
+    func 터미널이떠있을때_담기뒤에링크가아닌글을치면_글저장을요청하는지(line: String) async throws {
+        // given
+        await attachLoaded()
+        let text = String(line.drop(while: { !$0.isWhitespace }).dropFirst())
+
+        // when
+        await send(.submitted(line))
+
+        // then
+        let request = try #require(transport.requests.last)
+        #expect(try saveBody(of: request) == SaveBody(kind: "text", url: nil, text: text))
+    }
+
+    @Test func 링크저장을기다릴때_서버가저장됨으로답하면_저장됨줄을그리고자료수를하나늘리는지() async {
+        // given
+        await attachLoaded()
+        let line = "담기 https://carti1108.github.io/grep-seed-demo/l1.html"
+        await send(.submitted(line))
+
+        // when
+        transport.respond(status: 201, json: #"{"result":"saved","item":\#(Self.linkItemJSON)}"#)
+        await runCurrent()
+
+        // then
+        #expect(view.state == LoggedInViewState(itemCount: 35, lines: [.prompt(line), .saved(Self.linkItem)]))
+    }
+
+    @Test func 링크저장을기다릴때_서버가이미있음으로답하면_기존자료를보이고자료수를그대로두는지() async {
+        // given
+        await attachLoaded()
+        let line = "담기 https://carti1108.github.io/grep-seed-demo/l1.html"
+        await send(.submitted(line))
+
+        // when
+        transport.respond(json: #"{"result":"duplicate","item":\#(Self.linkItemJSON)}"#)
+        await runCurrent()
+
+        // then
+        #expect(view.state == LoggedInViewState(itemCount: 34, lines: [.prompt(line), .alreadySaved(Self.linkItem)]))
+    }
+
+    @Test func 링크저장을기다릴때_서버가휴지통에있음으로답하면_휴지통줄을그리는지() async {
+        // given
+        await attachLoaded()
+        let line = "담기 https://carti1108.github.io/grep-seed-demo/l1.html"
+        await send(.submitted(line))
+
+        // when
+        transport.respond(json: #"{"result":"inTrash","item":\#(Self.linkItemJSON)}"#)
+        await runCurrent()
+
+        // then
+        #expect(view.state == LoggedInViewState(itemCount: 34, lines: [.prompt(line), .inTrash(number: 30)]))
+    }
+
+    @Test(arguments: [
+        (Result<HTTPResponse, HTTPTransportError>.failure(.unreachable), SaveFailure.disconnected),
+        (.failure(.timedOut), .timedOut),
+        (.success(HTTPResponse(status: 500, body: [])), .serverError),
+    ])
+    func 링크저장을기다릴때_저장에실패하면_실패줄을그리고친줄을입력줄에남기는지(
+        response: Result<HTTPResponse, HTTPTransportError>, reason: SaveFailure
+    ) async {
+        // given
+        await attachLoaded()
+        let line = "담기 https://carti1108.github.io/grep-seed-demo/l1.html"
+        await send(.submitted(line))
+
+        // when
+        transport.respond(response)
+        await runCurrent()
+
+        // then
+        #expect(view.state == LoggedInViewState(itemCount: 34, lines: [.prompt(line), .saveFailed(reason)], input: line))
+    }
+
+    @Test func 링크저장을기다릴때_서버가세션만료로답하면_친줄과함께만료를알리는지() async {
+        // given
+        await attachLoaded()
+        let line = "담기 https://carti1108.github.io/grep-seed-demo/l1.html"
+        await send(.submitted(line))
+
+        // when
+        transport.respond(status: 401, json: #"{"code":"session_expired"}"#)
+        await runCurrent()
+
+        // then
+        #expect(listener.expiredInputs == [line])
+    }
+
+    @Test func 저장이응답없음으로실패했을때_되살린줄을그대로다시치면_같은멱등성키로요청하는지() async throws {
+        // given
+        await attachLoaded()
+        let line = "담기 오늘 회의 메모"
+        await send(.submitted(line))
+        transport.respond(.failure(.timedOut))
+        await runCurrent()
+        let firstKey = try #require(transport.requests.last?.headers["Idempotency-Key"])
+
+        // when
+        await send(.submitted(line))
+
+        // then
+        #expect(transport.requests.last?.headers["Idempotency-Key"] == firstKey)
+    }
+
+    @Test func 저장이끝났을때_같은줄을다시치면_새멱등성키로요청하는지() async throws {
+        // given
+        await attachLoaded()
+        let line = "담기 오늘 회의 메모"
+        await send(.submitted(line))
+        transport.respond(status: 201, json: #"{"result":"saved","item":\#(Self.linkItemJSON)}"#)
+        await runCurrent()
+        let firstKey = try #require(transport.requests.last?.headers["Idempotency-Key"])
+
+        // when
+        await send(.submitted(line))
+
+        // then
+        #expect(transport.requests.last?.headers["Idempotency-Key"] != firstKey)
+    }
+
+    @Test func 저장을기다리는중에새글을쳤을때_저장이실패하면_친새글을덮어쓰지않는지() async {
+        // given
+        await attachLoaded()
+        await send(.submitted("담기 https://example.com/a"))
+        await send(.inputChanged("찾기 텀블러"))
+
+        // when
+        transport.respond(.failure(.unreachable))
+        await runCurrent()
+
+        // then
+        #expect(view.state?.input == "찾기 텀블러")
+    }
+
+    @Test func 터미널이떠있을때_담기만치면_요청없이빠진인자줄을그리는지() async {
+        // given
+        await attachLoaded()
+        let requestsBefore = transport.requests.count
+
+        // when
+        await send(.submitted("담기"))
+
+        // then
+        #expect(transport.requests.count == requestsBefore)
+        #expect(view.state?.lines == [.prompt("담기"), .missingArgument(.keep)])
     }
 
     // MARK: 생명주기

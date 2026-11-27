@@ -12,7 +12,10 @@ class TestcontainersConfiguration {
 	@Bean
 	@ServiceConnection
 	fun postgresContainer(): PostgreSQLContainer {
-		return PostgreSQLContainer(DockerImageName.parse("postgres:17-alpine"))
+		return PostgreSQLContainer(DockerImageName.parse(PGROONGA_IMAGE).asCompatibleSubstituteFor("postgres"))
 	}
 
 }
+
+/** 검색은 PGroonga(Supabase 확장)를 쓴다. 테스트 DB도 같은 확장이 든 Postgres 17 이미지로 돈다(#56). */
+const val PGROONGA_IMAGE = "groonga/pgroonga:4.0.4-alpine-17"

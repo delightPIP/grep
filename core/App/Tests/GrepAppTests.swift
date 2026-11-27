@@ -47,7 +47,16 @@ final class GrepAppTests {
     private let app: GrepApp<FakeAppViewFactory>
 
     init() {
-        app = GrepApp(viewFactory: factory, authService: auth, httpTransport: transport)
+        app = GrepApp(
+            viewFactory: factory,
+            platform: PlatformServices(
+                authService: auth,
+                httpTransport: transport,
+                clipboard: FakeClipboard(),
+                files: FakeFilePort(),
+                historyStore: FakeHistoryStore()
+            )
+        )
     }
 
     isolated deinit {

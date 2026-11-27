@@ -5,6 +5,12 @@ import RIBs
 public protocol LoggedInDependency: Dependency {
     var authService: any AuthService { get }
     var httpTransport: any HTTPTransport { get }
+    /// `넘기기`가 넘길 글을 넣는다(COM-008).
+    var clipboard: any ClipboardPort { get }
+    /// 끌어다 놓은 파일을 올린다(COM-004).
+    var files: any FilePort { get }
+    /// 터미널 기록을 이 기기에 남긴다(COM-009).
+    var historyStore: any HistoryStore { get }
 }
 
 /// 만료 때 입력줄에 치던 줄과, 그 줄을 친 계정(접근 토큰의 `sub`).
