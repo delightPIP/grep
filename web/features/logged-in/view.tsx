@@ -1,6 +1,6 @@
 // 터미널 화면. 순수 뷰: 받은 상태만 그리고, 입력은 onInputChange·onSubmit·onPaste·onFilesDrop으로만 알린다.
 // 배치는 시안 Main·Errors·Logout ③ 아트보드, 출력 비우기(로그아웃·다른 계정 로그인, COM-009)는 코어가 lines로 내려준다.
-import { createContext, useContext, useRef, useState, type ClipboardEvent, type DragEvent, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ClipboardEvent, type DragEvent, type ReactNode } from "react";
 import type {
   CommandFailure,
   CommandName,
@@ -333,9 +333,46 @@ function ItemRefRows({ items }: { items: ItemRef[] }) {
   );
 }
 
-/** 넘긴 글 전체. 터미널 글꼴이 아닌 읽기 글꼴로 줄바꿈을 그대로 보인다(시안 Handoff). */
-function Preview({ text }: { text: string }) {
-  return <pre className="gt-preview">{text}</pre>;
+/**
+ * 넘긴 글 전체. 터미널 글꼴이 아닌 읽기 글꼴로 줄바꿈을 그대로 보인다(시안 Handoff).
+ * selectAll: 클립보드 거부 때 전체를 선택해 둔다(COM-008 규칙 6). 입력줄에 초점이 있으면 복사 키가 입력줄을 복사하므로 미리보기로 초점을 옮긴다.
+ */
+function Preview({ text, selectAll = false }: { text: string; selectAll?: boolean }) {
+  const ref = useRef<HTMLPreElement>(null);
+  useEffect(() => {
+    const preview = ref.current;
+    if (!selectAll || preview === null) return;
+    preview.focus();
+    window.getSelection()?.selectAllChildren(preview);
+  }, [selectAll]);
+  return (
+    <pre ref={ref} className="gt-preview" tabIndex={selectAll ? -1 : undefined}>
+      {text}
+    </pre>
+  );
+}
+
+/** COM-008 값: 직접 복사 키. 터치 기기 문구는 AI 제안(PO 확인 전). */
+function copyKeyHint(): string {
+  if (typeof window.matchMedia === "function" && window.matchMedia("(hover: none) and (pointer: coarse)").matches) {
+    return "길게 눌러 복사";
+  }
+  return /mac|iphone|ipad/i.test(navigator.platform) ? "⌘C" : "Ctrl+C";
+}
+
+/** COM-008 넘기기 실패. 선택은 풀지 않는다(코어). 클립보드 거부만 펼친 미리보기와 직접 복사 키를 보인다. */
+function HandoffFailedLines({ reason, preview }: { reason: CommandFailure; preview: string | null }) {
+  const isDenied = reason === "clipboardDenied";
+  return (
+    <>
+      <Line tone="error">{`복사 안 됨: ${COMMAND_FAILURE_LABEL[reason]}  선택은 남겨 둠`}</Line>
+      {isDenied && preview !== null && <Preview text={preview} selectAll />}
+      <Plain>
+        {isDenied ? `→ 직접 복사: ${copyKeyHint()} · 다시: ` : "→ "}
+        <CommandChip command="넘기기" />
+      </Plain>
+    </>
+  );
 }
 
 /** commands 6절 넘기기, 넘길 글 형식 3절. `펼치기`는 화면 칩이라 누르면 바로 펼친다. */
@@ -405,6 +442,8 @@ function OutputLine({ line, failed, onMoreRequested }: OutputLineProps) {
       return <Line tone="error">{`잘못된 번호: ${line.input}  예: ${PICK_EXAMPLE}`}</Line>;
     case "handedOff":
       return <HandedOffLines result={line.result} />;
+    case "handoffFailed":
+      return <HandoffFailedLines reason={line.reason} preview={line.preview} />;
     case "commandFailed":
       return <CommandFailedLines command={line.command} reason={line.reason} retry={line.retry} />;
     case "reconnected":

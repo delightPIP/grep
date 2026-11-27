@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ItemSummary, LoggedInState } from "../../support/view-state";
+import type { CommandFailure, ItemSummary, LoggedInState } from "../../support/view-state";
 import { LoggedInView } from "./view";
 
 afterEach(cleanup);
@@ -933,6 +933,77 @@ describe("LoggedInView", () => {
 
       // then
       expect(onInputChange).toHaveBeenCalledWith("고르기 97");
+    });
+  });
+
+  describe("넘기기 실패(#65, COM-008)", () => {
+    const HANDOFF = { kind: "prompt", text: "넘기기" } as const;
+    const TEXT = "[그렙 · 자료 2건]\n\n131. 결제위젯 연동 가이드";
+    const originalPlatform = navigator.platform;
+
+    afterEach(() => {
+      Object.defineProperty(navigator, "platform", { value: originalPlatform, configurable: true });
+    });
+
+    function failed(reason: CommandFailure, preview: string | null = null): LoggedInState["lines"] {
+      return [HANDOFF, { kind: "handoffFailed", reason, preview }];
+    }
+
+    it.each([
+      ["disconnected", "연결 끊김"],
+      ["timedOut", "응답 없음"],
+      ["serverError", "서버 오류"],
+    ] as const)("%s로실패했을때_화면을그리면_복사안됨이유와선택남김과넘기기만안내하는지", (reason, label) => {
+      // given
+      // when
+      const shown = shownOutput(failed(reason));
+
+      // then
+      expect(shown.slice(1)).toEqual([`✗ 복사 안 됨: ${label}  선택은 남겨 둠`, "→ 넘기기"]);
+    });
+
+    it("서버오류로실패했을때_넘기기칩을누르면_입력줄에넘기기를찍는지", () => {
+      // given
+      const { onInputChange } = renderView({ lines: failed("serverError") });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "넘기기" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("넘기기");
+    });
+
+    it("클립보드가거부됐을때_화면을그리면_펼친미리보기와직접복사키와다시넘기기를보이는지", () => {
+      // given
+      // when
+      const { container } = renderView({ lines: failed("clipboardDenied", TEXT) });
+
+      // then
+      expect(outputLines(container).slice(1).map(shownLine)).toEqual([
+        "✗ 복사 안 됨: 클립보드 거부  선택은 남겨 둠",
+        "→ 직접 복사: Ctrl+C · 다시: 넘기기",
+      ]);
+      expect(container.querySelector(".gt-preview")!.textContent).toBe(TEXT);
+    });
+
+    it("클립보드가거부됐을때_화면을그리면_미리보기전체를선택해두는지", () => {
+      // given
+      // when
+      renderView({ lines: failed("clipboardDenied", TEXT) });
+
+      // then
+      expect(window.getSelection()!.toString()).toBe(TEXT);
+    });
+
+    it("macOS에서클립보드가거부됐을때_화면을그리면_직접복사키를커맨드C로안내하는지", () => {
+      // given
+      Object.defineProperty(navigator, "platform", { value: "MacIntel", configurable: true });
+
+      // when
+      const shown = shownOutput(failed("clipboardDenied", TEXT));
+
+      // then
+      expect(shown[2]).toBe("→ 직접 복사: ⌘C · 다시: 넘기기");
     });
   });
 
