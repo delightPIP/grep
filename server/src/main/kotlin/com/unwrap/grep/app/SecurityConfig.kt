@@ -60,7 +60,8 @@ class SecurityConfig {
 			CorsConfiguration().apply {
 				allowedOrigins = listOf(webOrigin)
 				allowedMethods = listOf("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
-				allowedHeaders = listOf("Authorization", "Content-Type")
+				// 계약(api/openapi.yaml)이 요청 헤더로 받는 것만 허용한다. 빠지면 브라우저가 사전 요청에서 막는다.
+				allowedHeaders = listOf("Authorization", "Content-Type", "Idempotency-Key")
 			},
 		)
 	}

@@ -9,6 +9,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import org.springframework.test.web.servlet.options
 
 /** POST /items(saveItem), GET /me itemCount. 근거: ARC-001, ARC-005, COM-001, COM-004, COM-006. */
 class SaveItemApiTest : ArchiveApiTestSupport() {
@@ -390,6 +391,24 @@ class SaveItemApiTest : ArchiveApiTestSupport() {
 		result.andExpect {
 			status { isOk() }
 			jsonPath("$.itemCount") { value(2) }
+		}
+	}
+
+	@Test
+	fun `웹주소에서사전요청을보냈을때_멱등키헤더로items를부르면_CORS가그헤더를허용하는지`() {
+		// given: grep.web-origin = http://web.test
+
+		// when
+		val result = mockMvc.options("/items") {
+			header("Origin", "http://web.test")
+			header("Access-Control-Request-Method", "POST")
+			header("Access-Control-Request-Headers", "authorization, content-type, idempotency-key")
+		}
+
+		// then
+		result.andExpect {
+			status { isOk() }
+			header { string("Access-Control-Allow-Headers", "authorization, content-type, idempotency-key") }
 		}
 	}
 
