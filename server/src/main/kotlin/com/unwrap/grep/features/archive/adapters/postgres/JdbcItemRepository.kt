@@ -113,4 +113,27 @@ class JdbcItemRepository(private val jdbc: JdbcClient) : ItemRepository, ItemCou
 			.single()
 
 	override fun countActiveItems(userId: UUID): Long = countActive(userId)
+
+	override fun findActive(userId: UUID, beforeNumber: Long?, limit: Int): List<StoredItem> =
+		jdbc.sql(
+			"""
+			SELECT $SUMMARY_COLUMNS FROM items
+			WHERE user_id = :userId AND deleted_at IS NULL AND (CAST(:before AS bigint) IS NULL OR number < :before)
+			ORDER BY number DESC
+			LIMIT :limit
+			""".trimIndent(),
+		)
+			.param("userId", userId)
+			.param("before", beforeNumber, Types.BIGINT)
+			.param("limit", limit)
+			.query(ITEM_ROW)
+			.list()
+
+	/** 번호 개수에 제한이 없으므로(ARC-001) IN 목록 대신 배열 하나로 넘긴다. */
+	override fun findActiveByNumbers(userId: UUID, numbers: Collection<Long>): List<StoredItem> =
+		jdbc.sql("SELECT $SUMMARY_COLUMNS FROM items WHERE user_id = :userId AND deleted_at IS NULL AND number = ANY(:numbers)")
+			.param("userId", userId)
+			.param("numbers", numbers.toLongArray())
+			.query(ITEM_ROW)
+			.list()
 }
