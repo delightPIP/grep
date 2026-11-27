@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 에뮬레이터(10.0.2.2)와 로컬 테스트 서버(127.0.0.1)를 위해 디버그 빌드에만 평문 HTTP를 허용한다. -->
+    <application android:usesCleartextTraffic="true" />
+</manifest>

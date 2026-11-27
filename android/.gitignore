@@ -1,0 +1,6 @@
+.gradle/
+build/
+*/build/
+*/*/*/build/
+local.properties
+swift/.build/

@@ -104,5 +104,6 @@
 | 100 | 2026-11-27 | [#59 처리 워커(본문 가져오기·글자 추출·Gemini 요약·태그·하루 한도)](100-issue-59-processing-worker.md) |
 | 101 | 2026-11-27 | [#69 데모 시드 도구](101-issue-69-demo-seed-tool.md) |
 | 102 | 2026-11-27 | [데모 통합: 시드 실측, 시드 도구 수정, 실행 절차](102-demo-integration-seed-run.md) |
+| 103 | 2026-11-27 | [#79 Android 1단계 뼈대(Gradle·Swift .so·swift-java·플랫폼 포트·로그인 화면) 구현](103-issue-79-android-skeleton-logged-out.md) |
 
 새 항목 파일을 만들 때 이 표에 한 줄을 추가한다. 파일명은 `NNN-<영문-슬러그>.md`이고 NNN은 다음 번호다.
