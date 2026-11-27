@@ -12,6 +12,7 @@ import type {
   SaveRecovery,
   SearchQuery,
   TerminalLine,
+  TrashEntry,
 } from "../../support/view-state";
 import { Banner, DockInput, Line, Prompt, StatusBar, Window, type StatusItem } from "../../ui/grep";
 
@@ -250,20 +251,25 @@ function ListRow({ item }: { item: ItemSummary }) {
   );
 }
 
+/** commands 6절 더 보기. 다음 쪽은 코어가 받는다. */
+function MoreChip({ onMoreRequested }: { onMoreRequested?: () => void }) {
+  return (
+    <Plain>
+      {"→ "}
+      <button type="button" className="gt-chip" onClick={onMoreRequested}>
+        더 보기
+      </button>
+    </Plain>
+  );
+}
+
 function ListLines({ items, hasMore, onMoreRequested }: { items: ItemSummary[]; hasMore: boolean; onMoreRequested?: () => void }) {
   return (
     <>
       {items.map((item) => (
         <ListRow key={item.number} item={item} />
       ))}
-      {hasMore && (
-        <Plain>
-          {"→ "}
-          <button type="button" className="gt-chip" onClick={onMoreRequested}>
-            더 보기
-          </button>
-        </Plain>
-      )}
+      {hasMore && <MoreChip onMoreRequested={onMoreRequested} />}
     </>
   );
 }
@@ -380,6 +386,70 @@ function HandoffConfirmLines({ total }: { total: number }) {
   );
 }
 
+/** COM-007 확인 답. 실행 낱말은 칩으로 입력줄에 찍기만 한다(엔터로 답). */
+function ConfirmAnswer({ word }: { word: string }) {
+  return (
+    <Plain>
+      {"→ 실행: "}
+      <CommandChip command={word} />
+      {" 다시 입력 · 취소: 그 외 입력"}
+    </Plain>
+  );
+}
+
+/** ARC-008 2건 이상 버리기 확인. */
+function DropConfirmLines({ total }: { total: number }) {
+  return (
+    <>
+      <Line tone="warn">{`버리기? ${total}건 (휴지통으로)`}</Line>
+      <ConfirmAnswer word="버리기" />
+    </>
+  );
+}
+
+/** ARC-008 휴지통 비우기 확인. */
+function BinEmptyConfirmLines({ total }: { total: number }) {
+  return (
+    <>
+      <Line tone="warn">{`비우기? ${total}건 (되돌릴 수 없음)`}</Line>
+      <ConfirmAnswer word="비우기" />
+    </>
+  );
+}
+
+/** 휴지통 행. 시각 칸에 영구 삭제까지 남은 날(ARC-008 규칙 10). */
+function TrashRow({ entry: { item, daysLeft } }: { entry: TrashEntry }) {
+  return (
+    <div className="gt-line gt-row">
+      <NumberCell number={item.number} />
+      <span>{item.kind === "text" ? textTitle(item.title) : item.title}</span>
+      {item.source && <span className="gt-row-meta">{item.source}</span>}
+      <span className="gt-row-meta">{`${daysLeft}일 남음`}</span>
+    </div>
+  );
+}
+
+type BinListLinesProps = { total: number; items: TrashEntry[]; hasMore: boolean; onMoreRequested?: () => void };
+
+/** `휴지통` 목록(ARC-008 규칙 5, 시안 Trash ③). 순서는 서버가 지운 날 최신순으로 준다. */
+function BinListLines({ total, items, hasMore, onMoreRequested }: BinListLinesProps) {
+  return (
+    <>
+      <Plain>{searchHeader(total, items.length)}</Plain>
+      {items.map((entry) => (
+        <TrashRow key={entry.item.number} entry={entry} />
+      ))}
+      {hasMore && <MoreChip onMoreRequested={onMoreRequested} />}
+      <Plain>
+        {"→ "}
+        <CommandChip command="되살리기 ">되살리기</CommandChip>
+        {" 또는 "}
+        <CommandChip command="휴지통 비우기" />
+      </Plain>
+    </>
+  );
+}
+
 /** COM-008 값: 직접 복사 키. 터치 기기 문구는 AI 제안(PO 확인 전). */
 function copyKeyHint(): string {
   if (typeof window.matchMedia === "function" && window.matchMedia("(hover: none) and (pointer: coarse)").matches) {
@@ -461,7 +531,7 @@ function WelcomeLines() {
   );
 }
 
-/** commands 2절 `도움말` 화면. 명령 13줄(한글·영문·뜻). */
+/** commands 2절 `도움말` 화면. 명령 13줄에 휴지통 명령 3줄(ARC-008, #96)을 더한 16줄(한글·영문·뜻). */
 const GUIDE_ROWS: ReadonlyArray<readonly [string, string, string]> = [
   ["담기", "keep", "자료 저장"],
   ["최근", "recent", "최근 자료 목록"],
@@ -471,6 +541,9 @@ const GUIDE_ROWS: ReadonlyArray<readonly [string, string, string]> = [
   ["묶음", "pack", "선택에 이름 붙이기"],
   ["고치기", "revise", "제목·요약 수정"],
   ["버리기", "drop", "삭제"],
+  ["되살리기", "revive", "휴지통에서 돌리기"],
+  ["휴지통", "bin", "휴지통 목록"],
+  ["휴지통 비우기", "bin empty", "휴지통 영구 삭제"],
   ["가져오기", "bring", "북마크 파일 가져오기"],
   ["연결", "plug", "AI 도구 연결"],
   ["로그아웃", "signout", "로그아웃"],
@@ -568,6 +641,17 @@ function OutputLine({ line, failed, onMoreRequested }: OutputLineProps) {
           {`휴지통 ${line.items.length}건 (30일 뒤 삭제, 되살리기 ${line.items.map((ref) => ref.number).join(" ")})`}
         </Line>
       );
+    case "dropConfirm":
+      return <DropConfirmLines total={line.total} />;
+    case "binList":
+      return (
+        <BinListLines total={line.total} items={line.items} hasMore={line.hasMore} onMoreRequested={onMoreRequested} />
+      );
+    case "binEmptyConfirm":
+      return <BinEmptyConfirmLines total={line.total} />;
+    case "binEmptied":
+      // ARC-008 사용자 문구.
+      return <Line tone="ok">{`비움  ${line.count}건 영구 삭제`}</Line>;
     case "revived":
       // ARC-008 사용자 문구.
       return <Line tone="ok">{`되살림 ${line.items.length}건`}</Line>;

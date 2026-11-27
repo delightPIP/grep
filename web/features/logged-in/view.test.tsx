@@ -1171,7 +1171,7 @@ describe("LoggedInView", () => {
       expect(onSubmit).not.toHaveBeenCalled();
     });
 
-    it("도움말을쳤을때_화면을그리면_안내줄과명령13줄과예시줄을보이는지", () => {
+    it("도움말을쳤을때_화면을그리면_안내줄과명령16줄과예시줄을보이는지", () => {
       // given
       const lines: LoggedInState["lines"] = [{ kind: "prompt", text: "도움말" }, { kind: "guide" }];
 
@@ -1189,6 +1189,9 @@ describe("LoggedInView", () => {
         "묶음 pack 선택에 이름 붙이기",
         "고치기 revise 제목·요약 수정",
         "버리기 drop 삭제",
+        "되살리기 revive 휴지통에서 돌리기",
+        "휴지통 bin 휴지통 목록",
+        "휴지통 비우기 bin empty 휴지통 영구 삭제",
         "가져오기 bring 북마크 파일 가져오기",
         "연결 plug AI 도구 연결",
         "로그아웃 signout 로그아웃",
@@ -1326,6 +1329,111 @@ describe("LoggedInView", () => {
 
       // then
       expect(shown[1]).toBe("✓ 되살림 2건");
+    });
+  });
+
+  describe("버리기 확인·휴지통 목록·비우기(#96, ARC-008·COM-007)", () => {
+    function trashed(number: number, overrides: Partial<ItemSummary> = {}, daysLeft = 30) {
+      return { item: item({ number, ...overrides }), trashedAt: "2026-11-27T02:00:00Z", daysLeft };
+    }
+
+    it("2건이상버리려할때_화면을그리면_건수확인과실행낱말을묻는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [{ kind: "prompt", text: "버리기 21 29" }, { kind: "dropConfirm", total: 2 }];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown.slice(1)).toEqual(["! 버리기? 2건 (휴지통으로)", "→ 실행: 버리기 다시 입력 · 취소: 그 외 입력"]);
+    });
+
+    it("버리기확인을기다릴때_버리기칩을누르면_입력줄에버리기를찍기만하는지", () => {
+      // given
+      const { onInputChange, onSubmit } = renderView({ lines: [{ kind: "dropConfirm", total: 3 }] });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "버리기" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("버리기");
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+
+    it("휴지통을쳤을때_화면을그리면_건수머리와남은날칸과다음명령을보이는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [
+        { kind: "prompt", text: "휴지통" },
+        {
+          kind: "binList",
+          total: 2,
+          items: [
+            trashed(29, { title: "주간 업무 메모.md", source: "md" }),
+            trashed(21, { title: "사무실 비품 주문 목록.txt", source: "txt" }, 3),
+          ],
+          hasMore: false,
+        },
+      ];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown.slice(1)).toEqual([
+        "2건",
+        "29 주간 업무 메모.md md 30일 남음",
+        "21 사무실 비품 주문 목록.txt txt 3일 남음",
+        "→ 되살리기 또는 휴지통 비우기",
+      ]);
+    });
+
+    it("휴지통에다음쪽이남았을때_화면을그리면_머리에보인건수와더보기를보이는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [
+        { kind: "binList", total: 12, items: [trashed(29, { source: null })], hasMore: true },
+      ];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown[0]).toBe("12건 중 1건");
+      expect(shown).toContain("→ 더 보기");
+    });
+
+    it("휴지통목록일때_되살리기칩을누르면_입력줄에되살리기와빈칸을찍는지", () => {
+      // given
+      const { onInputChange } = renderView({
+        lines: [{ kind: "binList", total: 1, items: [trashed(29)], hasMore: false }],
+      });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "되살리기" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("되살리기 ");
+    });
+
+    it("휴지통을비우려할때_화면을그리면_되돌릴수없음과실행낱말을묻는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [{ kind: "prompt", text: "휴지통 비우기" }, { kind: "binEmptyConfirm", total: 2 }];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown.slice(1)).toEqual(["! 비우기? 2건 (되돌릴 수 없음)", "→ 실행: 비우기 다시 입력 · 취소: 그 외 입력"]);
+    });
+
+    it("휴지통을비웠을때_화면을그리면_영구삭제건수를보이는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [{ kind: "prompt", text: "비우기" }, { kind: "binEmptied", count: 2 }];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown[1]).toBe("✓ 비움  2건 영구 삭제");
     });
   });
 });
