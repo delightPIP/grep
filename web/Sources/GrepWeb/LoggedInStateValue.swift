@@ -39,7 +39,8 @@ extension LoggedInViewState.Line {
         case .saved(let item): line("saved", ["item": item.bridgeValue])
         case .alreadySaved(let item): line("alreadySaved", ["item": item.bridgeValue])
         case .inTrash(let number): line("inTrash", ["number": number])
-        case .saveFailed(let reason): line("saveFailed", ["reason": reason.bridgeValue])
+        case .saveFailed(let reason, let recovery):
+            line("saveFailed", ["reason": reason.bridgeValue, "recovery": recovery.bridgeValue])
         case .recentList(let items, let hasMore):
             line("recentList", ["items": items.map(\.bridgeValue), "hasMore": hasMore])
         case .searchResult(let query, let total, let items, let hasMore):
@@ -102,6 +103,16 @@ extension HandoffResult {
             "missingSummaryCount": missingSummaryCount,
             "text": text,
         ])
+    }
+}
+
+extension SaveRecovery {
+    fileprivate var bridgeValue: JSValue {
+        switch self {
+        case .inputKept: object(["kind": "inputKept"])
+        case .retry(let command): object(["kind": "retry", "command": command])
+        case .file(let name): object(["kind": "file", "name": name])
+        }
     }
 }
 
