@@ -22,9 +22,28 @@ data class ProcessingJob(
 	val fileFormat: String?,
 )
 
-/** 처리 결과. [searchBody]는 찾기용 본문 일부(제목·출처·요약·태그는 저장소가 더한다). */
+/**
+ * 처리 때 읽은 본문(V5). [text]는 앞 [MAX_CHARS]자, [length]는 전체 글자 수(유니코드 문자).
+ * 자세히 보기(ARC-011)와 AI 도구 읽기(ARC-009)가 쓴다.
+ */
+data class ItemBody(val text: String, val length: Int, val fromImage: Boolean) {
+	companion object {
+		const val MAX_CHARS = 20_000
+
+		/** 빈 본문은 없는 것으로 본다. 자를 때 글자(코드 포인트) 가운데를 자르지 않는다. */
+		fun of(full: String, fromImage: Boolean = false): ItemBody? {
+			if (full.isBlank()) return null
+			val length = full.codePointCount(0, full.length)
+			val text = if (length <= MAX_CHARS) full else full.substring(0, full.offsetByCodePoints(0, MAX_CHARS))
+			return ItemBody(text, length, fromImage)
+		}
+	}
+}
+
+/** 처리 결과. [searchBody]는 찾기용 본문 일부(제목·출처·요약·태그는 저장소가 더한다), [body]는 읽은 본문. */
 sealed interface ProcessingOutcome {
 	val searchBody: String?
+	val body: ItemBody?
 
 	data class Ready(
 		val fetchedTitle: String?,
@@ -35,13 +54,22 @@ sealed interface ProcessingOutcome {
 		val model: String,
 		val promptVersion: String,
 		override val searchBody: String?,
+		override val body: ItemBody? = null,
 	) : ProcessingOutcome
 
 	/** ARC-005 `blocked`. [reason]은 V2 `blocked_reason` 값. */
-	data class Blocked(val reason: String, override val searchBody: String?) : ProcessingOutcome
+	data class Blocked(
+		val reason: String,
+		override val searchBody: String?,
+		override val body: ItemBody? = null,
+	) : ProcessingOutcome
 
 	/** ARC-005 `failed`. [error]는 작업 기록용(사용자에게 보이지 않는다). */
-	data class Failed(val error: String, override val searchBody: String?) : ProcessingOutcome
+	data class Failed(
+		val error: String,
+		override val searchBody: String?,
+		override val body: ItemBody? = null,
+	) : ProcessingOutcome
 }
 
 interface ProcessingQueue {

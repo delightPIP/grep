@@ -130,6 +130,9 @@ class JdbcProcessingQueue(
 					i.source, i.user_summary, :listSummary, :handoffSummary, array_to_string(ARRAY(
 						SELECT t FROM unnest(CAST(:tags AS text[])) AS u(t) WHERE lower(t) <> ALL(i.removed_tags)
 					), ' '), :searchBody),
+				body_text = :bodyText,
+				body_length = :bodyLength,
+				body_from_image = :bodyFromImage,
 				updated_at = now()
 			FROM item_jobs j
 			WHERE j.id = :jobId AND i.id = j.item_id AND i.deleted_at IS NULL
@@ -145,6 +148,9 @@ class JdbcProcessingQueue(
 			.param("model", ready?.model, Types.VARCHAR)
 			.param("promptVersion", ready?.promptVersion, Types.VARCHAR)
 			.param("searchBody", outcome.searchBody, Types.VARCHAR)
+			.param("bodyText", outcome.body?.text, Types.VARCHAR)
+			.param("bodyLength", outcome.body?.length, Types.INTEGER)
+			.param("bodyFromImage", outcome.body?.fromImage ?: false)
 			.param("jobId", jobId)
 			.update() == 1
 	}

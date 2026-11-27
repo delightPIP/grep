@@ -1,5 +1,6 @@
 package com.unwrap.grep.features.demoseed.domain
 
+import com.unwrap.grep.features.archive.api.ItemBody
 import com.unwrap.grep.features.archive.domain.FileFormat
 import com.unwrap.grep.features.archive.domain.ItemKind
 import com.unwrap.grep.features.archive.domain.LinkNormalizer
@@ -54,6 +55,7 @@ object PremadeItems {
 			tags = entry.tags,
 			searchText = searchText(entry, source),
 			savedAt = savedAt,
+			body = if (kind == ItemKind.TEXT) null else ItemBody.of(entry.body, fromImage = kind == ItemKind.FILE && isImage(entry.fileFormat)),
 		)
 		return PremadeItem(row, file?.let { PremadeUpload(it.objectPath, bytes!!, mimeType(it.format)) })
 	}
@@ -75,6 +77,9 @@ object PremadeItems {
 		listOfNotNull(entry.title, source, entry.listSummary, entry.handoffSummary, entry.tags.joinToString(" "), entry.body)
 			.filter { it.isNotBlank() }
 			.joinToString(" ")
+
+	private fun isImage(format: FileFormat): Boolean =
+		format in setOf(FileFormat.PNG, FileFormat.JPEG, FileFormat.WEBP, FileFormat.HEIC)
 
 	/** Storage 버킷 허용 형식과 맞춘다. 브라우저 업로드는 파일의 형식을 그대로 보낸다. */
 	private fun mimeType(format: FileFormat): String = when (format) {

@@ -8,6 +8,9 @@ interface ObjectStorage {
 	/** 클라이언트가 원본을 직접 올릴 서명 PUT URL. */
 	fun presignPut(objectPath: String, expiresIn: Duration): URI
 
+	/** 원본을 여는 서명 GET URL(자세히 보기 `원본 열기`·이미지 미리보기, ARC-011). 객체가 있는지는 보지 않는다. */
+	fun presignGet(objectPath: String, expiresIn: Duration): URI
+
 	/** 서버가 원본을 직접 올린다. 데모 시드 도구(#69)만 쓴다. 같은 경로면 덮어쓴다. 버킷이 허용 형식을 걸어 두면 [contentType]이 맞아야 한다. */
 	fun put(objectPath: String, bytes: ByteArray, contentType: String)
 

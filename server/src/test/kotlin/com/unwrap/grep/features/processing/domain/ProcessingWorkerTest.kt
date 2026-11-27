@@ -47,6 +47,7 @@ class ProcessingWorkerTest : ArchiveApiTestSupport() {
 			"""
 			SELECT i.status, i.blocked_reason, i.title, i.list_summary, i.handoff_summary, i.partial_note,
 			       array_to_string(i.tags, ',') AS tags, i.summary_model, i.summary_prompt_version, i.search_text,
+			       i.body_text, i.body_length, i.body_from_image,
 			       j.status AS job_status, j.attempts, j.run_at > now() AS deferred
 			FROM items i JOIN item_jobs j ON j.item_id = i.id
 			WHERE i.user_id = :userId AND i.number = :number
@@ -223,6 +224,32 @@ class ProcessingWorkerTest : ArchiveApiTestSupport() {
 		val words = row(token, 2)
 		assertEquals("ready", words["status"])
 		assertTrue((words["search_text"] as String).contains("겨울엔 내 컵"))
+	}
+
+	@Test
+	fun `링크와글자있는이미지와붙여넣은글을처리했을때_처리하면_읽은본문을남기고글자료는text_body만쓰는지`() {
+		// given
+		val token = newUser()
+		saveLink(token, "https://example.com/pay").andExpect { status { isCreated() } }
+		val png = byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 9)
+		val uploadId = upload(token, "words.png", png)
+		saveItem(token, """{"kind":"file","uploadId":"$uploadId"}""").andExpect { status { isCreated() } }
+		saveItem(token, """{"kind":"text","text":"붙여 넣은 글"}""").andExpect { status { isCreated() } }
+		val responses = ArrayDeque(listOf(summary, summary.copy(imageText = "겨울엔 내 컵"), summary))
+		summarizer.respond = { responses.removeFirst() }
+
+		// when
+		repeat(3) { worker.runOnce() }
+
+		// then
+		val link = row(token, 1)
+		assertTrue((link["body_text"] as String).contains("포트원 본문"))
+		assertEquals((link["body_text"] as String).length, link["body_length"])
+		assertEquals(false, link["body_from_image"])
+		val image = row(token, 2)
+		assertEquals("겨울엔 내 컵", image["body_text"])
+		assertEquals(true, image["body_from_image"])
+		assertNull(row(token, 3)["body_text"])
 	}
 
 	@Test
