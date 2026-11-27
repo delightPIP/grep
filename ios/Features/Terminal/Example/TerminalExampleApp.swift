@@ -23,6 +23,7 @@ enum TerminalDemoScenario: String, CaseIterable, Identifiable {
     case droppedAndRevived = "버리기 1건 · 되살리기 결과"
     case dropConfirm = "버리기 2건 확인 시트 (실제 입력)"
     case binList = "휴지통 목록 (남은 날 · 다음 명령)"
+    case pickThenUnpick = "고르기 3건 → 칩 빼기·모두 해제 (실제 입력)"
     case revise = "고치기 131 편집 칸 (실제 입력)"
     case removeTags = "고치기 131 -#가이드 태그 지우기 (실제 입력)"
     case expired = "로그인 만료 이벤트"
@@ -287,6 +288,9 @@ final class TerminalExampleHarness: TerminalListener, TerminalDependency {
         case .dropConfirm:
             // 코어가 확인 대기를 잡도록 실제 입력으로 보낸다. 시트의 `버리기`는 가짜 서버가 받는다.
             currentScreen?.listener?.handle(.submitted("버리기 131 118"))
+        case .pickThenUnpick:
+            // 선택 줄의 `×` 칩은 `고르기 빼기 <번호>`, `모두 해제`는 `고르기 비우기`를 친 것과 같다.
+            currentScreen?.listener?.handle(.submitted("고르기 131 118 64"))
         case .revise:
             // 코어가 `/items/status`로 지금 값을 받아 편집 칸을 연다. 저장하면 가짜 서버가 `PATCH /items/131`을 받는다.
             currentScreen?.listener?.handle(.submitted("고치기 131"))
@@ -363,6 +367,11 @@ private final class ExampleTerminalTransport: HTTPTransport {
             return HTTPResponse(status: 201, body: Array(#"{"firstNumber":1,"lastNumber":8}"#.utf8))
         case (.get, "/items?limit=8"):
             return HTTPResponse(status: 200, body: Self.encoded(SamplePage(items: Self.sampleItems(), total: 8, nextCursor: nil)))
+        case (.get, "/items/status?numbers=131,118,64"):
+            let picked = [(131, "결제위젯 연동 가이드"), (118, "결제 실패 화면 모음.png"), (64, "결제 UX 스레드 모음")].map {
+                ItemSummary(number: $0.0, kind: .link, title: $0.1, source: nil, status: .ready, tags: [], savedAt: "2026-11-26T05:03:00Z")
+            }
+            return HTTPResponse(status: 200, body: Self.encoded(LookupBody(items: picked, missing: [])))
         case (.get, "/items/status?numbers=131"):
             return HTTPResponse(status: 200, body: Self.encoded(LookupBody(items: [Self.reviseItem()], missing: [])))
         case (.patch, "/items/131"):

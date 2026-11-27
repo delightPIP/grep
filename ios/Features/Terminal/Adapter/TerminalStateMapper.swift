@@ -317,7 +317,13 @@ public enum TerminalStateMapper {
                 ))
             }
             return result
-        case .unpicked, .pickCleared, .signOutEverywhereConfirm,
+        case .unpicked(_, let remaining):
+            // commands 6절 선택 빼기. 남은 수는 그 시점 값을 줄이 들고 온다(지난 줄이 나중 선택에 따라 바뀌지 않게).
+            return [.status(tone: .ok, boldPrefix: "뺌", body: "  선택 \(remaining)건 남음")]
+        case .pickCleared:
+            // commands 6절 "모두 풀면 `✓ 선택 비움`". 건수는 문구에 없다.
+            return [.status(tone: .ok, boldPrefix: "선택 비움", body: "")]
+        case .signOutEverywhereConfirm,
              .bundleList, .bundleAdded, .bundleView, .bundleNotFound, .bundleUnpicked, .notInBundle,
              .bundleDeleteConfirm, .bundleDeleted, .bundleNameInvalid, .folderHint, .itemDetail, .oneNumberOnly,
              .searchSaved, .savedSearchList, .savedSearchPeriod, .savedSearchTooLong, .savedSearchDeleteConfirm,
