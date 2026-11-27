@@ -1,8 +1,16 @@
 // 터미널 화면. 순수 뷰: 받은 상태만 그리고, 입력은 onInputChange·onSubmit·onPaste·onFilesDrop으로만 알린다.
 // 배치는 시안 Main·Errors·Logout ③ 아트보드, 출력 비우기(로그아웃·다른 계정 로그인, COM-009)는 코어가 lines로 내려준다.
 import { useState, type ClipboardEvent, type DragEvent, type ReactNode } from "react";
-import type { ItemSummary, LoggedInState, SaveFailure, SaveRecovery, TerminalLine } from "../../support/view-state";
-import { DockInput, Line, Prompt, StatusBar, Window } from "../../ui/grep";
+import type {
+  CommandFailure,
+  CommandName,
+  ItemSummary,
+  LoggedInState,
+  SaveFailure,
+  SaveRecovery,
+  TerminalLine,
+} from "../../support/view-state";
+import { DockInput, Line, Prompt, StatusBar, Window, type StatusItem } from "../../ui/grep";
 
 export type LoggedInViewProps = LoggedInState & {
   onInputChange: (text: string) => void;
@@ -11,9 +19,46 @@ export type LoggedInViewProps = LoggedInState & {
   onPaste: (text: string) => void;
   /** 화면에 파일을 끌어다 놓았다. */
   onFilesDrop: (files: File[]) => void;
+  /**
+   * 목록 맨 아래 `→ 더 보기`를 눌렀다(core `moreRequested`).
+   * shortcut: 선택 속성. 어댑터가 `handle.moreRequested`로 이으면(#60 클라이언트 갈래) 필수로 바꾼다.
+   */
+  onMoreRequested?: () => void;
 };
 
 const HELP_HINT = { key: "?", label: "도움말" };
+/** ARC-002 규칙 4 */
+const LIST_TAG_LIMIT = 3;
+/** ARC-004 규칙 7: 저장 시각은 한국 시간. 표기는 ARC-011 `2026-11-26 14:03`과 같게. */
+const SAVED_AT_FORMAT = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Seoul",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+/** 화면에 찍는 명령 이름(commands 2절). */
+const COMMAND_LABEL: Record<CommandName, string> = {
+  keep: "담기",
+  recent: "최근",
+  seek: "찾기",
+  pick: "고르기",
+  handoff: "넘기기",
+  guide: "도움말",
+  about: "설명",
+  signOut: "로그아웃",
+};
+
+/** COM-010·COM-008 이유 낱말. */
+const COMMAND_FAILURE_LABEL: Record<CommandFailure, string> = {
+  disconnected: "연결 끊김",
+  timedOut: "응답 없음",
+  serverError: "서버 오류",
+  clipboardDenied: "클립보드 거부",
+};
 /** commands 6절 글 저장: `<첫 줄, 24자까지>` */
 const TEXT_TITLE_LIMIT = 24;
 const BYTES_PER_MB = 1024 * 1024;
@@ -98,8 +143,7 @@ function AlreadySavedLines({ item }: { item: ItemSummary }) {
   return (
     <>
       <Line tone="warn">이미 저장됨 → {item.number}번 (새로 만들지 않음)</Line>
-      {/* shortcut: 번호·제목·출처만. 저장 시각·태그를 넣은 목록 행은 #60 `최근`에서 함께 만든다. */}
-      <Plain>{`${item.number}  ${withSource(item)}`}</Plain>
+      <ListRow item={item} />
       <Plain>→ 고르기 {item.number}</Plain>
     </>
   );
@@ -114,7 +158,75 @@ function SaveFailedLines({ reason, recovery }: { reason: SaveFailure; recovery: 
   );
 }
 
-function OutputLine({ line, failed }: { line: TerminalLine; failed: boolean }) {
+function savedAtText(savedAt: string): string {
+  const part = Object.fromEntries(SAVED_AT_FORMAT.formatToParts(new Date(savedAt)).map((p) => [p.type, p.value]));
+  return `${part.year}-${part.month}-${part.day} ${part.hour}:${part.minute}`;
+}
+
+/** 요약 자리. ARC-005 처리 상태마다 꼬리표, 끝난 자료는 흐린 요약(목록에는 이름표 없음, ARC-004 예외). */
+function rowSummary(item: ItemSummary): string | null {
+  if (isProcessing(item)) return "· 요약 생성 중";
+  // shortcut: `고치기`는 데모 범위 명령이 아니어서 칩(입력줄에 찍기) 대신 글자로만 둔다. 고치기가 들어오면 칩으로.
+  if (item.status === "blocked") return `! 본문 못 가져옴 → 고치기 ${item.number}`;
+  if (item.status === "failed") return "! 요약 못 만듦  제목·출처만 넘김";
+  if (item.listSummary === null) return null;
+  return item.partialNote ? `${item.listSummary} (${item.partialNote})` : item.listSummary;
+}
+
+const rowTone = (item: ItemSummary) =>
+  item.status === "blocked" || item.status === "failed" ? "gt-warn" : "gt-hint";
+
+function ListRow({ item }: { item: ItemSummary }) {
+  const tags = item.tags.slice(0, LIST_TAG_LIMIT);
+  const summary = rowSummary(item);
+  return (
+    <>
+      <div className="gt-line gt-row">
+        <span className="gt-row-num">{item.number}</span>
+        <span>{item.kind === "text" ? textTitle(item.title) : item.title}</span>
+        {item.source && <span className="gt-row-meta">{item.source}</span>}
+        <span className="gt-row-meta">{savedAtText(item.savedAt)}</span>
+      </div>
+      {(summary !== null || tags.length > 0) && (
+        <div className={`gt-line gt-row-sub ${rowTone(item)}`}>
+          {summary !== null && <span>{summary}</span>}
+          {tags.length > 0 && <span className="gt-row-tags">{tags.map((tag) => `#${tag}`).join(" ")}</span>}
+        </div>
+      )}
+    </>
+  );
+}
+
+function ListLines({ items, hasMore, onMoreRequested }: { items: ItemSummary[]; hasMore: boolean; onMoreRequested?: () => void }) {
+  return (
+    <>
+      {items.map((item) => (
+        <ListRow key={item.number} item={item} />
+      ))}
+      {hasMore && (
+        <Plain>
+          {"→ "}
+          <button type="button" className="gt-chip" onClick={onMoreRequested}>
+            더 보기
+          </button>
+        </Plain>
+      )}
+    </>
+  );
+}
+
+function CommandFailedLines({ command, reason, retry }: { command: CommandName; reason: CommandFailure; retry: string }) {
+  return (
+    <>
+      <Line tone="error">{`${COMMAND_LABEL[command]} 안 됨: ${COMMAND_FAILURE_LABEL[reason]}`}</Line>
+      <Plain>→ 다시: {retry}</Plain>
+    </>
+  );
+}
+
+type OutputLineProps = { line: TerminalLine; failed: boolean; onMoreRequested?: () => void };
+
+function OutputLine({ line, failed, onMoreRequested }: OutputLineProps) {
   switch (line.kind) {
     case "prompt":
       return <Prompt cmd={line.text} failed={failed} />;
@@ -135,18 +247,24 @@ function OutputLine({ line, failed }: { line: TerminalLine; failed: boolean }) {
       return <Line tone="warn">{`휴지통에 있음 → ${line.number}번. 되살리기 ${line.number}`}</Line>;
     case "saveFailed":
       return <SaveFailedLines reason={line.reason} recovery={line.recovery} />;
+    case "recentList":
+      return <ListLines items={line.items} hasMore={line.hasMore} onMoreRequested={onMoreRequested} />;
+    case "commandFailed":
+      return <CommandFailedLines command={line.command} reason={line.reason} retry={line.retry} />;
+    case "reconnected":
+      return <Line tone="ok">연결됨</Line>;
     default:
       // 나머지 줄 종류(#56 계약)는 각 실행 이슈(#58~#68)가 정책 원문으로 그린다.
       return null;
   }
 }
 
-function Block({ lines }: { lines: TerminalLine[] }) {
+function Block({ lines, onMoreRequested }: { lines: TerminalLine[]; onMoreRequested?: () => void }) {
   const failed = lines.some((line) => line.kind === "unknownCommand");
   return (
     <div className="gt-block">
       {lines.map((line, index) => (
-        <OutputLine key={index} line={line} failed={failed} />
+        <OutputLine key={index} line={line} failed={failed} onMoreRequested={onMoreRequested} />
       ))}
     </div>
   );
@@ -162,16 +280,28 @@ function DropGuide() {
   );
 }
 
-const carriesFiles = (event: DragEvent) => Array.from(event.dataTransfer?.types ?? []).includes("Files");
+/** 상태줄 `자료 131 · 요약 생성 중 1 · 연결 끊김`(commands 6절, ARC-005, COM-010). `선택`·`묶음` 칸은 그 명령 이슈에서. */
+function statusItems(itemCount: number | null, processingCount: number, isOffline: boolean): StatusItem[] {
+  return [
+    { label: "자료", value: itemCount },
+    ...(processingCount > 0 ? [{ label: "요약 생성 중", value: processingCount }] : []),
+    ...(isOffline ? [{ label: "연결 끊김", value: null }] : []),
+  ];
+}
+
+const carriesFiles =(event: DragEvent) => Array.from(event.dataTransfer?.types ?? []).includes("Files");
 
 export function LoggedInView({
   itemCount,
   lines,
   input,
+  processingCount,
+  isOffline,
   onInputChange,
   onSubmit,
   onPaste,
   onFilesDrop,
+  onMoreRequested,
 }: LoggedInViewProps) {
   const [isDragging, setDragging] = useState(false);
 
@@ -216,10 +346,10 @@ export function LoggedInView({
     >
       <Window
         title={windowTitle(lines)}
-        status={<StatusBar items={[{ label: "자료", value: itemCount }]} hint={HELP_HINT} />}
+        status={<StatusBar items={statusItems(itemCount, processingCount, isOffline)} hint={HELP_HINT} />}
       >
         {toBlocks(lines).map((block, index) => (
-          <Block key={index} lines={block} />
+          <Block key={index} lines={block} onMoreRequested={onMoreRequested} />
         ))}
         <DockInput
           value={input}

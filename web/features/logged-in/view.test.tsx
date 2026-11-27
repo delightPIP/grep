@@ -10,6 +10,7 @@ function renderView(state: Partial<LoggedInState> = {}) {
   const onSubmit = vi.fn();
   const onPaste = vi.fn();
   const onFilesDrop = vi.fn();
+  const onMoreRequested = vi.fn();
   const { container } = render(
     <LoggedInView
       itemCount={null}
@@ -23,6 +24,7 @@ function renderView(state: Partial<LoggedInState> = {}) {
       onSubmit={onSubmit}
       onPaste={onPaste}
       onFilesDrop={onFilesDrop}
+      onMoreRequested={onMoreRequested}
     />,
   );
   return {
@@ -30,6 +32,7 @@ function renderView(state: Partial<LoggedInState> = {}) {
     onSubmit,
     onPaste,
     onFilesDrop,
+    onMoreRequested,
     container,
     input: screen.getByRole("textbox") as HTMLInputElement,
   };
@@ -248,9 +251,10 @@ describe("LoggedInView", () => {
       expect(shown).not.toContain("· 요약 생성 중");
     });
 
-    it("이미저장된링크일때_화면을그리면_기존번호와그자료한줄과고르기안내를보이는지", () => {
+    it("이미저장된링크일때_화면을그리면_기존번호와그자료목록행과고르기안내를보이는지", () => {
       // given
-      const lines: LoggedInState["lines"] = [KEEP, { kind: "alreadySaved", item: item() }];
+      const saved = item({ status: "ready", listSummary: "카페 3곳이 텀블러 할인을 늘렸다", tags: ["텀블러"] });
+      const lines: LoggedInState["lines"] = [KEEP, { kind: "alreadySaved", item: saved }];
 
       // when
       const shown = shownOutput(lines);
@@ -258,7 +262,8 @@ describe("LoggedInView", () => {
       // then
       expect(shown.slice(1)).toEqual([
         "! 이미 저장됨 → 131번 (새로 만들지 않음)",
-        "131  카페 텀블러 할인, 올겨울 캠페인 늘었다 (팀 가상 기사)",
+        "131 카페 텀블러 할인, 올겨울 캠페인 늘었다 팀 가상 기사 2026-11-27 11:00",
+        "카페 3곳이 텀블러 할인을 늘렸다 #텀블러",
         "→ 고르기 131",
       ]);
     });
@@ -444,6 +449,179 @@ describe("LoggedInView", () => {
 
       // then
       expect(screen.queryByText("놓으면 저장")).toBeNull();
+    });
+  });
+
+  describe("최근 목록(#60, commands 6절·ARC-002·ARC-004·ARC-005)", () => {
+    const RECENT = { kind: "prompt", text: "최근" } as const;
+
+    function recent(items: ItemSummary[], hasMore = false): LoggedInState["lines"] {
+      return [RECENT, { kind: "recentList", items, hasMore }];
+    }
+
+    it("요약이끝난자료가있을때_최근목록을그리면_번호제목출처저장시각과흐린요약태그를두줄로보이는지", () => {
+      // given
+      const ready = item({ status: "ready", listSummary: "카페 3곳이 텀블러 할인을 늘렸다", tags: ["텀블러", "캠페인"] });
+
+      // when
+      const shown = shownOutput(recent([ready]));
+
+      // then
+      expect(shown.slice(1)).toEqual([
+        "131 카페 텀블러 할인, 올겨울 캠페인 늘었다 팀 가상 기사 2026-11-27 11:00",
+        "카페 3곳이 텀블러 할인을 늘렸다 #텀블러 #캠페인",
+      ]);
+    });
+
+    it("태그가5개일때_최근목록을그리면_앞3개만보이는지", () => {
+      // given
+      const ready = item({ status: "ready", listSummary: "요약", tags: ["가", "나", "다", "라", "마"] });
+
+      // when
+      const shown = shownOutput(recent([ready]));
+
+      // then
+      expect(shown[2]).toBe("요약 #가 #나 #다");
+    });
+
+    it("저장시각이UTC로올때_최근목록을그리면_한국시간으로보이는지", () => {
+      // given
+      const late = item({ savedAt: "2026-11-26T15:30:00Z", source: null });
+
+      // when
+      const shown = shownOutput(recent([late]));
+
+      // then
+      expect(shown[1]).toBe("131 카페 텀블러 할인, 올겨울 캠페인 늘었다 2026-11-27 00:30");
+    });
+
+    it("처리중인자료가있을때_최근목록을그리면_요약자리에흐린요약생성중을보이는지", () => {
+      // given
+      const items = [item({ number: 132, status: "received" }), item({ status: "processing" })];
+
+      // when
+      const { container } = renderView({ lines: recent(items) });
+
+      // then
+      const subs = Array.from(container.querySelectorAll(".gt-row-sub"));
+      expect(subs.map((sub) => sub.textContent)).toEqual(["· 요약 생성 중", "· 요약 생성 중"]);
+      expect(subs.every((sub) => sub.classList.contains("gt-hint"))).toBe(true);
+    });
+
+    it("본문을못가져온자료가있을때_최근목록을그리면_알림과고치기번호를보이는지", () => {
+      // given
+      const blocked = item({ number: 64, status: "blocked", blockedReason: "loginRequired" });
+
+      // when
+      const shown = shownOutput(recent([blocked]));
+
+      // then
+      expect(shown[2]).toBe("! 본문 못 가져옴 → 고치기 64");
+    });
+
+    it("처리가실패한자료가있을때_최근목록을그리면_요약못만듦알림을보이는지", () => {
+      // given
+      const failed = item({ status: "failed" });
+
+      // when
+      const shown = shownOutput(recent([failed]));
+
+      // then
+      expect(shown[2]).toBe("! 요약 못 만듦  제목·출처만 넘김");
+    });
+
+    it("일부만읽은자료일때_최근목록을그리면_요약끝에일부만읽음을붙이는지", () => {
+      // given
+      const partial = item({ status: "ready", listSummary: "겨울 굿즈 예산", partialNote: "앞 20쪽만 읽음" });
+
+      // when
+      const shown = shownOutput(recent([partial]));
+
+      // then
+      expect(shown[2]).toBe("겨울 굿즈 예산 (앞 20쪽만 읽음)");
+    });
+
+    it("다음자료가더있을때_더보기를누르면_더보기를알리는지", () => {
+      // given
+      const { onMoreRequested } = renderView({ lines: recent([item()], true) });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "더 보기" }));
+
+      // then
+      expect(onMoreRequested).toHaveBeenCalledOnce();
+    });
+
+    it("다음자료가없을때_최근목록을그리면_더보기를보이지않는지", () => {
+      // given
+      // when
+      renderView({ lines: recent([item()], false) });
+
+      // then
+      expect(screen.queryByRole("button", { name: "더 보기" })).toBeNull();
+    });
+  });
+
+  describe("상태줄·연결(#60, ARC-005·COM-010)", () => {
+    it("처리중인자료가있을때_화면을그리면_상태줄에요약생성중N을보이는지", () => {
+      // given
+      // when
+      const { container } = renderView({ itemCount: 131, processingCount: 2 });
+
+      // then
+      expect(container.querySelector(".gt-status")!.textContent).toContain("요약 생성 중 2");
+    });
+
+    it("처리중인자료가없을때_화면을그리면_상태줄에요약생성중을숨기는지", () => {
+      // given
+      // when
+      const { container } = renderView({ itemCount: 131, processingCount: 0 });
+
+      // then
+      expect(container.querySelector(".gt-status")!.textContent).not.toContain("요약 생성 중");
+    });
+
+    it("연결이끊겼을때_화면을그리면_상태줄에연결끊김을보이는지", () => {
+      // given
+      // when
+      const { container } = renderView({ isOffline: true });
+
+      // then
+      expect(container.querySelector(".gt-status")!.textContent).toContain("연결 끊김");
+    });
+
+    it("연결되어있을때_화면을그리면_상태줄에연결끊김이없는지", () => {
+      // given
+      // when
+      const { container } = renderView({ isOffline: false });
+
+      // then
+      expect(container.querySelector(".gt-status")!.textContent).not.toContain("연결 끊김");
+    });
+
+    it("명령이서버에닿지못했을때_화면을그리면_명령안됨과다시칠명령을보이는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [
+        { kind: "prompt", text: "최근" },
+        { kind: "commandFailed", command: "recent", reason: "disconnected", retry: "최근" },
+      ];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown.slice(1)).toEqual(["✗ 최근 안 됨: 연결 끊김", "→ 다시: 최근"]);
+    });
+
+    it("다시연결됐을때_화면을그리면_연결됨한줄을보이는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [{ kind: "reconnected" }];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown).toEqual(["✓ 연결됨"]);
     });
   });
 });
