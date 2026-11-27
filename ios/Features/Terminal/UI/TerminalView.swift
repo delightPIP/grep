@@ -492,7 +492,9 @@ public struct TerminalView: View {
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                statusRow(tone: .info, boldPrefix: nil, body: "자료 0건")
+                if let itemCountLine = presentation.itemCountLine {
+                    statusRow(tone: .info, boldPrefix: nil, body: itemCountLine)
+                }
                 statusRow(tone: .info, boldPrefix: nil, body: "저장: 다른 앱에서 공유 → 그렙, 또는 링크·글 붙여 넣기")
             }
 

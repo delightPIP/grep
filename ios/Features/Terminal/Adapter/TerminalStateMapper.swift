@@ -49,7 +49,8 @@ public enum TerminalStateMapper {
             revising: state.revising.map {
                 TerminalRevisePresentation(number: $0.number, title: $0.title, summary: $0.summary)
             },
-            offersSamples: state.itemCount == 0
+            offersSamples: state.itemCount == 0,
+            itemCountLine: state.itemCount.map { "자료 \(groupedCount($0))건" }
         )
     }
 
@@ -78,6 +79,11 @@ public enum TerminalStateMapper {
         default:
             nil
         }
+    }
+
+    /// 웹 `toLocaleString("ko-KR")`과 같은 천 단위 쉼표.
+    private static func groupedCount(_ count: Int) -> String {
+        count.formatted(.number.grouping(.automatic).locale(Locale(identifier: "ko_KR")))
     }
 
     /// 목록 머리 줄. 다음 쪽이 남았으면 `12건 중 1건`(commands 6절).
