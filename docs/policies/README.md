@@ -32,7 +32,7 @@
 | [COM-005](common/COM-005-free-tier-only.md) | 그렙은 돈이 드는 서비스를 쓰지 않고 무료 플랜·무료 한도 안에서만 돈다 | 검토 중 (개발자 확인 대기) | 공통 |
 | [COM-006](common/COM-006-per-user-isolation.md) | 한 사용자의 자료는 그 사용자만 보고, 다른 사용자의 자료에 닿는 길을 두지 않는다 | 검토 중 (개발자 확인 대기) | 공통 |
 | [COM-007](common/COM-007-confirm-answers.md) | 확인과 선택을 기다릴 때는 실행 낱말 하나만 실행 답으로 받고, 그 밖의 입력은 취소한 뒤 명령으로 실행한다 | 확정 | 공통 |
-| [COM-008](common/COM-008-handoff-count-and-copy-failure.md) | 넘기기는 이어 쓰기 결과가 5건을 넘으면 묻고, 복사에 실패하면 선택을 남기고 직접 복사할 길을 보인다 | 확정 | 공통 |
+| [COM-008](common/COM-008-handoff-count-and-copy-failure.md) | 넘기기는 이어 쓰기 결과가 5건을 넘으면 묻고, 복사에 성공하면 선택을 풀고, 실패하면 선택을 남기고 직접 복사할 길을 보인다 | 확정 | 공통 |
 | [COM-009](common/COM-009-terminal-history-kept.md) | 터미널 출력 기록·치던 글·선택은 이 기기에 남기고, 로그아웃하거나 다른 계정으로 로그인하면 지운다 | 확정 | 공통 |
 | [COM-010](common/COM-010-server-unreachable.md) | 서버에 닿지 못하면 명령 실패를 알리고 상태줄에 표시하며, 끊긴 동안 친 명령은 저절로 다시 하지 않는다 | 확정 | 공통 |
 | [DSK-001](desktop/DSK-001-resident-mole.md) | 데스크톱 두더지는 화면 오른쪽 아래에 상주하고, 사용자가 숨기거나 끌 수 있다 | 검토 중 (개발자 확인 대기) | 데스크톱 |
