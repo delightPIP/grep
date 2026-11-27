@@ -168,6 +168,8 @@ public struct TerminalPresentation: Equatable, Sendable {
     public let isOffline: Bool
     public let pendingConfirm: TerminalConfirmPrompt?
     public let revising: TerminalRevisePresentation?
+    /// 0건 첫 화면의 `→ 샘플 8건으로 해 보기`를 보일지(ARC-010 규칙 1). 자료가 0건일 때만 true.
+    public let offersSamples: Bool
 
     public init(
         title: String = "처음",
@@ -177,7 +179,8 @@ public struct TerminalPresentation: Equatable, Sendable {
         input: String = "",
         isOffline: Bool = false,
         pendingConfirm: TerminalConfirmPrompt? = nil,
-        revising: TerminalRevisePresentation? = nil
+        revising: TerminalRevisePresentation? = nil,
+        offersSamples: Bool = false
     ) {
         self.title = title
         self.statusText = statusText
@@ -187,5 +190,6 @@ public struct TerminalPresentation: Equatable, Sendable {
         self.isOffline = isOffline
         self.pendingConfirm = pendingConfirm
         self.revising = revising
+        self.offersSamples = offersSamples
     }
 }

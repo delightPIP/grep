@@ -12,6 +12,7 @@ public struct TerminalView: View {
     let onMoreRequested: () -> Void
     let onReviseSubmit: (Int, String, String) -> Void
     let onReviseCancel: () -> Void
+    let onSamplesRequest: () -> Void
     let onKeyboardVisibilityChange: ((Bool) -> Void)?
 
     @State private var showAllKeys = false
@@ -27,6 +28,7 @@ public struct TerminalView: View {
         onMoreRequested: @escaping () -> Void,
         onReviseSubmit: @escaping (Int, String, String) -> Void = { _, _, _ in },
         onReviseCancel: @escaping () -> Void = {},
+        onSamplesRequest: @escaping () -> Void = {},
         onKeyboardVisibilityChange: ((Bool) -> Void)? = nil
     ) {
         self.presentation = presentation
@@ -37,6 +39,7 @@ public struct TerminalView: View {
         self.onMoreRequested = onMoreRequested
         self.onReviseSubmit = onReviseSubmit
         self.onReviseCancel = onReviseCancel
+        self.onSamplesRequest = onSamplesRequest
         self.onKeyboardVisibilityChange = onKeyboardVisibilityChange
     }
 
@@ -493,6 +496,10 @@ public struct TerminalView: View {
                 statusRow(tone: .info, boldPrefix: nil, body: "저장: 다른 앱에서 공유 → 그렙, 또는 링크·글 붙여 넣기")
             }
 
+            if presentation.offersSamples {
+                samplesHint
+            }
+
             if showShareGuide {
                 shareGuideCard
             }
@@ -511,6 +518,26 @@ public struct TerminalView: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .accessibilityIdentifier("terminalWelcome")
+    }
+
+    /// ARC-010 규칙 1·2: 0건일 때만 보이고, 누르면 입력줄을 거치지 않고 바로 저장한다(웹 `SamplesChip`과 같음).
+    private var samplesHint: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 0) {
+            Text("→ ")
+                .foregroundStyle(palette.inkMuted)
+            Button(action: onSamplesRequest) {
+                Text("샘플 8건으로 해 보기")
+                    .bold()
+                    .underline()
+                    .foregroundStyle(palette.command)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("samplesChip")
+            Text(" 또는 아래에 링크 붙여 넣기")
+                .foregroundStyle(palette.ink)
+        }
+        .font(.system(size: 14, design: .monospaced))
+        .frame(minHeight: 44, alignment: .leading)
     }
 
     private var shareGuideCard: some View {

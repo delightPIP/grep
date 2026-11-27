@@ -100,6 +100,7 @@ private struct TerminalContent: View {
                     send(.reviseSubmitted(number: number, title: title, summary: summary))
                 },
                 onReviseCancel: { send(.reviseCancelled) },
+                onSamplesRequest: { send(.samplesRequested) },
                 onKeyboardVisibilityChange: { isKeyboardVisible = $0 }
             )
         )
