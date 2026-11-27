@@ -49,7 +49,7 @@
 
 - PO 결정(2026-11-26): 자동 태그를 보이기만 한다. 자료당 최대 5개, 목록에는 3개. 사용자가 직접 붙이거나 고치지 않는다. 새 명령은 두지 않는다
 - 기획서 F2(자동 태그), STATE 11절(자동 태그는 내부 재료였음, E-11: 태그로 찾기는 성공률이 낮고 느림. 그래서 직접 태그 관리는 넣지 않음)
-- 구현: `찾기`의 검색어·`#태그` 나누기와 `태그 없음` 줄은 `core/Features/Terminal/Sources/Commands/SeekCommand.swift`, 서버 검색은 `PgroongaItemSearch.kt`(#61). 태그를 만드는 처리(규칙 1)는 아직 없음
+- 구현: `찾기`의 검색어·`#태그` 나누기와 `태그 없음` 줄은 `core/Features/Terminal/Sources/Commands/SeekCommand.swift`, 서버 검색은 `PgroongaItemSearch.kt`(#61). 태그를 만드는 처리(규칙 1)는 `server/src/main/kotlin/com/unwrap/grep/features/processing/adapters/gemini/GeminiSummarizer.kt`, 값 표대로 정리하는 곳은 `server/src/main/kotlin/com/unwrap/grep/features/processing/domain/Tags.kt`(#59)
 
 ## 검증 방법
 
@@ -76,3 +76,4 @@
 | 2026-11-26 | 태그 지우기(`고치기 <번호> -#태그`)만 허용. 상태를 검토 중으로 바꿈(PO 결정, 개발자 확인 뒤 확정) |
 | 2026-11-26 | 태그 찾기 0건 뒤 최근 3건에 `(검색 결과 아님)` 머리줄(PO 결정, 디자이너 시안 검토 반영) |
 | 2026-11-26 | 목록 태그 앞 3개를 모든 목록에 다시 확인, 웹 자세히 보기는 발표 뒤(PO 결정, AI 제안 수용). 규칙 변경 없음 |
+| 2026-11-27 | 근거에 태그 만들기·정리 구현 위치 기입(규칙 변경 없음, #59) |

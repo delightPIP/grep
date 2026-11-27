@@ -87,7 +87,7 @@ shared/kernel   app(조립 지점, 진입점: API 서버 · 워커 · MCP 서버
 
 | 항목 | 선택지 | 비고 |
 |---|---|---|
-| LLM 제공사 | Anthropic(ADR-BCK-003 기본), Gemini(유튜브 영상 이해 F10 고려) | 요약 방식은 서버 소형 LLM으로 정했다(ADR-BCK-008). 제공사는 처리 워커 구현 전에 정한다 |
+| LLM 제공사 | 발표까지 Gemini Flash 무료 등급(ADR-BCK-014) | 요약 방식은 서버 소형 LLM으로 정했다(ADR-BCK-008, 결정 4는 ADR-BCK-014로 대체). 발표 뒤 제공사는 다시 본다 |
 | 호스팅 | 무료 플랜 조합, 관리형 Postgres와 소형 서버 | 비공개 베타는 무료, 공개 출시 때 유료로 올리는 안 |
 | 정책 값 | 용량 한도, 삭제 유예, 삭제 표시 보존, 이벤트 보존, 외부 LLM 전송 범위, RPO·RTO, 가져오기 한도 | [공통 영역 열린 질문](../policies/common/open-questions.md) |
 
