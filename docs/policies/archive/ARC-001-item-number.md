@@ -50,7 +50,7 @@
 
 - PO 결정(2026-11-26): "고유 번호 하나만". COM-001의 `! 이미 저장됨 → N번`과 명령어 설명서의 "바로 앞 목록에서 번호로 선택"이 서로 다른 번호를 뜻하던 것을 이 정책으로 정리
 - COM-001(같은 자료 재저장), 명령어 설명서 3절·6절
-- 구현: 아직 없음
+- 구현: 서버 번호 발급 `server/src/main/kotlin/com/unwrap/grep/features/archive/adapters/postgres/JdbcItemRepository.kt`(#57), 번호 확인 `GET /items/status`(#60·#62), 코어 번호 해석 `core/Features/Terminal/Sources/Commands/PickCommand.swift`
 
 ## 검증 방법
 
@@ -72,3 +72,4 @@
 | 2026-11-26 | 최초 등록 |
 | 2026-11-26 | 휴지통 자료 번호는 `되살리기`만 받는다고 밝힘(ARC-008) |
 | 2026-11-26 | 비고: 번호 범위 입력은 `버리기`에만 둔다고 ARC-010에 맞춤 |
+| 2026-11-27 | 근거에 구현 위치 기입. 규칙 변경 없음 |

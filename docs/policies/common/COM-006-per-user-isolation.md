@@ -40,7 +40,7 @@
 
 - 외부 전문가 검토(2026-11-26): 순차 번호와 조회 누락이 만나면 타인 자료 노출(OWASP API Security 2023 API1, OWASP Top 10 2021 A01). 사용자 간 중복 제거는 "누가 이 파일을 갖고 있다"를 드러냄
 - ACC-001 주의, ADR-BCK-002(`UNIQUE(user_id, ...)`)
-- 구현: 아직 없음
+- 구현: 사용자 ID는 접근 토큰에서만 읽고 모든 자료 조회를 그 사용자로 거른다(`server/src/main/kotlin/com/unwrap/grep/features/account/`, `server/src/main/kotlin/com/unwrap/grep/features/archive/adapters/postgres/`, #31·#57)
 
 ## 검증 방법
 
@@ -58,3 +58,4 @@
 | 날짜 | 변경 |
 | :--- | :--- |
 | 2026-11-26 | 최초 등록(검토 중, 개발자 확인 대기) |
+| 2026-11-27 | 근거에 구현 위치 기입. 규칙 변경 없음 |
