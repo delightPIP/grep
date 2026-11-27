@@ -77,6 +77,15 @@ export type SaveFailure =
   | { kind: "unsupportedFormat"; fileExtension: string }
   | { kind: "tooLarge"; fileName: string; bytes: number };
 
+/** 저장에 실패한 뒤 다시 넣는 길(ARC-005 규칙 2). core `SaveRecovery`. */
+export type SaveRecovery =
+  /** 넣으려던 줄을 입력줄에 되돌렸다. `  입력은 남겨 둠` */
+  | { kind: "inputKept" }
+  /** 그새 친 새 글이 있어 입력줄을 덮지 않았다. 다음 줄 `→ 다시: <command>` */
+  | { kind: "retry"; command: string }
+  /** 끌어다 놓은 파일. ` (<name>)` */
+  | { kind: "file"; name: string };
+
 /** 명령 실패 이유(COM-008, COM-010). clipboardDenied는 넘기기만. */
 export type CommandFailure = "disconnected" | "timedOut" | "serverError" | "clipboardDenied";
 
@@ -89,7 +98,7 @@ export type TerminalLine =
   | { kind: "saved"; item: ItemSummary }
   | { kind: "alreadySaved"; item: ItemSummary }
   | { kind: "inTrash"; number: number }
-  | { kind: "saveFailed"; reason: SaveFailure }
+  | { kind: "saveFailed"; reason: SaveFailure; recovery: SaveRecovery }
   | { kind: "recentList"; items: ItemSummary[]; hasMore: boolean }
   | { kind: "searchResult"; query: SearchQuery; total: number; items: ItemSummary[]; hasMore: boolean }
   | { kind: "noResults"; query: SearchQuery; recent: ItemSummary[] }

@@ -17,11 +17,12 @@ private final class Dependency: LoggedInDependency {
     let authService: any AuthService
     let httpTransport: any HTTPTransport
     let clipboard: any ClipboardPort = FakeClipboard()
-    let files: any FilePort = FakeFilePort()
+    let files: any FilePort
     let historyStore: any HistoryStore = FakeHistoryStore()
-    init(authService: any AuthService, httpTransport: any HTTPTransport) {
+    init(authService: any AuthService, httpTransport: any HTTPTransport, files: any FilePort) {
         self.authService = authService
         self.httpTransport = httpTransport
+        self.files = files
     }
 }
 
@@ -33,6 +34,7 @@ final class LoggedInTests {
     private static let tokenA = fakeAccessToken(subject: "user-a")
     private let auth = FakeAuthService(token: LoggedInTests.tokenA)
     private let transport = FakeHTTPTransport()
+    private let files = FakeFilePort()
     private let views = FakeLoggedInViewFactory()
     private let listener = FakeLoggedInListener()
     private let parent = TestParentRouter()
@@ -45,7 +47,7 @@ final class LoggedInTests {
     private var view: FakeLoggedInView { views.views.last! }
 
     private func attach(pendingInput: PendingInput? = nil) async {
-        let dependency = Dependency(authService: auth, httpTransport: transport)
+        let dependency = Dependency(authService: auth, httpTransport: transport, files: files)
         let builder = LoggedInBuilder(dependency: dependency, viewFactory: views)
         let router = builder.build(listener: listener, pendingInput: pendingInput)
         parent.attach(router)
@@ -384,7 +386,7 @@ final class LoggedInTests {
         await runCurrent()
 
         // then
-        #expect(view.state == LoggedInViewState(itemCount: 34, lines: [.prompt(line), .saveFailed(reason)], input: line))
+        #expect(view.state == LoggedInViewState(itemCount: 34, lines: [.prompt(line), .saveFailed(reason, .inputKept)], input: line))
     }
 
     @Test func 링크저장을기다릴때_서버가세션만료로답하면_친줄과함께만료를알리는지() async {
@@ -445,6 +447,7 @@ final class LoggedInTests {
 
         // then
         #expect(view.state?.input == "찾기 텀블러")
+        #expect(view.state?.lines.last == .saveFailed(.disconnected, .retry("담기 https://example.com/a")))
     }
 
     @Test func 터미널이떠있을때_담기만치면_요청없이빠진인자줄을그리는지() async {
@@ -458,6 +461,164 @@ final class LoggedInTests {
         // then
         #expect(transport.requests.count == requestsBefore)
         #expect(view.state?.lines == [.prompt("담기"), .missingArgument(.keep)])
+    }
+
+    // MARK: 붙여 넣기(#57, user-flow 3절 1단계)
+
+    @Test func 터미널이떠있을때_링크를붙여넣으면_명령없이링크저장을요청하고담기줄로찍는지() async throws {
+        // given
+        await attachLoaded()
+        let link = "https://carti1108.github.io/grep-seed-demo/l1.html"
+
+        // when
+        await send(.pasted(link))
+
+        // then
+        let request = try #require(transport.requests.last)
+        #expect(request.path == "/items")
+        #expect(try saveBody(of: request) == SaveBody(kind: "link", url: link, text: nil))
+        #expect(view.state?.lines == [.prompt("담기 \(link)")])
+    }
+
+    @Test func 터미널이떠있을때_여러줄글을붙여넣으면_줄바꿈을살려글저장을요청하는지() async throws {
+        // given
+        await attachLoaded()
+        let memo = "텀블러 세척 메모\n베이킹소다 한 숟갈"
+
+        // when
+        await send(.pasted("  \(memo)\n"))
+
+        // then
+        #expect(try saveBody(of: try #require(transport.requests.last)) == SaveBody(kind: "text", url: nil, text: memo))
+    }
+
+    @Test func 붙여넣은링크저장이실패했을때_입력줄을보면_담기와그링크가남아있는지() async {
+        // given
+        await attachLoaded()
+        let link = "https://example.com/a"
+        await send(.pasted(link))
+
+        // when
+        transport.respond(.failure(.timedOut))
+        await runCurrent()
+
+        // then
+        #expect(view.state?.input == "담기 \(link)")
+        #expect(view.state?.lines.last == .saveFailed(.timedOut, .inputKept))
+    }
+
+    @Test func 터미널이떠있을때_빈글을붙여넣으면_요청하지않는지() async {
+        // given
+        await attachLoaded()
+        let requestsBefore = transport.requests.count
+
+        // when
+        await send(.pasted(" \n "))
+
+        // then
+        #expect(transport.requests.count == requestsBefore)
+    }
+
+    // MARK: 끌어다 놓기(#57, COM-004 규칙 3·8)
+
+    private static let pdf = DroppedFile(id: "f1", name: "겨울 굿즈 예산안.pdf", size: 120_000)
+    private static let uploadJSON = #"{"uploadId":"7c0b6a52-0000-4000-8000-000000000001","uploadUrl":"https://storage.test/put/1","expiresAt":"2026-11-27T12:00:00+09:00"}"#
+    private static let fileItem = ItemSummary(
+        number: 35, kind: .file, title: "겨울 굿즈 예산안.pdf", source: "pdf", status: .received, tags: [],
+        savedAt: "2026-11-27T11:00:00+09:00"
+    )
+    private static let fileItemJSON = #"{"number":35,"kind":"file","title":"겨울 굿즈 예산안.pdf","source":"pdf","status":"received","blockedReason":null,"listSummary":null,"summarySource":null,"partialNote":null,"tags":[],"matchedIn":null,"savedAt":"2026-11-27T11:00:00+09:00"}"#
+
+    private struct UploadBody: Decodable, Equatable {
+        let fileName: String
+        let size: Int
+    }
+
+    private struct FileSaveBody: Decodable, Equatable {
+        let kind: String
+        let uploadId: String
+    }
+
+    @Test func 파일하나를놓았을때_서버가모두받으면_자리를받아올리고저장해저장됨줄을그리는지() async throws {
+        // given
+        await attachLoaded()
+
+        // when
+        await send(.filesDropped([Self.pdf]))
+        transport.respond(status: 201, json: Self.uploadJSON)
+        await runCurrent()
+        transport.respond(status: 201, json: #"{"result":"saved","item":\#(Self.fileItemJSON)}"#)
+        await runCurrent()
+
+        // then
+        let uploadRequest = try #require(transport.requests.dropFirst().first)
+        #expect(uploadRequest.path == "/uploads")
+        #expect(try JSONDecoder().decode(UploadBody.self, from: Data((uploadRequest.body ?? "").utf8))
+            == UploadBody(fileName: "겨울 굿즈 예산안.pdf", size: 120_000))
+        #expect(files.uploads.map(\.uploadURL) == ["https://storage.test/put/1"])
+        let saveRequest = try #require(transport.requests.last)
+        #expect(saveRequest.path == "/items")
+        #expect(saveRequest.headers["Idempotency-Key"] != nil)
+        #expect(try JSONDecoder().decode(FileSaveBody.self, from: Data((saveRequest.body ?? "").utf8))
+            == FileSaveBody(kind: "file", uploadId: "7c0b6a52-0000-4000-8000-000000000001"))
+        #expect(view.state?.lines == [.prompt("담기 겨울 굿즈 예산안.pdf"), .saved(Self.fileItem)])
+        #expect(view.state?.itemCount == 35)
+        #expect(files.released == ["f1"])
+    }
+
+    @Test func 두파일을놓았을때_첫파일이20MB를넘으면_그파일만실패로알리고둘째는저장하는지() async {
+        // given
+        await attachLoaded()
+        let big = DroppedFile(id: "f0", name: "영상.mov", size: 30_000_000)
+
+        // when
+        await send(.filesDropped([big, Self.pdf]))
+        transport.respond(status: 413, json: #"{"code":"file_too_large","fileName":"영상.mov","bytes":30000000}"#)
+        await runCurrent()
+        transport.respond(status: 201, json: Self.uploadJSON)
+        await runCurrent()
+        transport.respond(status: 201, json: #"{"result":"saved","item":\#(Self.fileItemJSON)}"#)
+        await runCurrent()
+
+        // then
+        #expect(view.state?.lines == [
+            .prompt("담기 영상.mov 겨울 굿즈 예산안.pdf"),
+            .saveFailed(.tooLarge(fileName: "영상.mov", bytes: 30_000_000), .file(name: "영상.mov")),
+            .saved(Self.fileItem),
+        ])
+        #expect(files.released == ["f0", "f1"])
+    }
+
+    @Test func 파일을올린뒤_서버가받지않는형식이라하면_확장자를넣어실패로알리는지() async {
+        // given
+        await attachLoaded()
+        let zip = DroppedFile(id: "z", name: "자료.pdf", size: 10)
+        await send(.filesDropped([zip]))
+        transport.respond(status: 201, json: Self.uploadJSON)
+        await runCurrent()
+
+        // when
+        transport.respond(status: 415, json: #"{"code":"unsupported_format","fileExtension":"zip"}"#)
+        await runCurrent()
+
+        // then
+        #expect(view.state?.lines.last == .saveFailed(.unsupportedFormat(fileExtension: "zip"), .file(name: "자료.pdf")))
+    }
+
+    @Test func 파일을놓았을때_올리기가연결끊김이면_서버저장을부르지않고실패로알리는지() async {
+        // given
+        await attachLoaded()
+        files.failure = .unreachable
+        await send(.filesDropped([Self.pdf]))
+
+        // when
+        transport.respond(status: 201, json: Self.uploadJSON)
+        await runCurrent()
+
+        // then
+        #expect(transport.requests.last?.path == "/uploads")
+        #expect(view.state?.lines.last == .saveFailed(.disconnected, .file(name: "겨울 굿즈 예산안.pdf")))
+        #expect(files.released == ["f1"])
     }
 
     // MARK: 생명주기

@@ -21,6 +21,7 @@ public final class LoggedInBuilder: Builder<any LoggedInDependency>, LoggedInBui
             presenter: view,
             authService: dependency.authService,
             httpTransport: dependency.httpTransport,
+            files: dependency.files,
             listener: listener,
             pendingInput: pendingInput
         )
@@ -29,11 +30,12 @@ public final class LoggedInBuilder: Builder<any LoggedInDependency>, LoggedInBui
 }
 
 /// 터미널 화면. 붙으면 `GET /me`로 자료 수를 받고, 입력줄의 명령을 해석한다.
-/// #31에서 아는 명령은 로그아웃뿐이다. 나머지는 없는 명령으로 그린다.
+/// 아는 명령은 `담기`·`로그아웃`이다. 붙여 넣기와 끌어다 놓기도 저장한다(#57). 나머지는 없는 명령으로 그린다.
 final class LoggedInInteractor: PresentableInteractor<any LoggedInPresentable>, LoggedInPresentableListener {
 
     private let authService: any AuthService
     private let httpTransport: any HTTPTransport
+    private let files: any FilePort
     private weak var listener: (any LoggedInListener)?
     private var viewState = LoggedInViewState()
     private var isSigningOut = false
@@ -49,11 +51,13 @@ final class LoggedInInteractor: PresentableInteractor<any LoggedInPresentable>, 
         presenter: any LoggedInPresentable,
         authService: any AuthService,
         httpTransport: any HTTPTransport,
+        files: any FilePort,
         listener: any LoggedInListener,
         pendingInput: PendingInput?
     ) {
         self.authService = authService
         self.httpTransport = httpTransport
+        self.files = files
         self.listener = listener
         self.pendingInput = pendingInput
         super.init(presenter: presenter)
@@ -73,8 +77,10 @@ final class LoggedInInteractor: PresentableInteractor<any LoggedInPresentable>, 
         switch action {
         case .inputChanged(let text): update(viewState.with(input: text))
         case .submitted(let text): submit(text)
-        // 붙여 넣기 저장(#57), 끌어다 놓기(#57), 더 보기(#60·#61)는 각 실행 이슈에서 채운다.
-        case .pasted, .filesDropped, .moreRequested: break
+        case .pasted(let text): paste(text)
+        case .filesDropped(let dropped): drop(dropped)
+        // 더 보기(#60·#61)는 그 실행 이슈에서 채운다.
+        case .moreRequested: break
         }
     }
 
@@ -154,15 +160,12 @@ final class LoggedInInteractor: PresentableInteractor<any LoggedInPresentable>, 
             )
             guard !Task.isCancelled else { return }
             switch outcome {
-            case .saved(let item):
-                // shortcut: /me 응답과 순서가 엇갈리면 한 건 어긋날 수 있다. 상태줄 갱신을 정하는 #60에서 맞춘다.
-                update(viewState.appending(lines: [.saved(item)]).with(itemCount: viewState.itemCount.map { $0 + 1 }))
-            case .duplicate(let item):
-                update(viewState.appending(lines: [.alreadySaved(item)]))
-            case .inTrash(let item):
-                update(viewState.appending(lines: [.inTrash(number: item.number)]))
+            case .saved, .duplicate, .inTrash:
+                showStored(outcome)
             case .failed(let reason):
-                update(viewState.appending(lines: [.saveFailed(reason)]))
+                // 그새 친 글이 있으면 입력줄을 덮지 않고 다시 칠 명령을 보인다(#57 사용자 결정).
+                let recovery: SaveRecovery = viewState.input.isEmpty ? .inputKept : .retry(typed)
+                update(viewState.appending(lines: [.saveFailed(reason, recovery)]))
                 retryableSave = (typed, key)
                 restoreInput(typed)
             case .sessionExpired:
@@ -171,6 +174,96 @@ final class LoggedInInteractor: PresentableInteractor<any LoggedInPresentable>, 
             case .cancelled:
                 break
             }
+        }
+    }
+
+    /// 붙여 넣은 링크·글은 `담기 <붙인 것>`을 친 것과 같다(user-flow 3절 1단계). 줄바꿈은 살린다.
+    private func paste(_ text: String) {
+        let content = text.trimmingWhitespace()
+        guard !content.isEmpty else { return }
+        keep(KeepCommand.request(for: content), typed: "담기 \(content)")
+    }
+
+    /// 끌어다 놓은 파일을 하나씩 저장한다. 한 파일이 실패해도 나머지는 저장한다(COM-004 규칙 3·8).
+    /// 원본은 사용자 기기에 있으니 입력줄에 되돌릴 것은 없다. 다 쓴 파일은 바로 놓는다.
+    /// shortcut: `GET /uploads/limits`로 보내기 전에 거르지 않고 서버 판정(413·415)만 쓴다. 큰 파일을 올리기 전에 막아야 할 때 더한다.
+    private func drop(_ dropped: [DroppedFile]) {
+        guard !dropped.isEmpty else { return }
+        update(viewState.appending(lines: [.prompt((["담기"] + dropped.map(\.name)).joined(separator: " "))]))
+        startTask { [weak self] in
+            guard let self else { return }
+            var remaining = dropped[...]
+            defer { remaining.forEach { self.files.release($0.id) } }
+            let token = await authService.accessToken()
+            guard !Task.isCancelled else { return }
+            guard let token else {
+                expire()
+                return
+            }
+            while let file = remaining.popFirst() {
+                let outcome = await saveFile(file, accessToken: token)
+                files.release(file.id)
+                guard !Task.isCancelled else { return }
+                switch outcome {
+                case .saved, .duplicate, .inTrash:
+                    showStored(outcome)
+                case .failed(let reason):
+                    update(viewState.appending(lines: [.saveFailed(reason, .file(name: file.name))]))
+                case .sessionExpired:
+                    expire()
+                    return
+                case .cancelled:
+                    return
+                }
+            }
+        }
+    }
+
+    /// 업로드 자리 받기 → 서명 URL로 올리기 → `POST /items {kind: file}`(api/openapi.yaml `createUpload`).
+    private func saveFile(_ file: DroppedFile, accessToken: String) async -> ItemsAPI.SaveOutcome {
+        let upload = await ItemsAPI.createUpload(
+            fileName: file.name, size: file.size, transport: httpTransport, accessToken: accessToken
+        )
+        let uploadID: String
+        switch upload {
+        case .created(let id, let url):
+            do {
+                try await files.upload(file.id, to: url)
+            } catch {
+                return Self.outcome(of: error)
+            }
+            uploadID = id
+        case .sessionExpired: return .sessionExpired
+        case .failed(let reason): return .failed(reason)
+        case .cancelled: return .cancelled
+        }
+        guard !Task.isCancelled else { return .cancelled }
+        return await ItemsAPI.save(
+            .file(uploadID: uploadID), transport: httpTransport, accessToken: accessToken, idempotencyKey: UUID()
+        )
+    }
+
+    private static func outcome(of error: FileUploadError) -> ItemsAPI.SaveOutcome {
+        switch error {
+        case .cancelled: .cancelled
+        case .unreachable: .failed(.disconnected)
+        case .timedOut: .failed(.timedOut)
+        case .rejected, .missingFile: .failed(.serverError)
+        }
+    }
+
+    /// 서버가 자료를 가진 결과(새로 저장, 이미 있음, 휴지통에 있음)를 줄로 찍는다.
+    private func showStored(_ outcome: ItemsAPI.SaveOutcome) {
+        switch outcome {
+        case .saved(let item):
+            // shortcut: /me 응답과 순서가 엇갈리면 한 건 어긋날 수 있다. 상태줄 갱신을 정하는 #60에서 맞춘다.
+            update(viewState.appending(lines: [.saved(item)]).with(itemCount: viewState.itemCount.map { $0 + 1 }))
+        case .duplicate(let item):
+            update(viewState.appending(lines: [.alreadySaved(item)]))
+        case .inTrash(let item):
+            update(viewState.appending(lines: [.inTrash(number: item.number)]))
+        case .failed, .sessionExpired, .cancelled:
+            break
         }
     }
 
