@@ -26,4 +26,4 @@ tuist test --device "iPhone 17"
 ```
 
 - 전체 앱 스킴: `Grep`
-- 피처 Example 스킴: `FeatureLoggedOutExample`, `FeatureTerminalExample` (시나리오 목록 화면 → 항목 선택 시 전체 화면 표시 + 닫기 복귀 패턴)
+- 피처 Example 스킴: `FeatureLoggedOutExample`, `FeatureTerminalExample`, `FeatureLoggedInExample` (시나리오 목록 화면 → 항목 선택 시 전체 화면 표시 + 닫기 복귀 패턴)

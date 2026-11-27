@@ -1,3 +1,4 @@
+import FeatureLoggedInAdapter
 import FeatureLoggedInUI
 import FeatureLoggedOutAdapter
 import FeatureLoggedOutInterface
@@ -44,8 +45,19 @@ final class RootScreen: RootViewControllable, SwiftUIRenderable {
 @MainActor
 final class AppViewFactory: GrepAppViewFactory {
     private let loggedOut = LoggedOutScreenFactory()
-    private let terminal = TerminalScreenFactory { terminalView, isKeyboardVisible in
-        AnyView(LoggedInTabWrapper(isKeyboardVisible: isKeyboardVisible, terminalView: terminalView))
+    private let terminal: TerminalScreenFactory
+
+    init(authService: any AuthService, httpTransport: any HTTPTransport) {
+        self.terminal = TerminalScreenFactory { terminalView, context in
+            AnyView(
+                LoggedInTabWrapper(
+                    authService: authService,
+                    httpTransport: httpTransport,
+                    context: context,
+                    terminalView: terminalView
+                )
+            )
+        }
     }
 
     func makeRootView() -> RootScreen { RootScreen() }
@@ -53,18 +65,49 @@ final class AppViewFactory: GrepAppViewFactory {
     func makeTerminalView() -> any TerminalViewContract { terminal.makeTerminalView() }
 }
 
-/// 터미널 화면을 하단 탭 컨테이너(MOB-001)로 감싼다.
+/// 터미널 화면을 하단 탭 컨테이너(MOB-001)로 감싸고 보관함·설정 탭을 연결한다.
 private struct LoggedInTabWrapper: View {
-    @Binding var isKeyboardVisible: Bool
+    let context: TerminalHostContext
     let terminalView: AnyView
-    @State private var selectedTab: LoggedInTab = .terminal
+    @State private var model: LoggedInTabsModel
+
+    init(
+        authService: any AuthService,
+        httpTransport: any HTTPTransport,
+        context: TerminalHostContext,
+        terminalView: AnyView
+    ) {
+        self.context = context
+        self.terminalView = terminalView
+        let loader = HTTPArchiveItemLoader(authService: authService, httpTransport: httpTransport)
+        let sendCommand = context.sendCommand
+        self._model = State(
+            initialValue: LoggedInTabsModel(
+                archiveLoader: loader,
+                onSignOut: { sendCommand("로그아웃") },
+                onPickItem: { number in sendCommand("고르기 \(number)") }
+            )
+        )
+    }
 
     var body: some View {
-        LoggedInTabContainerView(
-            selectedTab: $selectedTab,
-            hidesTabBar: isKeyboardVisible
+        LoggedInTabsView(
+            model: model,
+            hidesTabBar: context.isKeyboardVisible.wrappedValue
         ) {
             terminalView
+        }
+        .onAppear {
+            model.updateTerminalContext(itemCount: context.itemCount, pickedNumbers: context.pickedNumbers)
+        }
+        .onChange(of: context.itemCount) { _, newValue in
+            model.updateTerminalContext(itemCount: newValue, pickedNumbers: context.pickedNumbers)
+        }
+        .onChange(of: context.pickedNumbers) { _, newValue in
+            model.updateTerminalContext(itemCount: context.itemCount, pickedNumbers: newValue)
+        }
+        .onChange(of: model.terminalScrollToBottomTrigger) { _, newValue in
+            context.scrollToBottomTrigger.wrappedValue = newValue
         }
     }
 }
@@ -77,14 +120,17 @@ final class AppLauncher {
 
     init() {
         let baseURL = AppLauncher.resolveBaseURL()
+        let authService = AppLauncher.resolveAuthService()
+        let httpTransport = URLSessionHTTPTransport(baseURL: baseURL)
         let platform = PlatformServices(
-            authService: AppLauncher.resolveAuthService(),
-            httpTransport: URLSessionHTTPTransport(baseURL: baseURL),
+            authService: authService,
+            httpTransport: httpTransport,
             clipboard: PasteboardClipboardPort(),
             files: URLSessionFilePort(),
             historyStore: UserDefaultsHistoryStore()
         )
-        self.app = GrepApp(viewFactory: AppViewFactory(), platform: platform)
+        let viewFactory = AppViewFactory(authService: authService, httpTransport: httpTransport)
+        self.app = GrepApp(viewFactory: viewFactory, platform: platform)
     }
 
     func start() {

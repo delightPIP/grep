@@ -94,6 +94,58 @@ let platformTestsTarget: Target = .target(
 
 let loggedInUITarget: Target = uiTarget("LoggedIn")
 
+let loggedInAdapterTarget: Target = .target(
+    name: "FeatureLoggedInAdapter",
+    destinations: .iOS,
+    product: .staticFramework,
+    bundleId: "\(bundlePrefix).feature.loggedin.adapter",
+    deploymentTargets: deploymentTargets,
+    sources: ["Features/LoggedIn/Adapter/**"],
+    dependencies: [
+        .target(name: "FeatureLoggedInUI"),
+        .package(product: "GrepCore"),
+    ],
+    settings: swiftSettings
+)
+
+let loggedInExampleTarget: Target = .target(
+    name: "FeatureLoggedInExample",
+    destinations: .iOS,
+    product: .app,
+    bundleId: "\(bundlePrefix).feature.loggedin.example",
+    deploymentTargets: deploymentTargets,
+    infoPlist: .extendingDefault(with: ["UILaunchScreen": [:]]),
+    sources: ["Features/LoggedIn/Example/**"],
+    dependencies: [
+        .target(name: "FeatureLoggedInAdapter"),
+        .target(name: "FeatureLoggedInUI"),
+        .target(name: "FeatureTerminalAdapter"),
+        .package(product: "RIBs"),
+        .package(product: "RIBsSwiftUI"),
+        .package(product: "GrepCore"),
+        .package(product: "GrepCoreTesting"),
+        .package(product: "FeatureTerminalInterface"),
+        .package(product: "FeatureTerminal"),
+        .package(product: "FeatureTerminalTesting"),
+    ],
+    settings: swiftSettings
+)
+
+let loggedInAdapterTestsTarget: Target = .target(
+    name: "FeatureLoggedInAdapterTests",
+    destinations: .iOS,
+    product: .unitTests,
+    bundleId: "\(bundlePrefix).feature.loggedin.adapter.tests",
+    deploymentTargets: deploymentTargets,
+    sources: ["Features/LoggedIn/Tests/**"],
+    dependencies: [
+        .target(name: "FeatureLoggedInAdapter"),
+        .target(name: "FeatureLoggedInUI"),
+        .package(product: "GrepCore"),
+    ],
+    settings: swiftSettings
+)
+
 let terminalAdapterTestsTarget: Target = .target(
     name: "FeatureTerminalAdapterTests",
     destinations: .iOS,
@@ -112,6 +164,7 @@ let terminalAdapterTestsTarget: Target = .target(
 
 let appDependencies: [TargetDependency] = features.map { .target(name: "Feature\($0)Adapter") } + [
     .target(name: "FeatureLoggedInUI"),
+    .target(name: "FeatureLoggedInAdapter"),
     .target(name: "GrepPlatform"),
     .package(product: "RIBs"),
     .package(product: "RIBsSwiftUI"),
@@ -147,7 +200,16 @@ let allTargets: [Target] =
     features.map(uiTarget)
     + features.map(adapterTarget)
     + features.map(exampleTarget)
-    + [loggedInUITarget, terminalAdapterTestsTarget, platformTarget, platformTestsTarget, appTarget]
+    + [
+        loggedInUITarget,
+        loggedInAdapterTarget,
+        loggedInExampleTarget,
+        loggedInAdapterTestsTarget,
+        terminalAdapterTestsTarget,
+        platformTarget,
+        platformTestsTarget,
+        appTarget,
+    ]
 
 let project = Project(
     name: "Grep",

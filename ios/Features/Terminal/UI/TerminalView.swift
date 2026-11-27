@@ -5,6 +5,7 @@ import SwiftUI
 
 public struct TerminalView: View {
     let presentation: TerminalPresentation
+    let scrollToBottomTrigger: Int
     let onInputChange: (String) -> Void
     let onSubmit: (String) -> Void
     let onPaste: (String) -> Void
@@ -17,6 +18,7 @@ public struct TerminalView: View {
 
     public init(
         presentation: TerminalPresentation,
+        scrollToBottomTrigger: Int = 0,
         onInputChange: @escaping (String) -> Void,
         onSubmit: @escaping (String) -> Void,
         onPaste: @escaping (String) -> Void,
@@ -24,6 +26,7 @@ public struct TerminalView: View {
         onKeyboardVisibilityChange: ((Bool) -> Void)? = nil
     ) {
         self.presentation = presentation
+        self.scrollToBottomTrigger = scrollToBottomTrigger
         self.onInputChange = onInputChange
         self.onSubmit = onSubmit
         self.onPaste = onPaste
@@ -98,6 +101,11 @@ public struct TerminalView: View {
             .scrollDismissesKeyboard(.interactively)
             .background(palette.surface)
             .onChange(of: presentation.blocks.count) { _, _ in
+                withAnimation(.easeOut(duration: 0.15)) {
+                    proxy.scrollTo("terminalBottom", anchor: .bottom)
+                }
+            }
+            .onChange(of: scrollToBottomTrigger) { _, _ in
                 withAnimation(.easeOut(duration: 0.15)) {
                     proxy.scrollTo("terminalBottom", anchor: .bottom)
                 }

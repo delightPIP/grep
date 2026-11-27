@@ -1,7 +1,7 @@
 import SwiftUI
 
 // 모바일 하단 탭 컨테이너(MOB-001, MTabBar.dc.html).
-// 지금은 터미널 탭을 실제 화면으로 연결하고, 보관함·설정 탭은 다음 이슈에서 붙인다.
+// 탭을 옮겨도 각 탭의 상태를 유지하고(규칙 6), 보고 있는 탭을 다시 누르면 재선택 콜백을 알린다(규칙 8).
 
 public enum LoggedInTab: Int, CaseIterable, Equatable, Sendable {
     case terminal = 0
@@ -25,39 +25,47 @@ public enum LoggedInTab: Int, CaseIterable, Equatable, Sendable {
     }
 }
 
-public struct LoggedInTabContainerView<TerminalContent: View>: View {
+public struct LoggedInTabContainerView<
+    TerminalContent: View,
+    ArchiveContent: View,
+    SettingsContent: View
+>: View {
     @Binding private var selectedTab: LoggedInTab
     private let hidesTabBar: Bool
+    private let onReselectTab: ((LoggedInTab) -> Void)?
     private let terminalContent: () -> TerminalContent
+    private let archiveContent: () -> ArchiveContent
+    private let settingsContent: () -> SettingsContent
 
     public init(
         selectedTab: Binding<LoggedInTab>,
         hidesTabBar: Bool = false,
-        @ViewBuilder terminalContent: @escaping () -> TerminalContent
+        onReselectTab: ((LoggedInTab) -> Void)? = nil,
+        @ViewBuilder terminalContent: @escaping () -> TerminalContent,
+        @ViewBuilder archiveContent: @escaping () -> ArchiveContent,
+        @ViewBuilder settingsContent: @escaping () -> SettingsContent
     ) {
         self._selectedTab = selectedTab
         self.hidesTabBar = hidesTabBar
+        self.onReselectTab = onReselectTab
         self.terminalContent = terminalContent
+        self.archiveContent = archiveContent
+        self.settingsContent = settingsContent
     }
 
-    private let surface = Color(red: 0x14 / 255, green: 0x17 / 255, blue: 0x1c / 255)
-    private let surfaceRaised = Color(red: 0x1c / 255, green: 0x20 / 255, blue: 0x27 / 255)
-    private let line = Color(red: 0x2e / 255, green: 0x34 / 255, blue: 0x3d / 255)
-    private let prompt = Color(red: 0x7f / 255, green: 0xe0 / 255, blue: 0xa3 / 255)
-    private let ink = Color(red: 0xe7 / 255, green: 0xe9 / 255, blue: 0xec / 255)
-    private let inkMuted = Color(red: 0x99 / 255, green: 0xa2 / 255, blue: 0xad / 255)
+    private let palette = LoggedInPalette.dark
 
     public var body: some View {
         VStack(spacing: 0) {
             ZStack {
-                terminalContent()
-                    .opacity(selectedTab == .terminal ? 1 : 0)
-                    .allowsHitTesting(selectedTab == .terminal)
-
-                if selectedTab == .archive {
-                    placeholderTab(title: "보관함", message: "보관함 화면은 다음 이슈에서 연결됩니다.")
-                } else if selectedTab == .settings {
-                    placeholderTab(title: "설정", message: "설정 화면은 다음 이슈에서 연결됩니다.")
+                tabSlot(isSelected: selectedTab == .terminal) {
+                    terminalContent()
+                }
+                tabSlot(isSelected: selectedTab == .archive) {
+                    archiveContent()
+                }
+                tabSlot(isSelected: selectedTab == .settings) {
+                    settingsContent()
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -66,8 +74,18 @@ public struct LoggedInTabContainerView<TerminalContent: View>: View {
                 tabBar
             }
         }
-        .background(surface.ignoresSafeArea())
+        .background(palette.surface.ignoresSafeArea())
         .preferredColorScheme(.dark)
+    }
+
+    private func tabSlot<Content: View>(
+        isSelected: Bool,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        content()
+            .opacity(isSelected ? 1 : 0)
+            .allowsHitTesting(isSelected)
+            .accessibilityHidden(!isSelected)
     }
 
     private var tabBar: some View {
@@ -75,7 +93,11 @@ public struct LoggedInTabContainerView<TerminalContent: View>: View {
             ForEach(LoggedInTab.allCases, id: \.self) { tab in
                 let isSelected = selectedTab == tab
                 Button {
-                    selectedTab = tab
+                    if isSelected {
+                        onReselectTab?(tab)
+                    } else {
+                        selectedTab = tab
+                    }
                 } label: {
                     VStack(spacing: 2) {
                         Image(systemName: tab.systemImage)
@@ -83,47 +105,22 @@ public struct LoggedInTabContainerView<TerminalContent: View>: View {
                         Text(tab.title)
                             .font(.system(size: 12, weight: isSelected ? .bold : .regular, design: .monospaced))
                     }
-                    .foregroundStyle(isSelected ? prompt : inkMuted)
+                    .foregroundStyle(isSelected ? palette.prompt : palette.inkMuted)
                     .frame(maxWidth: .infinity, minHeight: 52)
                     .overlay(alignment: .top) {
                         Rectangle()
-                            .fill(isSelected ? prompt : Color.clear)
+                            .fill(isSelected ? palette.prompt : Color.clear)
                             .frame(height: 2)
                     }
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("tab_\(tab.rawValue)")
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
             }
         }
-        .background(surfaceRaised.ignoresSafeArea(edges: .bottom))
+        .background(palette.surfaceRaised.ignoresSafeArea(edges: .bottom))
         .overlay(alignment: .top) {
-            Rectangle().fill(line).frame(height: 1)
+            Rectangle().fill(palette.line).frame(height: 1)
         }
-    }
-
-    private func placeholderTab(title: String, message: String) -> some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 4) {
-                Text("그렙")
-                    .font(.system(size: 14, weight: .bold, design: .monospaced))
-                    .foregroundStyle(prompt)
-                Text("— \(title)")
-                    .font(.system(size: 14, weight: .bold, design: .monospaced))
-                    .foregroundStyle(ink)
-                Spacer()
-            }
-            .padding(.horizontal, 16)
-            .frame(height: 52)
-            .background(surfaceRaised.ignoresSafeArea(edges: .top))
-            Divider().overlay(line)
-            Spacer()
-            Text(message)
-                .font(.system(size: 14, design: .monospaced))
-                .foregroundStyle(inkMuted)
-                .padding(24)
-            Spacer()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(surface)
     }
 }
