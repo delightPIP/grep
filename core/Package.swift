@@ -56,31 +56,33 @@ let featureTargets: [Target] = features.flatMap { (name: String) -> [Target] in
 let libraryNames = ["GrepCore", "GrepCoreTesting", "GrepAppRoot"]
     + features.flatMap { ["Feature\($0)Interface", "Feature\($0)", "Feature\($0)Testing"] }
 
+let appRootDependencies: [Target.Dependency] = [ribs, "GrepCore"] + features.flatMap {
+    [Target.Dependency.target(name: "Feature\($0)Interface"), .target(name: "Feature\($0)")]
+}
+
+let appRootTestDependencies: [Target.Dependency] = [ribs, "GrepCore", "GrepCoreTesting", "GrepAppRoot"]
+    + features.flatMap {
+        [Target.Dependency.target(name: "Feature\($0)Interface"), .target(name: "Feature\($0)Testing")]
+    }
+
+let baseTargets: [Target] = [
+    .target(name: "GrepCore", dependencies: [ribs], path: "Core/Sources"),
+    .target(name: "GrepCoreTesting", dependencies: [ribs, "GrepCore"], path: "Core/Testing"),
+    .testTarget(name: "GrepCoreTests", dependencies: ["GrepCore"], path: "Core/Tests"),
+    .target(name: "GrepAppRoot", dependencies: appRootDependencies, path: "App/Sources"),
+    .testTarget(name: "GrepAppRootTests", dependencies: appRootTestDependencies, path: "App/Tests"),
+]
+
+let allTargets: [Target] = baseTargets + featureTargets
+let packageProducts: [Product] = libraryNames.map { .library(name: $0, targets: [$0]) }
+
 let package = Package(
     name: "GrepCore",
     platforms: [.macOS(.v14), .iOS(.v17)],
-    products: libraryNames.map { .library(name: $0, targets: [$0]) },
+    products: packageProducts,
     dependencies: [
         .package(url: "https://github.com/carti1108/carti-RIBs-Swift.git", exact: "0.1.0"),
     ],
-    targets: [
-        .target(name: "GrepCore", dependencies: [ribs], path: "Core/Sources"),
-        .target(name: "GrepCoreTesting", dependencies: [ribs, "GrepCore"], path: "Core/Testing"),
-        .testTarget(name: "GrepCoreTests", dependencies: ["GrepCore"], path: "Core/Tests"),
-        .target(
-            name: "GrepAppRoot",
-            dependencies: [ribs, "GrepCore"] + features.flatMap {
-                [Target.Dependency.target(name: "Feature\($0)Interface"), .target(name: "Feature\($0)")]
-            },
-            path: "App/Sources"
-        ),
-        .testTarget(
-            name: "GrepAppRootTests",
-            dependencies: [ribs, "GrepCore", "GrepCoreTesting", "GrepAppRoot"] + features.flatMap {
-                [Target.Dependency.target(name: "Feature\($0)Interface"), .target(name: "Feature\($0)Testing")]
-            },
-            path: "App/Tests"
-        ),
-    ] + featureTargets,
+    targets: allTargets,
     swiftLanguageModes: [.v6]
 )
