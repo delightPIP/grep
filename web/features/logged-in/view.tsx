@@ -26,6 +26,7 @@ import type {
   Revising,
   SaveFailure,
   SaveRecovery,
+  SavedSearchEntry,
   SearchQuery,
   TerminalLine,
   TrashEntry,
@@ -382,13 +383,64 @@ type SearchResultLinesProps = {
   hasMore: boolean;
   onMoreRequested?: () => void;
   period?: Period | null;
+  /** 결과 맨 아래 `→ 찾아두기 <검색어>` 칩의 검색어(ARC-012 규칙 9). 두지 않으면 null·없음 */
+  saveQuery?: string | null;
 };
 
-function SearchResultLines({ total, items, hasMore, onMoreRequested, period }: SearchResultLinesProps) {
+function SearchResultLines({ total, items, hasMore, onMoreRequested, period, saveQuery }: SearchResultLinesProps) {
   return (
     <>
       <Plain>{listHeader(total, items.length, period)}</Plain>
       <ListLines items={items} hasMore={hasMore} onMoreRequested={onMoreRequested} period={period} />
+      {saveQuery != null && (
+        <Plain>
+          {"→ "}
+          <CommandChip command={`찾아두기 ${saveQuery}`} />
+        </Plain>
+      )}
+    </>
+  );
+}
+
+/**
+ * ARC-012 규칙 9: 찾기 결과의 `찾아두기 <검색어>` 칩. 이미 찾아둔 검색어(isSavedSearch, 찾아두기 바로 뒤 결과)와
+ * 시점이 붙은 찾기(규칙 4, 저장하지 않음)에는 두지 않는다.
+ */
+function saveQueryFor(line: Extract<TerminalLine, { kind: "searchResult" }>, savedInBlock: boolean): string | null {
+  if (line.isSavedSearch === true || savedInBlock || line.period != null) return null;
+  return line.query.text;
+}
+
+/** ARC-012 사용자 문구 찾아두기 결과. 결과 목록은 searchResult 줄이 이어서 그린다. */
+function SearchSavedLines({ query, total, already }: { query: string; total: number; already: boolean }) {
+  if (already) return <Line tone="warn">{`이미 찾아둠: ${query}`}</Line>;
+  return (
+    <>
+      <Line tone="ok">{`찾아둠: ${query}  ${total}건`}</Line>
+      <Line tone="info">{total === 0 ? "맞는 자료가 저장되면 모임" : "보관함 저장한 찾기에 있음"}</Line>
+    </>
+  );
+}
+
+/** ARC-012 규칙 6 찾아둔 목록. 순서는 서버가 만든 순서 최신부터 준다. 검색어를 누르면 `찾아두기 <검색어>`가 찍힌다. */
+function SavedSearchListLines({ searches }: { searches: SavedSearchEntry[] }) {
+  if (searches.length === 0) {
+    return (
+      <>
+        <Line tone="info">찾아둔 것 없음</Line>
+        <Plain>
+          {"→ "}
+          <CommandChip command="찾아두기 ">찾아두기 &lt;검색어&gt;</CommandChip>
+        </Plain>
+      </>
+    );
+  }
+  return (
+    <>
+      <Plain>{`${searches.length}개 찾아둠`}</Plain>
+      {searches.map((search) => (
+        <NameCountRow key={search.query} name={search.query} count={search.count} command={`찾아두기 ${search.query}`} />
+      ))}
     </>
   );
 }
@@ -616,12 +668,12 @@ function BinListLines({ total, items, hasMore, onMoreRequested }: BinListLinesPr
   );
 }
 
-/** 묶음 목록 한 줄 `<이름>  N건`. 이름을 누르면 `묶음 <이름>`이 찍힌다(commands 6절 출력 원칙). */
-function BundleRow({ bundle }: { bundle: BundleEntry }) {
+/** 이름 목록 한 줄 `<이름>  N건`(묶음·찾아둔 것). 이름을 누르면 그 명령이 찍힌다(commands 6절 출력 원칙). */
+function NameCountRow({ name, count, command }: { name: string; count: number; command: string }) {
   return (
-    <div className="gt-line gt-row">
-      <CommandChip command={`묶음 ${bundle.name}`}>{bundle.name}</CommandChip>
-      <span className="gt-row-meta">{`${bundle.count}건`}</span>
+    <div className="gt-line gt-name-row">
+      <CommandChip command={command}>{name}</CommandChip>
+      <span className="gt-hint">{`${count}건`}</span>
     </div>
   );
 }
@@ -647,7 +699,7 @@ function BundleListLines({ bundles }: { bundles: BundleEntry[] }) {
     <>
       <Plain>{`${bundles.length}개 묶음`}</Plain>
       {bundles.map((bundle) => (
-        <BundleRow key={bundle.name} bundle={bundle} />
+        <NameCountRow key={bundle.name} name={bundle.name} count={bundle.count} command={`묶음 ${bundle.name}`} />
       ))}
     </>
   );
@@ -997,9 +1049,10 @@ function GuideLines() {
   );
 }
 
-type OutputLineProps = { line: TerminalLine; failed: boolean; onMoreRequested?: () => void };
+/** savedInBlock: 같은 블록에 찾아두기 결과(searchSaved)가 있다. 뒤따르는 찾기 결과는 이미 찾아둔 검색어다. */
+type OutputLineProps = { line: TerminalLine; failed: boolean; savedInBlock: boolean; onMoreRequested?: () => void };
 
-function OutputLine({ line, failed, onMoreRequested }: OutputLineProps) {
+function OutputLine({ line, failed, savedInBlock, onMoreRequested }: OutputLineProps) {
   switch (line.kind) {
     case "prompt":
       return <Prompt cmd={line.text} failed={failed} />;
@@ -1014,6 +1067,8 @@ function OutputLine({ line, failed, onMoreRequested }: OutputLineProps) {
       if (line.command === "pick") return <Line tone="error">번호 없음  예: 고르기 131</Line>;
       // ARC-011 사용자 문구.
       if (line.command === "peek") return <Line tone="error">번호 없음  예: 열기 131</Line>;
+      // ARC-012 사용자 문구.
+      if (line.command === "gather") return <Line tone="error">검색어 없음  예: 찾아두기 텀블러 캠페인</Line>;
       return null;
     case "missingTag":
       // ARC-002 사용자 문구.
@@ -1046,6 +1101,7 @@ function OutputLine({ line, failed, onMoreRequested }: OutputLineProps) {
           hasMore={line.hasMore}
           onMoreRequested={onMoreRequested}
           period={line.period}
+          saveQuery={saveQueryFor(line, savedInBlock)}
         />
       );
     case "noResults":
@@ -1111,6 +1167,34 @@ function OutputLine({ line, failed, onMoreRequested }: OutputLineProps) {
     case "revived":
       // ARC-008 사용자 문구.
       return <Line tone="ok">{`되살림 ${line.items.length}건`}</Line>;
+    // #134 찾아두기(ARC-012 사용자 문구)
+    case "searchSaved":
+      return <SearchSavedLines query={line.query} total={line.total} already={line.already} />;
+    case "savedSearchList":
+      return <SavedSearchListLines searches={line.searches} />;
+    case "savedSearchPeriod":
+      return (
+        <>
+          <Line tone="error">{`시점은 찾아두지 않음: ${line.period}`}</Line>
+          <Plain>
+            {"→ "}
+            <CommandChip command={line.suggestion} />
+          </Plain>
+        </>
+      );
+    case "savedSearchTooLong":
+      return <Line tone="error">검색어 40자 초과</Line>;
+    case "savedSearchDeleteConfirm":
+      return (
+        <>
+          <Line tone="warn">{`지우기? 찾아둔 ${line.query} (자료는 남음)`}</Line>
+          <ConfirmAnswer word="지우기" />
+        </>
+      );
+    case "savedSearchDeleted":
+      return <Line tone="ok">{`지움  찾아둔 ${line.query}`}</Line>;
+    case "savedSearchNotFound":
+      return <Line tone="error">{`찾아둔 것 없음: ${line.query}`}</Line>;
     // #131 자세히 보기(ARC-011)
     case "itemDetail":
       return <ItemDetailLines detail={line.detail} />;
@@ -1157,10 +1241,11 @@ function OutputLine({ line, failed, onMoreRequested }: OutputLineProps) {
 
 function Block({ lines, onMoreRequested }: { lines: TerminalLine[]; onMoreRequested?: () => void }) {
   const failed = lines.some((line) => line.kind === "unknownCommand");
+  const savedInBlock = lines.some((line) => line.kind === "searchSaved");
   return (
     <div className="gt-block">
       {lines.map((line, index) => (
-        <OutputLine key={index} line={line} failed={failed} onMoreRequested={onMoreRequested} />
+        <OutputLine key={index} line={line} failed={failed} savedInBlock={savedInBlock} onMoreRequested={onMoreRequested} />
       ))}
     </div>
   );

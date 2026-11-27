@@ -122,3 +122,4 @@ html, body, #root, #app { height: 100%; }
 .gt-detail-original { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); }
 .gt-detail-image { display: block; max-width: min(100%, 320px); max-height: 240px; border: 1px solid var(--line); border-radius: var(--radius-sm); }
 .gt-row-title { text-align: left; }
+.gt-name-row { display: flex; flex-wrap: wrap; column-gap: 2ch; padding-left: 2ch; }

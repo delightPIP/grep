@@ -163,7 +163,16 @@ export type TerminalLine =
   | { kind: "saveFailed"; reason: SaveFailure; recovery: SaveRecovery }
   /** total: 시점이 붙은 `최근`이면 그 기간 전체 건수, 시점이 없으면 null(#114, 통합 승인) */
   | { kind: "recentList"; items: ItemSummary[]; hasMore: boolean; period?: Period | null; total?: number | null }
-  | { kind: "searchResult"; query: SearchQuery; total: number; items: ItemSummary[]; hasMore: boolean; period?: Period | null }
+  /** isSavedSearch: 이 검색어가 이미 찾아둔 것이면 true. `→ 찾아두기 <검색어>` 칩을 숨긴다. null·없음이면 보인다(#134, 통합 승인) */
+  | {
+      kind: "searchResult";
+      query: SearchQuery;
+      total: number;
+      items: ItemSummary[];
+      hasMore: boolean;
+      period?: Period | null;
+      isSavedSearch?: boolean | null;
+    }
   /** period: 시점을 붙인 찾기가 0건이면 그 시점. `→ 기간 없이: 찾기 <검색어>`를 보인다(#114, 통합 승인) */
   | { kind: "noResults"; query: SearchQuery; recent: ItemSummary[]; period?: Period | null }
   | { kind: "picked"; items: ItemRef[] }

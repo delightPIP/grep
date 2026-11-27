@@ -625,7 +625,7 @@ describe("LoggedInView", () => {
       const shown = shownOutput(lines);
 
       // then
-      expect(shown.slice(1)).toEqual(["1건", "131 카페 텀블러 할인, 올겨울 캠페인 늘었다 2026-11-27 11:00", "요약 131"]);
+      expect(shown.slice(1)).toEqual(["1건", "131 카페 텀블러 할인, 올겨울 캠페인 늘었다 2026-11-27 11:00", "요약 131", "→ 찾아두기 결제"]);
     });
 
     it("찾은자료가10건을넘을때_찾기결과를그리면_머리줄에전체중보인건수와더보기를보이는지", () => {
@@ -637,7 +637,7 @@ describe("LoggedInView", () => {
 
       // then
       expect(shown[1]).toBe("23건 중 10건");
-      expect(shown[shown.length - 1]).toBe("→ 더 보기");
+      expect(shown.slice(-2)).toEqual(["→ 더 보기", "→ 찾아두기 결제"]);
     });
 
     it("더보기로다음쪽을이어받았을때_찾기결과를그리면_머리숫자가행수와맞는지", () => {
@@ -2222,6 +2222,198 @@ describe("LoggedInView", () => {
 
       // then
       expect(onInputChange).toHaveBeenCalledWith("열기 97");
+    });
+  });
+
+  describe("찾아두기(#134, ARC-012)", () => {
+    function shownBlock(prompt: string, ...rest: TerminalLine[]): string[] {
+      return shownOutput([{ kind: "prompt", text: prompt }, ...rest]).slice(1);
+    }
+
+    const QUERY = { text: "결제", words: "결제", tags: [] };
+
+    it("새검색어를찾아뒀을때_화면을그리면_찾아둠건수와보관함안내를보이는지", () => {
+      // given
+      // when
+      const shown = shownBlock("찾아두기 텀블러 캠페인", { kind: "searchSaved", query: "텀블러 캠페인", total: 4, already: false });
+
+      // then
+      expect(shown).toEqual(["✓ 찾아둠: 텀블러 캠페인  4건", "· 보관함 저장한 찾기에 있음"]);
+    });
+
+    it("0건인검색어를찾아뒀을때_화면을그리면_맞는자료가저장되면모임을보이는지", () => {
+      // given
+      // when
+      const shown = shownBlock("찾아두기 겨울 굿즈", { kind: "searchSaved", query: "겨울 굿즈", total: 0, already: false });
+
+      // then
+      expect(shown).toEqual(["✓ 찾아둠: 겨울 굿즈  0건", "· 맞는 자료가 저장되면 모임"]);
+    });
+
+    it("이미찾아둔검색어일때_화면을그리면_이미찾아둠만보이는지", () => {
+      // given
+      // when
+      const shown = shownBlock("찾아두기 텀블러 캠페인", { kind: "searchSaved", query: "텀블러 캠페인", total: 4, already: true });
+
+      // then
+      expect(shown).toEqual(["! 이미 찾아둠: 텀블러 캠페인"]);
+    });
+
+    it("찾아둔것이있을때_찾아두기를치면_개수머리와검색어별건수를보이는지", () => {
+      // given
+      const line: TerminalLine = {
+        kind: "savedSearchList",
+        searches: [
+          { query: "겨울 굿즈", count: 0 },
+          { query: "텀블러 캠페인", count: 4 },
+        ],
+      };
+
+      // when
+      const shown = shownBlock("찾아두기", line);
+
+      // then
+      expect(shown).toEqual(["2개 찾아둠", "겨울 굿즈 0건", "텀블러 캠페인 4건"]);
+    });
+
+    it("찾아둔목록일때_검색어를누르면_입력줄에찾아두기검색어를찍는지", () => {
+      // given
+      const { onInputChange } = renderView({ lines: [{ kind: "savedSearchList", searches: [{ query: "텀블러 캠페인", count: 4 }] }] });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "텀블러 캠페인" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("찾아두기 텀블러 캠페인");
+    });
+
+    it("찾아둔것이없을때_찾아두기를치면_없음과다음명령을보이는지", () => {
+      // given
+      // when
+      const shown = shownBlock("찾아두기", { kind: "savedSearchList", searches: [] });
+
+      // then
+      expect(shown).toEqual(["· 찾아둔 것 없음", "→ 찾아두기 <검색어>"]);
+    });
+
+    it("찾아두기에검색어가없을때_화면을그리면_검색어없음과예를보이는지", () => {
+      // given
+      // when
+      const shown = shownBlock("찾아두기 ", { kind: "missingArgument", command: "gather" });
+
+      // then
+      expect(shown).toEqual(["✗ 검색어 없음  예: 찾아두기 텀블러 캠페인"]);
+    });
+
+    it("시점이붙은검색어를찾아두려할때_화면을그리면_실패와시점없는명령을보이는지", () => {
+      // given
+      // when
+      const shown = shownBlock("찾아두기 텀블러 3주전", { kind: "savedSearchPeriod", period: "3주전", suggestion: "찾아두기 텀블러" });
+
+      // then
+      expect(shown).toEqual(["✗ 시점은 찾아두지 않음: 3주전", "→ 찾아두기 텀블러"]);
+    });
+
+    it("검색어가너무길때_화면을그리면_40자초과를알리는지", () => {
+      // given
+      // when
+      const shown = shownBlock("찾아두기 …", { kind: "savedSearchTooLong" });
+
+      // then
+      expect(shown).toEqual(["✗ 검색어 40자 초과"]);
+    });
+
+    it("찾아둔것을지우려할때_화면을그리면_자료는남음과실행낱말을묻는지", () => {
+      // given
+      // when
+      const shown = shownBlock("찾아두기 텀블러 캠페인 지우기", { kind: "savedSearchDeleteConfirm", query: "텀블러 캠페인" });
+
+      // then
+      expect(shown).toEqual(["! 지우기? 찾아둔 텀블러 캠페인 (자료는 남음)", "→ 실행: 지우기 다시 입력 · 취소: 그 외 입력"]);
+    });
+
+    it("찾아둔것을지웠을때_화면을그리면_지움을보이는지", () => {
+      // given
+      // when
+      const shown = shownBlock("지우기", { kind: "savedSearchDeleted", query: "텀블러 캠페인" });
+
+      // then
+      expect(shown).toEqual(["✓ 지움  찾아둔 텀블러 캠페인"]);
+    });
+
+    it("없는찾아둔것을지우려할때_화면을그리면_찾아둔것없음과검색어를보이는지", () => {
+      // given
+      // when
+      const shown = shownBlock("찾아두기 텀블러 지우기", { kind: "savedSearchNotFound", query: "텀블러" });
+
+      // then
+      expect(shown).toEqual(["✗ 찾아둔 것 없음: 텀블러"]);
+    });
+
+    it("찾기결과일때_화면을그리면_맨아래에찾아두기검색어칩을두는지", () => {
+      // given
+      // when
+      const shown = shownBlock("찾기 결제", { kind: "searchResult", query: QUERY, total: 1, items: [item()], hasMore: false });
+
+      // then
+      expect(shown[shown.length - 1]).toBe("→ 찾아두기 결제");
+    });
+
+    it("찾기결과일때_찾아두기칩을누르면_입력줄에찍기만하는지", () => {
+      // given
+      const { onInputChange, onSubmit } = renderView({
+        lines: [{ kind: "searchResult", query: QUERY, total: 1, items: [item()], hasMore: false }],
+      });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "찾아두기 결제" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("찾아두기 결제");
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+
+    it("시점을붙인찾기결과일때_화면을그리면_찾아두기칩을두지않는지", () => {
+      // given
+      const period = { label: "지난주", from: "2026-11-16T15:00:00Z", to: "2026-11-23T15:00:00Z" };
+      const line: TerminalLine = {
+        kind: "searchResult",
+        query: { text: "결제 지난주", words: "결제", tags: [] },
+        total: 1,
+        items: [item({ savedAt: "2026-11-18T03:00:00Z" })],
+        hasMore: false,
+        period,
+      };
+
+      // when
+      const shown = shownBlock("찾기 결제 지난주", line);
+
+      // then
+      expect(shown.some((text) => text.includes("찾아두기"))).toBe(false);
+    });
+
+    it("이미찾아둔검색어의찾기결과일때_화면을그리면_찾아두기칩을두지않는지", () => {
+      // given
+      const line: TerminalLine = { kind: "searchResult", query: QUERY, total: 1, items: [item()], hasMore: false, isSavedSearch: true };
+
+      // when
+      const shown = shownBlock("찾기 결제", line);
+
+      // then
+      expect(shown.some((text) => text.startsWith("→ 찾아두기"))).toBe(false);
+    });
+
+    it("찾아둔뒤결과일때_화면을그리면_찾아두기칩을두지않는지", () => {
+      // given
+      // when
+      const shown = shownBlock(
+        "찾아두기 결제",
+        { kind: "searchSaved", query: "결제", total: 1, already: false },
+        { kind: "searchResult", query: QUERY, total: 1, items: [item()], hasMore: false },
+      );
+
+      // then
+      expect(shown.some((text) => text.startsWith("→ 찾아두기"))).toBe(false);
     });
   });
 });
