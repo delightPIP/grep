@@ -1,6 +1,7 @@
 package com.unwrap.grep.features.archive.adapters.http
 
 import com.unwrap.grep.features.archive.domain.BrowseItemsService
+import com.unwrap.grep.features.archive.domain.SavedRange
 import com.unwrap.grep.features.archive.domain.SearchQuery
 import com.unwrap.grep.shared.kernel.ApiProblem
 import com.unwrap.grep.shared.kernel.CURRENT_USER_ID
@@ -8,6 +9,8 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestAttribute
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import java.time.Instant
+import java.time.OffsetDateTime
 import java.util.UUID
 
 /** openapi `ItemPage`. */
@@ -32,8 +35,10 @@ class BrowseItemsController(private val browse: BrowseItemsService) {
 		@RequestAttribute(CURRENT_USER_ID) userId: UUID,
 		@RequestParam(required = false) cursor: String?,
 		@RequestParam(required = false) limit: String?,
+		@RequestParam(required = false) from: String?,
+		@RequestParam(required = false) to: String?,
 	): ItemPageResponse {
-		val page = browse.recent(userId, beforeNumber(cursor), pageSizeOf(limit))
+		val page = browse.recent(userId, beforeNumber(cursor), pageSizeOf(limit), savedRange(from, to))
 		return ItemPageResponse(page.items.map { ItemSummaryResponse.of(it) }, page.nextBeforeNumber?.toString())
 	}
 
@@ -45,11 +50,13 @@ class BrowseItemsController(private val browse: BrowseItemsService) {
 		@RequestParam(required = false) tag: List<String>?,
 		@RequestParam(required = false) cursor: String?,
 		@RequestParam(required = false) limit: String?,
+		@RequestParam(required = false) from: String?,
+		@RequestParam(required = false) to: String?,
 	): SearchPageResponse {
 		val words = q?.split(WHITESPACE)?.filter { it.isNotEmpty() }?.distinct().orEmpty()
 		val tags = tag.orEmpty().map { it.trim().ifEmpty { invalid("tag must not be empty") }.lowercase() }.distinct()
 		if (words.isEmpty() && tags.isEmpty()) invalid("q or tag is required")
-		val page = browse.search(userId, SearchQuery(words, tags), beforeNumber(cursor), pageSizeOf(limit))
+		val page = browse.search(userId, SearchQuery(words, tags, savedRange(from, to)), beforeNumber(cursor), pageSizeOf(limit))
 		return SearchPageResponse(
 			items = page.hits.map { ItemSummaryResponse.of(it.item, it.matchedIn) },
 			total = page.total,
@@ -70,6 +77,13 @@ class BrowseItemsController(private val browse: BrowseItemsService) {
 	}
 
 	private fun beforeNumber(cursor: String?): Long? = cursor?.let { positiveLong(it) ?: invalid("cursor is invalid") }
+
+	/** RFC 3339 시각(openapi SavedFrom·SavedTo). 시간대 없는 값은 받지 않는다. */
+	private fun savedRange(from: String?, to: String?): SavedRange =
+		SavedRange(from?.let { instant(it, "from") }, to?.let { instant(it, "to") })
+
+	private fun instant(value: String, name: String): Instant =
+		runCatching { OffsetDateTime.parse(value).toInstant() }.getOrElse { invalid("$name must be an RFC 3339 date-time") }
 
 	private fun positiveLong(value: String): Long? = value.toLongOrNull()?.takeIf { it >= 1 }
 

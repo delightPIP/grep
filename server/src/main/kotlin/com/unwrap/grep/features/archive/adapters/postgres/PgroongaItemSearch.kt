@@ -7,6 +7,8 @@ import com.unwrap.grep.features.archive.domain.SearchQuery
 import org.springframework.jdbc.core.RowMapper
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Repository
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 import java.util.UUID
 
 /**
@@ -45,7 +47,10 @@ class PgroongaItemSearch(private val jdbc: JdbcClient) : ItemSearch {
 		val parts = mutableListOf("user_id = ? AND deleted_at IS NULL")
 		query.words.forEach { _ -> parts += "search_text &@ ?" }
 		if (query.tags.isNotEmpty()) parts += "ARRAY(SELECT lower(t) FROM unnest(tags) t) @> ${array(query.tags)}"
-		return Sql(parts.joinToString(" AND "), listOf(userId) + query.words + query.tags)
+		val savedArgs = listOfNotNull(query.saved.from, query.saved.to).map { OffsetDateTime.ofInstant(it, ZoneOffset.UTC) }
+		if (query.saved.from != null) parts += "created_at >= ?"
+		if (query.saved.to != null) parts += "created_at < ?"
+		return Sql(parts.joinToString(" AND "), listOf(userId) + query.words + query.tags + savedArgs)
 	}
 
 	/**

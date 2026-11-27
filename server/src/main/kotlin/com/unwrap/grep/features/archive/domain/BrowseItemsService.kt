@@ -14,8 +14,8 @@ data class ItemLookup(val items: List<StoredItem>, val missing: List<Long>)
 class BrowseItemsService(private val items: ItemRepository, private val itemSearch: ItemSearch) {
 
 	/** 한 건 더 읽어 다음 쪽이 있는지 안다. */
-	fun recent(userId: UUID, beforeNumber: Long?, limit: Int): ItemPage {
-		val rows = items.findActive(userId, beforeNumber, limit + 1)
+	fun recent(userId: UUID, beforeNumber: Long?, limit: Int, saved: SavedRange = SavedRange.ANY): ItemPage {
+		val rows = items.findActive(userId, beforeNumber, limit + 1, saved)
 		val page = rows.take(limit)
 		return ItemPage(page, if (rows.size > limit) page.last().number else null)
 	}

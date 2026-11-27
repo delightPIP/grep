@@ -97,8 +97,8 @@ interface ItemRepository {
 	/** 휴지통 밖 자료 수. */
 	fun countActive(userId: UUID): Long
 
-	/** 휴지통 밖 자료를 번호 내림차순으로 [limit]건. [beforeNumber]가 있으면 그보다 작은 번호만. */
-	fun findActive(userId: UUID, beforeNumber: Long?, limit: Int): List<StoredItem>
+	/** 휴지통 밖 자료를 번호 내림차순으로 [limit]건. [beforeNumber]가 있으면 그보다 작은 번호만, [saved] 기간 안만. */
+	fun findActive(userId: UUID, beforeNumber: Long?, limit: Int, saved: SavedRange = SavedRange.ANY): List<StoredItem>
 
 	/** [numbers] 중 휴지통 밖 자료. 순서는 정하지 않는다. */
 	fun findActiveByNumbers(userId: UUID, numbers: Collection<Long>): List<StoredItem>

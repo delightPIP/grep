@@ -1,5 +1,6 @@
 package com.unwrap.grep.features.archive.domain
 
+import java.time.Instant
 import java.util.UUID
 
 /** openapi `ItemSummary.matchedIn`. 찾기 결과에서 일치한 곳(commands 6절 요약 줄 끝 표시). */
@@ -11,11 +12,18 @@ enum class MatchedIn(val value: String) {
 	}
 }
 
+/** 저장 시각 기간(F22 시점). [from] 이상 [to] 미만의 반열린 구간이고, null이면 그쪽 끝이 없다. 경계는 클라이언트가 한국 시간으로 계산한다. */
+data class SavedRange(val from: Instant? = null, val to: Instant? = null) {
+	companion object {
+		val ANY = SavedRange()
+	}
+}
+
 /**
  * 찾기 조건. [words]는 띄어쓰기로 나눈 검색어 낱말, [tags]는 `#` 없는 소문자 태그다.
  * 둘 다 있으면 모든 조건을 만족해야 한다(ARC-002 규칙 6). 둘 중 하나는 비어 있지 않다.
  */
-data class SearchQuery(val words: List<String>, val tags: List<String>) {
+data class SearchQuery(val words: List<String>, val tags: List<String>, val saved: SavedRange = SavedRange.ANY) {
 	init {
 		require(words.isNotEmpty() || tags.isNotEmpty()) { "words or tags is required" }
 	}

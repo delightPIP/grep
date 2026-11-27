@@ -9,6 +9,7 @@ import com.unwrap.grep.features.archive.domain.ItemKind
 import com.unwrap.grep.features.archive.domain.ItemRepository
 import com.unwrap.grep.features.archive.domain.ItemStatus
 import com.unwrap.grep.features.archive.domain.NewItem
+import com.unwrap.grep.features.archive.domain.SavedRange
 import com.unwrap.grep.features.archive.domain.StoredItem
 import org.springframework.jdbc.core.RowMapper
 import org.springframework.jdbc.core.simple.JdbcClient
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Repository
 import java.sql.Types
 import java.time.Instant
 import java.time.OffsetDateTime
+import java.time.ZoneOffset
 import java.util.UUID
 
 internal const val SUMMARY_COLUMNS = """
@@ -127,17 +129,21 @@ class JdbcItemRepository(private val jdbc: JdbcClient) :
 			.query { rs, _ -> rs.getObject("created_at", OffsetDateTime::class.java).toInstant() }
 			.list()
 
-	override fun findActive(userId: UUID, beforeNumber: Long?, limit: Int): List<StoredItem> =
+	override fun findActive(userId: UUID, beforeNumber: Long?, limit: Int, saved: SavedRange): List<StoredItem> =
 		jdbc.sql(
 			"""
 			SELECT $SUMMARY_COLUMNS FROM items
 			WHERE user_id = :userId AND deleted_at IS NULL AND (CAST(:before AS bigint) IS NULL OR number < :before)
+			  AND (CAST(:from AS timestamptz) IS NULL OR created_at >= CAST(:from AS timestamptz))
+			  AND (CAST(:to AS timestamptz) IS NULL OR created_at < CAST(:to AS timestamptz))
 			ORDER BY number DESC
 			LIMIT :limit
 			""".trimIndent(),
 		)
 			.param("userId", userId)
 			.param("before", beforeNumber, Types.BIGINT)
+			.param("from", saved.from?.let { OffsetDateTime.ofInstant(it, ZoneOffset.UTC) })
+			.param("to", saved.to?.let { OffsetDateTime.ofInstant(it, ZoneOffset.UTC) })
 			.param("limit", limit)
 			.query(ITEM_ROW)
 			.list()
