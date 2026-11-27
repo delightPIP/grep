@@ -41,6 +41,7 @@ struct InputCommand: Equatable {
         "고치기": .revise, "revise": .revise,
         "묶음": .pack, "pack": .pack,
         "열기": .peek, "peek": .peek,
+        "찾아두기": .gather, "gather": .gather,
     ]
 }
 

@@ -48,7 +48,7 @@ extension TerminalViewState.Line {
                 "recentList",
                 ["items": items.map(\.bridgeValue), "hasMore": hasMore, "total": total, "period": period?.bridgeValue]
             )
-        case .searchResult(let query, let total, let items, let hasMore, let period):
+        case .searchResult(let query, let total, let items, let hasMore, let period, let isSavedSearch):
             line(
                 "searchResult",
                 [
@@ -57,6 +57,7 @@ extension TerminalViewState.Line {
                     "items": items.map(\.bridgeValue),
                     "hasMore": hasMore,
                     "period": period?.bridgeValue,
+                    "isSavedSearch": isSavedSearch,
                 ]
             )
         case .noResults(let query, let recent, let period):

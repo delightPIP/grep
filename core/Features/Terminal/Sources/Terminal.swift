@@ -90,6 +90,8 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     var pendingBinEmpty: PendingBinEmpty?
     /// 답을 기다리는 `묶음 <이름> 지우기` 확인(ARC-003 규칙 8, COM-007).
     var pendingBundleDelete: PendingBundleDelete?
+    /// 답을 기다리는 `찾아두기 <검색어> 지우기` 확인(ARC-012 규칙 7, COM-007).
+    var pendingSavedSearchDelete: PendingSavedSearchDelete?
     /// 답을 기다리는 `로그아웃 모든기기` 확인(ACC-002 규칙 4, COM-007).
     var pendingSignOutEverywhere = false
     /// 오타 제안(#118, commands.md 207줄). 빈 입력 엔터면 이 문자열을 실행하고, 다른 입력이면 지운다.
@@ -223,6 +225,11 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             confirmBundleDelete(pending, typed: text)
             return
         }
+        if let pending = pendingSavedSearchDelete, pending.matches(text) {
+            pendingSavedSearchDelete = nil
+            confirmSavedSearchDelete(pending, typed: text)
+            return
+        }
         if pendingSignOutEverywhere {
             let answer = text.trimmingWhitespace()
             if answer == "로그아웃" || answer == "signout" {
@@ -264,6 +271,8 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             handleBundle(command.argument, typed: text)
         case .peek:
             peek(command.argument, typed: text)
+        case .gather:
+            handleGather(command.argument, typed: text)
         case .revise:
             reviseItem(command.argument, typed: text)
         case .guide:
@@ -460,11 +469,12 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
 
     func cancelPendingConfirmations() {
         let hadPending = pendingHandoff != nil || pendingDrop != nil || pendingBinEmpty != nil
-            || pendingBundleDelete != nil || pendingSignOutEverywhere
+            || pendingBundleDelete != nil || pendingSavedSearchDelete != nil || pendingSignOutEverywhere
         pendingHandoff = nil
         pendingDrop = nil
         pendingBinEmpty = nil
         pendingBundleDelete = nil
+        pendingSavedSearchDelete = nil
         pendingSignOutEverywhere = false
         if hadPending {
             update(viewState.appending(lines: [.cancelled]).with(input: ""))
@@ -548,7 +558,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
                 transport: httpTransport, accessToken: accessToken
             )
             switch outcome {
-            case .page(let items, let total, let nextCursor): return .page(items: items, total: total, nextCursor: nextCursor)
+            case .page(let items, let total, let nextCursor, _): return .page(items: items, total: total, nextCursor: nextCursor)
             case .sessionExpired: return .sessionExpired
             case .failed(let reason): return .failed(reason)
             case .cancelled: return .cancelled
@@ -590,11 +600,14 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             )
             guard !Task.isCancelled else { return }
             switch outcome {
-            case .page(let items, _, _) where items.isEmpty:
+            case .page(let items, _, _, _) where items.isEmpty:
                 await showNoResults(for: query, period: period, typed: typed, accessToken: token)
-            case .page(let items, let total, let nextCursor):
+            case .page(let items, let total, let nextCursor, let isSavedSearch):
                 showList(
-                    .searchResult(query: query, total: total, items: items, hasMore: nextCursor != nil, period: period),
+                    .searchResult(
+                        query: query, total: total, items: items, hasMore: nextCursor != nil, period: period,
+                        isSavedSearch: isSavedSearch
+                    ),
                     nextCursor: nextCursor, source: .search(query, period: period), typed: typed
                 )
             case .failed(let reason):

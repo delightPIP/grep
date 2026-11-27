@@ -26,7 +26,15 @@ public struct TerminalViewState: Equatable, Sendable {
         /// 자료를 든 다른 줄(`saved`·`alreadySaved`·`searchResult`·`noResults`)도 같이 바꾼다.
         case recentList(items: [ItemSummary], hasMore: Bool, total: Int? = nil, period: Period? = nil)
         /// `찾기` 결과. 머리줄 `4건` 또는 `23건 중 10건`(total과 items 수).
-        case searchResult(query: SearchQuery, total: Int, items: [ItemSummary], hasMore: Bool, period: Period? = nil)
+        /// `isSavedSearch`가 false·nil이면 뷰가 `찾아두기 <검색어>` 칩을 둔다(ARC-012 규칙 9, 계약 2).
+        case searchResult(
+            query: SearchQuery,
+            total: Int,
+            items: [ItemSummary],
+            hasMore: Bool,
+            period: Period? = nil,
+            isSavedSearch: Bool? = nil
+        )
         /// `· 0건: "<검색어>"` 뒤에 `· 최근 저장 3건 (검색 결과 아님)` 머리줄과 그 자료들(commands 6절).
         case noResults(query: SearchQuery, recent: [ItemSummary], period: Period? = nil)
         /// `✓ 선택 N건  <제목> · <제목>` 뒤에 `→ 넘기기 또는 묶음 <이름>`.

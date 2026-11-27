@@ -18,7 +18,8 @@ enum BrowseAPI {
 
     enum SearchOutcome: Equatable {
         /// `total`은 조건에 맞는 전체 건수다. `nextCursor`가 nil이면 마지막 쪽이다.
-        case page(items: [ItemSummary], total: Int, nextCursor: String?)
+        /// `isSavedSearch`는 같은 검색어를 찾아뒀는지(계약 2, #134). 서버가 주지 않으면 nil.
+        case page(items: [ItemSummary], total: Int, nextCursor: String?, isSavedSearch: Bool?)
         case sessionExpired
         case failed(CommandFailure)
         case cancelled
@@ -54,6 +55,7 @@ enum BrowseAPI {
         let items: [ItemSummary]
         let total: Int
         let nextCursor: String?
+        let isSavedSearch: Bool?
     }
 
     private struct LookupBody: Decodable {
@@ -118,7 +120,10 @@ enum BrowseAPI {
         }
         let path = "\(searchPath)?\(conditions.joined(separator: "&"))"
         switch await get(path, as: SearchBody.self, transport: transport, accessToken: accessToken) {
-        case .body(let page): return .page(items: page.items, total: page.total, nextCursor: page.nextCursor)
+        case .body(let page):
+            return .page(
+                items: page.items, total: page.total, nextCursor: page.nextCursor, isSavedSearch: page.isSavedSearch
+            )
         case .sessionExpired: return .sessionExpired
         case .unauthorized: return .failed(.serverError)
         case .failed(let reason): return .failed(reason)

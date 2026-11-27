@@ -199,7 +199,7 @@ public enum TerminalStateMapper {
                 items: items.map { mapRow($0, isPicked: pickedNumbers.contains($0.number)) },
                 hasMore: hasMore
             )]
-        case .searchResult(_, let total, let items, let hasMore, _):
+        case .searchResult(_, let total, let items, let hasMore, _, _):
             let header = countHeader(total: total, shown: items.count)
             return [.list(
                 header: header,

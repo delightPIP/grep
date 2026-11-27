@@ -209,6 +209,8 @@ private struct StoredLine: Codable {
         case revised, tagsRemoved, samplesSaved, unpicked, pickCleared, signOutEverywhereConfirm
         case bundleList, bundleAdded, bundleView, bundleNotFound, bundleUnpicked, notInBundle
         case bundleDeleteConfirm, bundleDeleted, bundleNameInvalid, itemDetail, oneNumberOnly
+        case searchSaved, savedSearchList, savedSearchPeriod, savedSearchTooLong, savedSearchDeleteConfirm
+        case savedSearchDeleted, savedSearchNotFound
     }
 
     let kind: Kind
@@ -236,6 +238,8 @@ private struct StoredLine: Codable {
     var extraCount: Int?
     var bundles: [BundleEntry]?
     var detail: ItemDetail?
+    var isSavedSearch: Bool?
+    var searches: [SavedSearchEntry]?
 
     /// 아직 남기지 않는 줄(계약 2, 각 이슈에서 더한다)이면 nil.
     init?(_ line: TerminalViewState.Line) {
@@ -270,13 +274,14 @@ private struct StoredLine: Codable {
             self.hasMore = hasMore
             self.total = total
             self.period = period
-        case .searchResult(let query, let total, let items, let hasMore, let period):
+        case .searchResult(let query, let total, let items, let hasMore, let period, let isSavedSearch):
             kind = .searchResult
             self.query = StoredQuery(query)
             self.total = total
             self.items = items
             self.hasMore = hasMore
             self.period = period
+            self.isSavedSearch = isSavedSearch
         case .noResults(let query, let recent, let period):
             kind = .noResults
             self.query = StoredQuery(query)
@@ -396,9 +401,29 @@ private struct StoredLine: Codable {
         case .oneNumberOnly(let command):
             kind = .oneNumberOnly
             self.command = command.storedName
-        case .folderHint,
-             .searchSaved, .savedSearchList, .savedSearchPeriod, .savedSearchTooLong, .savedSearchDeleteConfirm,
-             .savedSearchDeleted, .savedSearchNotFound, .connectionList, .disconnectConfirm, .disconnected,
+        case .searchSaved(let query, let total, let already):
+            kind = .searchSaved
+            text = query
+            self.total = total
+            isSavedSearch = already
+        case .savedSearchList(let searches):
+            kind = .savedSearchList
+            self.searches = searches
+        case .savedSearchPeriod(let period, let suggestion):
+            kind = .savedSearchPeriod
+            text = period
+            self.suggestion = suggestion
+        case .savedSearchTooLong: kind = .savedSearchTooLong
+        case .savedSearchDeleteConfirm(let query):
+            kind = .savedSearchDeleteConfirm
+            text = query
+        case .savedSearchDeleted(let query):
+            kind = .savedSearchDeleted
+            text = query
+        case .savedSearchNotFound(let query):
+            kind = .savedSearchNotFound
+            text = query
+        case .folderHint, .connectionList, .disconnectConfirm, .disconnected,
              .connectionNotFound, .connectionEnded, .importPrompt, .importProgress, .importFinished:
             return nil
         }
@@ -424,7 +449,10 @@ private struct StoredLine: Codable {
             return .recentList(items: items, hasMore: hasMore, total: total, period: period)
         case .searchResult:
             guard let query, let total, let items, let hasMore else { return nil }
-            return .searchResult(query: query.query, total: total, items: items, hasMore: hasMore, period: period)
+            return .searchResult(
+                query: query.query, total: total, items: items, hasMore: hasMore, period: period,
+                isSavedSearch: isSavedSearch
+            )
         case .noResults:
             guard let query, let items else { return nil }
             return .noResults(query: query.query, recent: items, period: period)
@@ -489,6 +517,23 @@ private struct StoredLine: Codable {
         case .bundleNameInvalid: return reason.flatMap(BundleNameProblem.init(rawValue:)).map { .bundleNameInvalid($0) }
         case .itemDetail: return detail.map { .itemDetail($0) }
         case .oneNumberOnly: return command.flatMap(CommandName.init(storedName:)).map { .oneNumberOnly($0) }
+        default: return savedSearchLine
+        }
+    }
+
+    private var savedSearchLine: TerminalViewState.Line? {
+        switch kind {
+        case .searchSaved:
+            guard let text, let total, let isSavedSearch else { return nil }
+            return .searchSaved(query: text, total: total, already: isSavedSearch)
+        case .savedSearchList: return searches.map { .savedSearchList($0) }
+        case .savedSearchPeriod:
+            guard let text, let suggestion else { return nil }
+            return .savedSearchPeriod(period: text, suggestion: suggestion)
+        case .savedSearchTooLong: return .savedSearchTooLong
+        case .savedSearchDeleteConfirm: return text.map { .savedSearchDeleteConfirm(query: $0) }
+        case .savedSearchDeleted: return text.map { .savedSearchDeleted(query: $0) }
+        case .savedSearchNotFound: return text.map { .savedSearchNotFound(query: $0) }
         default: return nil
         }
     }

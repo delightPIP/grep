@@ -26,9 +26,10 @@ extension TerminalViewState {
         switch lines[index] {
         case .recentList(let items, _, let total, let period):
             next.lines[index] = .recentList(items: items + added, hasMore: hasMore, total: total, period: period)
-        case .searchResult(let query, let total, let items, _, let period):
+        case .searchResult(let query, let total, let items, _, let period, let isSavedSearch):
             next.lines[index] = .searchResult(
-                query: query, total: total, items: items + added, hasMore: hasMore, period: period
+                query: query, total: total, items: items + added, hasMore: hasMore, period: period,
+                isSavedSearch: isSavedSearch
             )
         case .bundleView(let name, let total, let items, _):
             next.lines[index] = .bundleView(name: name, total: total, items: items + added, hasMore: hasMore)
@@ -60,7 +61,7 @@ extension TerminalViewState.Line {
     fileprivate var items: [ItemSummary] {
         switch self {
         case .saved(let item), .alreadySaved(let item), .revised(let item), .tagsRemoved(let item, _): [item]
-        case .recentList(let items, _, _, _), .searchResult(_, _, let items, _, _), .samplesSaved(_, _, let items): items
+        case .recentList(let items, _, _, _), .searchResult(_, _, let items, _, _, _), .samplesSaved(_, _, let items): items
         case .noResults(_, let recent, _): recent
         case .bundleView(_, _, let items, _): items
         default: []
@@ -73,8 +74,11 @@ extension TerminalViewState.Line {
         case .alreadySaved(let item): .alreadySaved(transform(item))
         case .recentList(let items, let hasMore, let total, let period):
             .recentList(items: items.map(transform), hasMore: hasMore, total: total, period: period)
-        case .searchResult(let query, let total, let items, let hasMore, let period):
-            .searchResult(query: query, total: total, items: items.map(transform), hasMore: hasMore, period: period)
+        case .searchResult(let query, let total, let items, let hasMore, let period, let isSavedSearch):
+            .searchResult(
+                query: query, total: total, items: items.map(transform), hasMore: hasMore, period: period,
+                isSavedSearch: isSavedSearch
+            )
         case .noResults(let query, let recent, let period): .noResults(query: query, recent: recent.map(transform), period: period)
         case .revised(let item): .revised(transform(item))
         case .tagsRemoved(let item, let tags): .tagsRemoved(item: transform(item), tags: tags)
