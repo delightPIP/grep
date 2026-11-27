@@ -30,11 +30,11 @@ public final class TerminalBuilder: Builder<any TerminalDependency>, TerminalBui
 }
 
 /// 터미널 화면. 입력줄의 명령을 해석한다. 자료 수와 되살릴 줄은 부모가 `TerminalHandle`로 넘긴다.
-/// 아는 명령은 `담기`·`최근`·`찾기`·`로그아웃`이다. 붙여 넣기와 끌어다 놓기도 저장한다(#57). 나머지는 없는 명령으로 그린다.
+/// 아는 명령은 `담기`·`최근`·`찾기`·`고르기`·`로그아웃`이다. 붙여 넣기와 끌어다 놓기도 저장한다(#57). 나머지는 없는 명령으로 그린다.
 /// 처리 중 자료가 화면에 있으면 2초마다 상태를 묻고(ARC-005 규칙 10), 서버에 닿지 못하면 5초마다 다시 확인한다(COM-010).
 final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, TerminalPresentableListener, TerminalHandle {
 
-    private let authService: any AuthService
+    let authService: any AuthService
     /// ARC-005 규칙 10의 폴링 주기(08 6절 13번).
     private static let pollInterval: Duration = .seconds(2)
     /// COM-010의 다시 연결 확인 주기(08 6절 14번).
@@ -61,11 +61,11 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
         }
     }
 
-    private let httpTransport: ObservedTransport
+    let httpTransport: ObservedTransport
     private let files: any FilePort
     private let sleeper: any Sleeper
     private weak var listener: (any TerminalListener)?
-    private var viewState = TerminalViewState()
+    private(set) var viewState = TerminalViewState()
     /// 실패해 입력줄에 되돌린 저장 줄과 그때의 멱등성 키. 같은 줄을 다시 치면 같은 키로 보낸다.
     /// 응답 없음 뒤 서버가 이미 저장했어도 두 번 만들지 않는다(글은 COM-001 판정이 없다).
     private var retryableSave: (typed: String, key: UUID)?
@@ -124,8 +124,30 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     }
 
     /// 서버가 세션 만료로 답했거나 토큰을 받지 못했다. 치던 줄을 들려 부모에게 알린다(ACC-001 규칙 7).
-    private func expire() {
+    func expire() {
         listener?.didExpire(input: viewState.input)
+    }
+
+    /// 친 줄을 찍고 입력줄을 비운 뒤 접근 토큰으로 `request`를 돌린다.
+    /// 토큰을 받지 못하면 친 줄을 입력줄에 되돌리고 만료를 알린다.
+    func run(typed: String, _ request: @escaping @MainActor (_ accessToken: String) async -> Void) {
+        update(viewState.appending(lines: [.prompt(typed)]).with(input: ""))
+        startTask { [weak self] in
+            guard let self else { return }
+            let token = await authService.accessToken()
+            guard !Task.isCancelled else { return }
+            guard let token else {
+                expire(restoring: typed)
+                return
+            }
+            await request(token)
+        }
+    }
+
+    /// 세션이 만료됐다. 친 줄을 입력줄에 되돌리고 부모에게 알린다.
+    func expire(restoring typed: String) {
+        restoreInput(typed)
+        expire()
     }
 
     private func submit(_ text: String) {
@@ -141,6 +163,8 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             showRecent(limit: RecentCommand.limit(for: command.argument), typed: text)
         case .seek:
             seek(SeekCommand.parse(command.argument), typed: text)
+        case .pick:
+            pick(PickCommand.parse(command.argument), typed: text)
         default:
             update(viewState.appending(lines: [.prompt(text), .unknownCommand(command.word)]).with(input: ""))
         }
@@ -521,7 +545,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     }
 
     /// 상태가 바뀌었을 때만 한 번 그린다. 처리 중 건수는 화면 줄에서 다시 센다.
-    private func update(_ next: TerminalViewState) {
+    func update(_ next: TerminalViewState) {
         let counted = next.with(processingCount: next.processingNumbers(excluding: goneNumbers).count)
         guard counted != viewState else { return }
         viewState = counted
@@ -531,31 +555,37 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
 }
 
 extension TerminalViewState {
-    fileprivate func with(input: String) -> TerminalViewState {
+    func with(input: String) -> TerminalViewState {
         var next = self
         next.input = input
         return next
     }
 
-    fileprivate func with(itemCount: Int?) -> TerminalViewState {
+    func with(itemCount: Int?) -> TerminalViewState {
         var next = self
         next.itemCount = itemCount
         return next
     }
 
-    fileprivate func with(processingCount: Int) -> TerminalViewState {
+    func with(processingCount: Int) -> TerminalViewState {
         var next = self
         next.processingCount = processingCount
         return next
     }
 
-    fileprivate func with(isOffline: Bool) -> TerminalViewState {
+    func with(isOffline: Bool) -> TerminalViewState {
         var next = self
         next.isOffline = isOffline
         return next
     }
 
-    fileprivate func appending(lines added: [Line]) -> TerminalViewState {
+    func with(selection: [ItemRef]) -> TerminalViewState {
+        var next = self
+        next.selection = selection
+        return next
+    }
+
+    func appending(lines added: [Line]) -> TerminalViewState {
         var next = self
         next.lines += added
         return next

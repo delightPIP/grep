@@ -1,0 +1,131 @@
+#if canImport(FoundationEssentials)
+import FoundationEssentials
+#else
+import Foundation
+#endif
+import FeatureTerminalInterface
+import FeatureTerminalTesting
+import GrepCore
+import GrepCoreTesting
+import RIBs
+
+@testable import FeatureTerminal
+
+/// 터미널을 가짜 포트로 붙여 두는 테스트 받침. 응답 시점은 테스트가 정한다.
+@MainActor
+final class TerminalFixture: TerminalDependency {
+    static let subject = "user-a"
+    static let token = fakeAccessToken(subject: subject)
+    static let authorization = ["Authorization": "Bearer \(token)"]
+    static let sessionExpiredJSON = #"{"code":"session_expired"}"#
+
+    let auth = FakeAuthService(token: TerminalFixture.token)
+    let transport = FakeHTTPTransport()
+    let fakeClipboard = FakeClipboard()
+    let fakeHistory: FakeHistoryStore
+    let fakeSleeper = FakeSleeper()
+    let views = FakeTerminalViewFactory()
+    let listener = FakeTerminalListener()
+    private let parent = TestParentRouter()
+    private var router: (any ViewableRouting)?
+    private(set) var handle: (any TerminalHandle)?
+
+    var authService: any AuthService { auth }
+    var httpTransport: any HTTPTransport { transport }
+    var clipboard: any ClipboardPort { fakeClipboard }
+    let files: any FilePort = FakeFilePort()
+    var historyStore: any HistoryStore { fakeHistory }
+    var sleeper: any Sleeper { fakeSleeper }
+
+    init(history: HistoryRecord? = nil) {
+        fakeHistory = FakeHistoryStore(record: history)
+    }
+
+    isolated deinit {
+        if let router { parent.detach(router) }
+    }
+
+    var view: FakeTerminalView { views.views.last! }
+    var state: TerminalViewState { view.state! }
+
+    /// 터미널 화면을 붙인다. `itemCount`가 있으면 부모가 자료 수를 넘긴 것으로 본다.
+    func attach(itemCount: Int? = 34) async {
+        let build = TerminalBuilder(dependency: self, viewFactory: views).build(listener: listener)
+        parent.attach(build.router)
+        router = build.router
+        handle = build.handle
+        await runCurrent()
+        if let itemCount {
+            build.handle.showItemCount(itemCount)
+            await runCurrent()
+        }
+    }
+
+    /// 화면을 뗀다. 다시 `attach`하면 새 터미널이 붙는다(다시 열기).
+    func detach() async {
+        if let router { parent.detach(router) }
+        router = nil
+        handle = nil
+        await runCurrent()
+    }
+
+    func send(_ action: TerminalViewAction) async {
+        view.listener?.handle(action)
+        await runCurrent()
+    }
+
+    func submit(_ text: String) async {
+        await send(.submitted(text))
+    }
+
+    func respond(status: Int = 200, json: String) async {
+        transport.respond(status: status, json: json)
+        await runCurrent()
+    }
+
+    func fail(_ error: HTTPTransportError) async {
+        transport.respond(.failure(error))
+        await runCurrent()
+    }
+
+    /// `고르기 <번호…>`를 치고 서버가 모두 있다고 답하게 한다.
+    func pick(_ numbers: [Int]) async {
+        await submit("고르기 " + numbers.map(String.init).joined(separator: " "))
+        await respond(json: Self.lookupJSON(numbers.map { Self.item($0) }))
+    }
+
+    static func item(_ number: Int, status: ItemStatus = .ready, summary: String? = "요약") -> ItemSummary {
+        ItemSummary(
+            number: number, kind: .link, title: "자료 \(number)", source: "example.com", status: status,
+            listSummary: summary, summarySource: summary == nil ? nil : .ai, tags: [],
+            savedAt: "2026-11-27T10:00:00+09:00"
+        )
+    }
+
+    static func ref(_ number: Int) -> ItemRef {
+        ItemRef(number: number, title: "자료 \(number)")
+    }
+
+    static func json(_ item: ItemSummary) -> String {
+        let summary = item.listSummary.map { "\"\($0)\"" } ?? "null"
+        let summarySource = item.summarySource.map { "\"\($0.rawValue)\"" } ?? "null"
+        return #"{"number":\#(item.number),"kind":"link","title":"\#(item.title)","source":"example.com","#
+            + #""status":"\#(item.status.rawValue)","blockedReason":null,"listSummary":\#(summary),"#
+            + #""summarySource":\#(summarySource),"partialNote":null,"tags":[],"matchedIn":null,"#
+            + #""savedAt":"2026-11-27T10:00:00+09:00"}"#
+    }
+
+    static func lookupJSON(_ items: [ItemSummary], missing: [Int] = []) -> String {
+        let numbers = missing.map(String.init).joined(separator: ",")
+        return #"{"items":[\#(items.map(json).joined(separator: ","))],"missing":[\#(numbers)]}"#
+    }
+
+    static func searchJSON(_ items: [ItemSummary], total: Int, nextCursor: String? = nil) -> String {
+        let cursor = nextCursor.map { "\"\($0)\"" } ?? "null"
+        return #"{"items":[\#(items.map(json).joined(separator: ","))],"total":\#(total),"nextCursor":\#(cursor)}"#
+    }
+
+    static func get(_ path: String) -> HTTPRequest {
+        HTTPRequest(method: .get, path: path, headers: authorization)
+    }
+}
