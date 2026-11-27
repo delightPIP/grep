@@ -26,9 +26,15 @@ struct PendingBinEmpty: Equatable {
 
 /// `버리기`·`되살리기` 번호 인자 파서. 단일 번호와 `a-b` 범위를 모두 받아 펼친다(ARC-001 비고, ARC-010 규칙 6).
 enum TrashNumberParser {
+    enum Parsed: Equatable {
+        case numbers([Int])
+        case missingArgument
+        case invalidNumber(String)
+    }
+
     private static let maxRangeSpan = 200
 
-    static func parse(_ argument: String) -> PickCommand.Parsed {
+    static func parse(_ argument: String) -> Parsed {
         let tokens = argument.split(whereSeparator: \.isWhitespace).map(String.init)
         guard !tokens.isEmpty else { return .missingArgument }
         var numbers: [Int] = []

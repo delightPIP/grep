@@ -12,7 +12,34 @@ extension TerminalInteractor {
             update(viewState.appending(lines: [.prompt(typed), .invalidNumber(input)]).with(input: ""))
         case .numbers(let numbers):
             select(numbers, typed: typed)
+        case .unpick(let numbers):
+            unpick(numbers, typed: typed)
+        case .clear:
+            clearSelection(typed: typed)
         }
+    }
+
+    /// `고르기 빼기 <번호…>`(#108). 남은 선택이 0건이면 `unpicked` 대신 `pickCleared`를 찍는다(통합 전달 1).
+    private func unpick(_ numbers: [Int], typed: String) {
+        let byNumber = Dictionary(viewState.selection.map { ($0.number, $0) }) { first, _ in first }
+        let missing = numbers.filter { byNumber[$0] == nil }
+        guard missing.isEmpty else {
+            update(viewState.appending(lines: [.prompt(typed), .notFound(numbers: missing)]).with(input: ""))
+            return
+        }
+        let removing = Set(numbers)
+        let removed = numbers.compactMap { byNumber[$0] }
+        let remaining = viewState.selection.filter { !removing.contains($0.number) }
+        let line: TerminalViewState.Line = remaining.isEmpty
+            ? .pickCleared(count: removed.count)
+            : .unpicked(items: removed, remaining: remaining.count)
+        update(viewState.with(selection: remaining).appending(lines: [.prompt(typed), line]).with(input: ""))
+    }
+
+    /// `고르기 비우기`(#108).
+    private func clearSelection(typed: String) {
+        let count = viewState.selection.count
+        update(viewState.with(selection: []).appending(lines: [.prompt(typed), .pickCleared(count: count)]).with(input: ""))
     }
 
     /// `GET /items/status`로 번호를 확인한 뒤 선택에 더한다. 바로 앞 목록에 없던 번호도 받는다(ARC-001 규칙 9).
