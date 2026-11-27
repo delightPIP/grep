@@ -1,4 +1,4 @@
-import FeatureLoggedInInterface
+import FeatureTerminalInterface
 import FeatureLoggedOutInterface
 import GrepCore
 

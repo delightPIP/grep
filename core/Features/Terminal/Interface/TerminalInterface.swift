@@ -2,7 +2,7 @@ import GrepCore
 import RIBs
 
 /// 터미널 화면에 그릴 값 전체. 문구는 담지 않는다(플랫폼 뷰가 정책 원문으로 바꾼다).
-public struct LoggedInViewState: Equatable, Sendable {
+public struct TerminalViewState: Equatable, Sendable {
     /// 출력 한 줄. #31에서 쓰는 것만 둔다. 다른 이슈가 case를 더한다.
     public enum Line: Equatable, Sendable {
         /// 사용자가 친 명령 줄(`그렙 ~ $ <text>`).
@@ -151,7 +151,7 @@ public enum CommandFailure: Equatable, Sendable {
 }
 
 /// 뷰 → 코어.
-public enum LoggedInViewAction: Equatable, Sendable {
+public enum TerminalViewAction: Equatable, Sendable {
     /// 입력줄이 바뀌었다. 코어가 만료 때 보존할 줄을 알기 위해 받는다.
     case inputChanged(String)
     /// 엔터.
@@ -165,25 +165,25 @@ public enum LoggedInViewAction: Equatable, Sendable {
 }
 
 @MainActor
-public protocol LoggedInPresentableListener: AnyObject {
-    func handle(_ action: LoggedInViewAction)
+public protocol TerminalPresentableListener: AnyObject {
+    func handle(_ action: TerminalViewAction)
 }
 
 @MainActor
-public protocol LoggedInPresentable: Presentable {
-    var listener: (any LoggedInPresentableListener)? { get set }
-    func render(_ state: LoggedInViewState)
+public protocol TerminalPresentable: Presentable {
+    var listener: (any TerminalPresentableListener)? { get set }
+    func render(_ state: TerminalViewState)
 }
 
 @MainActor
-public protocol LoggedInViewControllable: ViewControllable {}
+public protocol TerminalViewControllable: ViewControllable {}
 
 @MainActor
-public protocol LoggedInViewContract: LoggedInPresentable, LoggedInViewControllable {}
+public protocol TerminalViewContract: TerminalPresentable, TerminalViewControllable {}
 
 @MainActor
-public protocol LoggedInViewFactory: AnyObject {
-    func makeLoggedInView() -> any LoggedInViewContract
+public protocol TerminalViewFactory: AnyObject {
+    func makeTerminalView() -> any TerminalViewContract
 }
 
 /// 데모 범위 명령(commands 2절). 한글·영문 이름은 코어가 해석한다.

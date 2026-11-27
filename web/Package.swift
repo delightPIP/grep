@@ -12,7 +12,7 @@ import PackageDescription
 let ribs: Target.Dependency = .product(name: "RIBs", package: "carti-RIBs-Swift")
 let ribsWeb: Target.Dependency = .product(name: "RIBsWeb", package: "carti-RIBs-Swift")
 let javaScriptKit: Target.Dependency = .product(name: "JavaScriptKit", package: "JavaScriptKit")
-let features = ["LoggedOut", "LoggedIn"]
+let features = ["LoggedOut", "Terminal"]
 
 func core(_ name: String) -> Target.Dependency { .product(name: name, package: "GrepCore") }
 

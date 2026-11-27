@@ -39,7 +39,7 @@ export function toLoggedOutState(
   return { notice: toNotice(noticeKind, failureReason), isSigningIn };
 }
 
-/** Swift가 넘기는 터미널 값(Sources/GrepWeb/LoggedInStateValue.swift). 줄은 `TerminalLine`과 같은 모양의 객체다. */
+/** Swift가 넘기는 터미널 값(Sources/GrepWeb/TerminalStateValue.swift). 줄은 `TerminalLine`과 같은 모양의 객체다. */
 export type BridgedLine = { kind: string; [field: string]: unknown };
 export type BridgedLoggedInState = Omit<LoggedInState, "lines"> & { lines: readonly BridgedLine[] };
 

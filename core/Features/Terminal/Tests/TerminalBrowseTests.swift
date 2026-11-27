@@ -3,17 +3,17 @@ import FoundationEssentials
 #else
 import Foundation
 #endif
-import FeatureLoggedInInterface
-import FeatureLoggedInTesting
+import FeatureTerminalInterface
+import FeatureTerminalTesting
 import GrepCore
 import GrepCoreTesting
 import RIBs
 import Testing
 
-@testable import FeatureLoggedIn
+@testable import FeatureTerminal
 
 @MainActor
-private final class Dependency: LoggedInDependency {
+private final class Dependency: TerminalDependency {
     let authService: any AuthService
     let httpTransport: any HTTPTransport
     let clipboard: any ClipboardPort = FakeClipboard()
@@ -29,17 +29,16 @@ private final class Dependency: LoggedInDependency {
 
 /// #60: `최근`, 더 보기, 처리 중 자료 폴링(ARC-005 규칙 10), 연결 끊김과 다시 연결(COM-010).
 @MainActor
-final class LoggedInBrowseTests {
-    private static let meJSON = #"{"userId":"6f1c0a52-0000-4000-8000-000000000001","authProvider":"google","itemCount":34}"#
+final class TerminalBrowseTests {
     private static let sessionExpiredJSON = #"{"code":"session_expired"}"#
     private static let token = fakeAccessToken(subject: "user-a")
     private static let authorization = ["Authorization": "Bearer \(token)"]
 
-    private let auth = FakeAuthService(token: LoggedInBrowseTests.token)
+    private let auth = FakeAuthService(token: TerminalBrowseTests.token)
     private let transport = FakeHTTPTransport()
     private let sleeper = FakeSleeper()
-    private let views = FakeLoggedInViewFactory()
-    private let listener = FakeLoggedInListener()
+    private let views = FakeTerminalViewFactory()
+    private let listener = FakeTerminalListener()
     private let parent = TestParentRouter()
     private var router: (any ViewableRouting)?
 
@@ -47,21 +46,21 @@ final class LoggedInBrowseTests {
         if let router { parent.detach(router) }
     }
 
-    private var view: FakeLoggedInView { views.views.last! }
-    private var state: LoggedInViewState { view.state! }
+    private var view: FakeTerminalView { views.views.last! }
+    private var state: TerminalViewState { view.state! }
 
-    /// `/me` 응답까지 받은 터미널 화면.
+    /// 부모가 자료 수(34)를 넘긴 터미널 화면.
     private func attachLoaded() async {
         let dependency = Dependency(authService: auth, httpTransport: transport, sleeper: sleeper)
-        let router = LoggedInBuilder(dependency: dependency, viewFactory: views).build(listener: listener, pendingInput: nil)
-        parent.attach(router)
-        self.router = router
+        let build = TerminalBuilder(dependency: dependency, viewFactory: views).build(listener: listener)
+        parent.attach(build.router)
+        router = build.router
         await runCurrent()
-        transport.respond(json: Self.meJSON)
+        build.handle.showItemCount(34)
         await runCurrent()
     }
 
-    private func send(_ action: LoggedInViewAction) async {
+    private func send(_ action: TerminalViewAction) async {
         view.listener?.handle(action)
         await runCurrent()
     }
@@ -343,7 +342,7 @@ final class LoggedInBrowseTests {
         await send(.moreRequested)
 
         // then
-        #expect(listener.expiredPending.count == 1)
+        #expect(listener.expiredInputs.count == 1)
     }
 
     // MARK: 처리 중 자료 폴링(ARC-005 규칙 10)
@@ -531,7 +530,7 @@ final class LoggedInBrowseTests {
         await sleeper.advance(by: .seconds(2))
 
         // then
-        #expect(listener.expiredPending.count == 1)
+        #expect(listener.expiredInputs.count == 1)
         #expect(transport.requests.count == requestCount)
     }
 
@@ -550,7 +549,7 @@ final class LoggedInBrowseTests {
 
         // then
         #expect(transport.requests.count == requestCount)
-        #expect(listener.expiredPending.isEmpty)
+        #expect(listener.expiredInputs.isEmpty)
     }
 
     @Test func 연결이끊겨폴링을쉬었을때_다시연결되고2초가지나면_상태를다시묻는지() async {

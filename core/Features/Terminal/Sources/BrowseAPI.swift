@@ -3,7 +3,7 @@ import FoundationEssentials
 #else
 import Foundation
 #endif
-import FeatureLoggedInInterface
+import FeatureTerminalInterface
 import GrepCore
 
 /// 자료 조회 API(api/openapi.yaml `listRecentItems`·`getItemStatuses`·`getHealth`). 응답 해석까지만 한다.

@@ -1,4 +1,4 @@
-import FeatureLoggedInInterface
+import FeatureTerminalInterface
 
 /// 입력줄 한 줄을 명령 이름과 인자로 나눈다. 명령 이름은 한글·영문을 같게 본다(commands 2절).
 struct InputCommand: Equatable {

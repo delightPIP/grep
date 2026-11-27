@@ -47,7 +47,7 @@
 - PO 결정(2026-11-26, AI 제안 수용): STATE 결정 로그 "빠졌던 화면에 제안으로 그린 문구·동작 14묶음"의 연결 끊김·장애 문구. [명령어 설명서](../../planning/commands.md) 6절 "연결 끊김·장애", [화면 체크리스트](../../planning/screen-checklist.md) W31, [흐름 점검표](../../planning/flow-inventory.md) P15
 - 규칙 1을 `찾기`·`넘기기` 말고 다른 명령에도 같은 꼴로 넓힌 것은 AI 제안이고, PO가 따로 확인하지 않았다
 - 정책 파일로 옮긴 것은 2026-11-26 PO 승인(AI 활용 기록 075)
-- 구현: 대기 시간과 끊김 판단은 웹 `web/Sources/GrepWeb/FetchHTTPTransport.swift`(#31). 상태줄 표시와 다시 연결 확인은 `core/Features/LoggedIn/Sources/LoggedIn.swift`·`ObservedTransport.swift`(#60)
+- 구현: 대기 시간과 끊김 판단은 웹 `web/Sources/GrepWeb/FetchHTTPTransport.swift`(#31). 상태줄 표시와 다시 연결 확인은 `core/Features/Terminal/Sources/Terminal.swift`·`core/Core/Sources/ObservedTransport.swift`(#60, #77에서 옮김)
 
 ## 검증 방법
 

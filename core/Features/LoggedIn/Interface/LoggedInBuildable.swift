@@ -4,15 +4,8 @@ import RIBs
 @MainActor
 public protocol LoggedInDependency: Dependency {
     var authService: any AuthService { get }
+    /// `GET /me`를 보낸다.
     var httpTransport: any HTTPTransport { get }
-    /// `넘기기`가 넘길 글을 넣는다(COM-008).
-    var clipboard: any ClipboardPort { get }
-    /// 끌어다 놓은 파일을 올린다(COM-004).
-    var files: any FilePort { get }
-    /// 터미널 기록을 이 기기에 남긴다(COM-009).
-    var historyStore: any HistoryStore { get }
-    /// 처리 중 자료 폴링(ARC-005)과 다시 연결 확인(COM-010)의 주기를 기다린다.
-    var sleeper: any Sleeper { get }
 }
 
 /// 만료 때 입력줄에 치던 줄과, 그 줄을 친 계정(접근 토큰의 `sub`).

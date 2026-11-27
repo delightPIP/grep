@@ -58,7 +58,7 @@
 
 - PO 결정(2026-11-26): 외부 전문가 검토 3건이 모두 지적한 "저장과 AI 처리 분리"를 발표 전에 확정. 재시도 값은 개발자 판단
 - 백엔드 설계 3절 5·7축(처리 상태, 저장은 어떤 의존성이 죽어도 성공), 사용자 흐름도 4절(그때는 `failed` 문구가 비어 있었음), 넘길 글 형식 3절
-- 구현: 저장 실패와 입력줄 회복 `core/Features/LoggedIn/Sources/LoggedIn.swift`(#57). 규칙 10의 폴링과 그 자리 바꾸기는 같은 파일과 `LoggedInViewState+Items.swift`(#60). 서버 처리(규칙 3~9)는 아직 없음
+- 구현: 저장 실패와 입력줄 회복 `core/Features/Terminal/Sources/Terminal.swift`(#57). 규칙 10의 폴링과 그 자리 바꾸기는 같은 파일과 `TerminalViewState+Items.swift`(#60, #77에서 `Terminal` 피처로 옮김). 서버 처리(규칙 3~9)는 아직 없음
 
 ## 검증 방법
 

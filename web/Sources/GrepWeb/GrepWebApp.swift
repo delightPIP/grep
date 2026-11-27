@@ -1,5 +1,5 @@
-import FeatureLoggedInInterface
-import FeatureLoggedInWeb
+import FeatureTerminalInterface
+import FeatureTerminalWeb
 import FeatureLoggedOutInterface
 import FeatureLoggedOutWeb
 import GrepAppRoot
@@ -13,16 +13,16 @@ extension RootScreen: RootViewControllable {}
 @MainActor
 final class WebViewFactory: GrepAppViewFactory {
     private let loggedOut: LoggedOutWebViewFactory
-    private let loggedIn: LoggedInWebViewFactory
+    private let loggedIn: TerminalWebViewFactory
 
-    init(loggedOut: LoggedOutWebViewFactory, loggedIn: LoggedInWebViewFactory) {
+    init(loggedOut: LoggedOutWebViewFactory, loggedIn: TerminalWebViewFactory) {
         self.loggedOut = loggedOut
         self.loggedIn = loggedIn
     }
 
     func makeRootView() -> RootScreen { RootScreen() }
     func makeLoggedOutView() -> any LoggedOutViewContract { loggedOut.makeLoggedOutView() }
-    func makeLoggedInView() -> any LoggedInViewContract { loggedIn.makeLoggedInView() }
+    func makeTerminalView() -> any TerminalViewContract { loggedIn.makeTerminalView() }
 }
 
 /// 공유 코어의 `GrepApp`을 시작하고 루트 화면을 `#app`에 붙인다. JS가 `startGrepApp`으로 부른다.

@@ -2,6 +2,8 @@ import FeatureLoggedIn
 import FeatureLoggedInInterface
 import FeatureLoggedOut
 import FeatureLoggedOutInterface
+import FeatureTerminal
+import FeatureTerminalInterface
 import GrepCore
 import RIBs
 
@@ -17,7 +19,7 @@ public protocol RootViewControllable: ViewControllable {
 /// 플랫폼이 구현하는 앱 전체 뷰 팩토리. 피처별 팩토리를 모두 따른다.
 /// 루트 뷰만 연관 타입이다. `LaunchRouter`·`ViewHost`가 구체 뷰 타입을 요구한다.
 @MainActor
-public protocol GrepAppViewFactory: LoggedOutViewFactory, LoggedInViewFactory {
+public protocol GrepAppViewFactory: LoggedOutViewFactory, TerminalViewFactory {
     associatedtype RootView: RootViewControllable
     func makeRootView() -> RootView
 }
@@ -34,7 +36,10 @@ public final class GrepApp<Factory: GrepAppViewFactory> {
             interactor: RootInteractor(authService: authService),
             viewController: viewFactory.makeRootView(),
             loggedOutBuilder: LoggedOutBuilder(dependency: component, viewFactory: viewFactory),
-            loggedInBuilder: LoggedInBuilder(dependency: component, viewFactory: viewFactory)
+            loggedInBuilder: LoggedInBuilder(
+                dependency: component,
+                terminalBuilder: TerminalBuilder(dependency: component, viewFactory: viewFactory)
+            )
         )
     }
 
@@ -73,7 +78,7 @@ public struct PlatformServices {
 }
 
 /// 피처 Dependency를 모두 채운다.
-final class RootComponent: EmptyComponent, LoggedOutDependency, LoggedInDependency {
+final class RootComponent: EmptyComponent, LoggedOutDependency, LoggedInDependency, TerminalDependency {
     let authService: any AuthService
     let httpTransport: any HTTPTransport
     let clipboard: any ClipboardPort

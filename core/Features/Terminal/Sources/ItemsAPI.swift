@@ -3,7 +3,7 @@ import FoundationEssentials
 #else
 import Foundation
 #endif
-import FeatureLoggedInInterface
+import FeatureTerminalInterface
 import GrepCore
 
 /// 자료 API(api/openapi.yaml `saveItem`). 응답 해석까지만 하고 화면은 모른다.

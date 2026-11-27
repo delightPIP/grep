@@ -1,8 +1,8 @@
-import FeatureLoggedInInterface
+import FeatureTerminalInterface
 import GrepCore
 import JavaScriptKit
 
-// `LoggedInViewState`를 `web/support/view-state.ts`의 `LoggedInState`와 같은 모양의 JS 객체로 만든다.
+// `TerminalViewState`를 `web/support/view-state.ts`의 `LoggedInState`와 같은 모양의 JS 객체로 만든다.
 // 값이 든 줄(자료·검색 조건·넘기기 결과)은 평평한 인자로 나를 수 없어 객체째 넘긴다.
 // 필드 이름과 문자열 값의 원본은 view-state.ts다. 받는 쪽 짝은 `web/support/bridge-state.ts`.
 
@@ -14,7 +14,7 @@ private func line(_ kind: String, _ fields: Fields = [:]) -> JSValue {
     object(fields.merging(["kind": kind]) { _, kind in kind })
 }
 
-extension LoggedInViewState {
+extension TerminalViewState {
     var bridgeValue: JSObject {
         let state = object([
             "itemCount": itemCount,
@@ -29,7 +29,7 @@ extension LoggedInViewState {
     }
 }
 
-extension LoggedInViewState.Line {
+extension TerminalViewState.Line {
     var bridgeValue: JSValue {
         switch self {
         case .prompt(let text): line("prompt", ["text": text])

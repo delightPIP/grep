@@ -1,4 +1,4 @@
-import FeatureLoggedInWeb
+import FeatureTerminalWeb
 import FeatureLoggedOutWeb
 import GrepCore
 import GrepWebSupport
@@ -24,8 +24,8 @@ enum ViewMounts {
         }
     }
 
-    static func loggedIn(_ view: any LoggedInViewBridge) -> LoggedInWebViewFactory {
-        LoggedInWebViewFactory { screen in
+    static func loggedIn(_ view: any LoggedInViewBridge) -> TerminalWebViewFactory {
+        TerminalWebViewFactory { screen in
             let handle = LoggedInScreenHandle { [weak screen] action in screen?.send(action) }
             view.mount(host: screen.element, handle: handle)
             screen.attach { state in view.render(state: state.bridgeValue) }

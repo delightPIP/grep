@@ -1,4 +1,4 @@
-import FeatureLoggedInInterface
+import FeatureTerminalInterface
 import GrepCore
 import JavaScriptKit
 
@@ -13,15 +13,15 @@ import JavaScriptKit
 /// 웹 뷰가 구현한다. `features/logged-in/adapter.tsx`가 구현한다.
 @JS protocol LoggedInViewBridge {
     func mount(host: JSObject, handle: LoggedInScreenHandle)
-    /// `state`는 `web/support/view-state.ts`의 `LoggedInState`와 같은 모양의 객체다(`LoggedInStateValue.swift`).
+    /// `state`는 `web/support/view-state.ts`의 `LoggedInState`와 같은 모양의 객체다(`TerminalStateValue.swift`).
     func render(state: JSObject)
 }
 
-/// 웹 뷰가 `mount`에서 받아 쥐고 입력을 보낸다. 메서드는 `LoggedInViewAction`의 case와 하나씩 짝이다.
+/// 웹 뷰가 `mount`에서 받아 쥐고 입력을 보낸다. 메서드는 `TerminalViewAction`의 case와 하나씩 짝이다.
 @JS final class LoggedInScreenHandle: Sendable {
-    private let send: @MainActor @Sendable (LoggedInViewAction) -> Void
+    private let send: @MainActor @Sendable (TerminalViewAction) -> Void
 
-    init(send: @escaping @MainActor @Sendable (LoggedInViewAction) -> Void) {
+    init(send: @escaping @MainActor @Sendable (TerminalViewAction) -> Void) {
         self.send = send
     }
 

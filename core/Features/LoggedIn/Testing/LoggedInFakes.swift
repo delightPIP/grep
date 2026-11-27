@@ -1,31 +1,4 @@
 import FeatureLoggedInInterface
-import GrepCoreTesting
-import RIBs
-
-@MainActor
-public final class FakeLoggedInView: LoggedInViewContract {
-    public weak var listener: (any LoggedInPresentableListener)?
-    /// 그려진 상태를 순서대로 모은다.
-    public private(set) var states: [LoggedInViewState] = []
-    public var state: LoggedInViewState? { states.last }
-
-    public init() {}
-
-    public func render(_ state: LoggedInViewState) { states.append(state) }
-}
-
-@MainActor
-public final class FakeLoggedInViewFactory: LoggedInViewFactory {
-    public private(set) var views: [FakeLoggedInView] = []
-
-    public init() {}
-
-    public func makeLoggedInView() -> any LoggedInViewContract {
-        let view = FakeLoggedInView()
-        views.append(view)
-        return view
-    }
-}
 
 @MainActor
 public final class FakeLoggedInListener: LoggedInListener {

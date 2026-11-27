@@ -1,5 +1,7 @@
 import FeatureLoggedInInterface
 import FeatureLoggedInTesting
+import FeatureTerminalInterface
+import FeatureTerminalTesting
 import FeatureLoggedOutInterface
 import FeatureLoggedOutTesting
 import GrepAppRoot
@@ -20,11 +22,11 @@ final class FakeRootView: RootViewControllable {
 final class FakeAppViewFactory: GrepAppViewFactory {
     let root = FakeRootView()
     let loggedOut = FakeLoggedOutViewFactory()
-    let loggedIn = FakeLoggedInViewFactory()
+    let loggedIn = FakeTerminalViewFactory()
 
     func makeRootView() -> FakeRootView { root }
     func makeLoggedOutView() -> any LoggedOutViewContract { loggedOut.makeLoggedOutView() }
-    func makeLoggedInView() -> any LoggedInViewContract { loggedIn.makeLoggedInView() }
+    func makeTerminalView() -> any TerminalViewContract { loggedIn.makeTerminalView() }
 }
 
 @MainActor
@@ -64,7 +66,7 @@ final class GrepAppTests {
     }
 
     private var loggedOut: FakeLoggedOutView { factory.loggedOut.views.last! }
-    private var loggedIn: FakeLoggedInView { factory.loggedIn.views.last! }
+    private var loggedIn: FakeTerminalView { factory.loggedIn.views.last! }
 
     private func start() async {
         app.start(host: host)
@@ -124,7 +126,7 @@ final class GrepAppTests {
 
         // then
         #expect(factory.root.screen === loggedIn)
-        #expect(loggedIn.state == LoggedInViewState(itemCount: 34))
+        #expect(loggedIn.state == TerminalViewState(itemCount: 34))
         #expect(loggedOut.listener == nil)
     }
 
@@ -156,7 +158,7 @@ final class GrepAppTests {
 
         // then
         #expect(factory.loggedIn.views.count == 2)
-        #expect(loggedIn.state == LoggedInViewState())
+        #expect(loggedIn.state == TerminalViewState())
     }
 
     @Test func 입력줄에글을치던중일때_세션이만료되면_만료알림과함께로그인화면으로바뀌는지() async {
@@ -189,7 +191,7 @@ final class GrepAppTests {
 
         // then
         #expect(factory.root.screen === loggedIn)
-        #expect(loggedIn.state == LoggedInViewState())
+        #expect(loggedIn.state == TerminalViewState())
     }
 
     @Test func 치던줄을남기고만료됐을때_다시로그인하면_입력줄에그줄을되살리는지() async {
@@ -205,7 +207,7 @@ final class GrepAppTests {
 
         // then
         #expect(factory.root.screen === loggedIn)
-        #expect(loggedIn.state == LoggedInViewState(input: "찾기 온보"))
+        #expect(loggedIn.state == TerminalViewState(input: "찾기 온보"))
     }
 
     @Test func 만료뒤되살린줄이있을때_로그아웃하고다시로그인하면_그줄을다시되살리지않는지() async {
@@ -223,7 +225,7 @@ final class GrepAppTests {
         await signIn()
 
         // then
-        #expect(loggedIn.state == LoggedInViewState())
+        #expect(loggedIn.state == TerminalViewState())
     }
 
     @Test func 터미널이떠있을때_앱을멈추면_화면을내리고입력을끊는지() async {

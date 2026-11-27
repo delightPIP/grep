@@ -1,7 +1,7 @@
-import FeatureLoggedInInterface
+import FeatureTerminalInterface
 import GrepCore
 
-extension LoggedInViewState {
+extension TerminalViewState {
     /// 화면 줄에 있는 처리 중(`received`·`processing`) 자료의 번호. 처음 나온 순서, 겹치지 않게(ARC-005 규칙 10).
     func processingNumbers(excluding gone: Set<Int>) -> [Int] {
         var seen = gone
@@ -12,7 +12,7 @@ extension LoggedInViewState {
     }
 
     /// 자료를 든 모든 줄에서 번호가 같은 자료를 새 값으로 바꾼다. 줄을 더 찍지 않는다(ARC-005 규칙 10).
-    func replacingItems(with fresh: [ItemSummary]) -> LoggedInViewState {
+    func replacingItems(with fresh: [ItemSummary]) -> TerminalViewState {
         let byNumber = Dictionary(fresh.map { ($0.number, $0) }) { first, _ in first }
         var next = self
         next.lines = lines.map { $0.mappingItems { byNumber[$0.number]?.keepingMatch(of: $0) ?? $0 } }
@@ -20,7 +20,7 @@ extension LoggedInViewState {
     }
 
     /// `index`의 목록 줄에 다음 쪽을 이어 붙인다. 그 줄이 목록이 아니면 그대로 둔다.
-    func extendingRecentList(at index: Int, with added: [ItemSummary], hasMore: Bool) -> LoggedInViewState {
+    func extendingRecentList(at index: Int, with added: [ItemSummary], hasMore: Bool) -> TerminalViewState {
         guard lines.indices.contains(index), case .recentList(let items, _) = lines[index] else { return self }
         var next = self
         next.lines[index] = .recentList(items: items + added, hasMore: hasMore)
@@ -28,12 +28,12 @@ extension LoggedInViewState {
     }
 
     /// `index`의 목록 줄에서 `→ 더 보기`를 뺀다.
-    func closingRecentList(at index: Int) -> LoggedInViewState {
+    func closingRecentList(at index: Int) -> TerminalViewState {
         extendingRecentList(at: index, with: [], hasMore: false)
     }
 }
 
-extension LoggedInViewState.Line {
+extension TerminalViewState.Line {
     fileprivate var items: [ItemSummary] {
         switch self {
         case .saved(let item), .alreadySaved(let item): [item]
