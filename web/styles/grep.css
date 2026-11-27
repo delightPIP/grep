@@ -110,5 +110,6 @@ html, body, #root, #app { height: 100%; }
 @media (max-width: 560px) { .gt-screen { padding: var(--space-4); } }
 
 /* 도움말 명령 표(commands 2절): 한글 · 영문 · 뜻 세 칸. 좁은 화면에서는 뜻이 다음 줄로. */
-.gt-guide-row { display: grid; grid-template-columns: 8ch 8ch minmax(0, 1fr); column-gap: 1ch; padding-left: 2ch; }
+/* 이름 칸은 가장 긴 `휴지통 비우기`(한글 6자 + 빈칸 = 13ch), 영문 칸은 `bin empty`(9ch)에 맞춘다. */
+.gt-guide-row { display: grid; grid-template-columns: 14ch 10ch minmax(0, 1fr); column-gap: 1ch; padding-left: 2ch; }
 .gt-guide-name { color: var(--command); }
