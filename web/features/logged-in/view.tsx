@@ -1252,6 +1252,16 @@ function OutputLine({ line, failed, savedInBlock, onMoreRequested }: OutputLineP
     case "revived":
       // ARC-008 사용자 문구.
       return <Line tone="ok">{`되살림 ${line.items.length}건`}</Line>;
+    // #137 ARC-007 규칙 11: `폴더`·`mkdir` 입력은 없는 명령이 아니라 안내.
+    case "folderHint":
+      return (
+        <Line tone="info">
+          {"폴더 없음: 묶음이 폴더 역할  → "}
+          <CommandChip command="고르기 ">고르기 &lt;번호&gt;</CommandChip>
+          {" · "}
+          <CommandChip command="묶음 ">묶음 &lt;이름&gt;</CommandChip>
+        </Line>
+      );
     // #127 북마크 가져오기(commands 6절). 진행은 뒤에서 이어진다(user-flow 10절)
     case "importPrompt":
       return <Line tone="info">북마크 파일을 끌어다 놓기 (브라우저에서 내보낸 HTML, 한 번에 200건)</Line>;

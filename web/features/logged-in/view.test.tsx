@@ -2622,4 +2622,26 @@ describe("LoggedInView", () => {
       expect(shown[0]).toBe("! 로그아웃? 모든 기기 (다른 기기는 최대 1시간 뒤)");
     });
   });
+
+  describe("폴더 안내(#137, ARC-007 규칙 11)", () => {
+    it("폴더를만들려할때_화면을그리면_묶음이폴더역할이라는안내와명령칩을보이는지", () => {
+      // given
+      // when
+      const shown = shownOutput([{ kind: "prompt", text: "mkdir 결제" }, { kind: "folderHint" }]);
+
+      // then
+      expect(shown.slice(1)).toEqual(["· 폴더 없음: 묶음이 폴더 역할  → 고르기 <번호> · 묶음 <이름>"]);
+    });
+
+    it("폴더안내일때_묶음칩을누르면_입력줄에묶음과빈칸을찍는지", () => {
+      // given
+      const { onInputChange } = renderView({ lines: [{ kind: "folderHint" }] });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "묶음 <이름>" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("묶음 ");
+    });
+  });
 });
