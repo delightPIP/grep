@@ -411,6 +411,32 @@ function saveQueryFor(line: Extract<TerminalLine, { kind: "searchResult" }>, sav
   return line.query.text;
 }
 
+/** 가져오기 한 번에 받는 링크 수(COM-005, 발표 전 임시값). */
+const IMPORT_LIMIT = 200;
+
+type ImportFinishedLinesProps = { saved: number; skipped: number; failed: number; overLimit: number; failedUrls: string[] };
+
+/**
+ * commands 6절 가져오기 끝. 실패 링크는 줄마다(시안 Import ③).
+ * overLimit 문구는 정책에 없어 개발 제안을 통합 세션이 승인했다(#127). commands.md에는 통합 PR에서 적는다.
+ */
+function ImportFinishedLines({ saved, skipped, failed, overLimit, failedUrls }: ImportFinishedLinesProps) {
+  return (
+    <>
+      <Line tone="ok">{`저장 ${saved}건 · 건너뜀 ${skipped}건 (이미 저장됨) · 실패 ${failed}건`}</Line>
+      {failedUrls.map((url) => (
+        <Plain key={url} dim>{`  실패: ${url}`}</Plain>
+      ))}
+      {overLimit > 0 && (
+        <Line tone="warn">
+          {`${IMPORT_LIMIT}건 넘어 안 가져옴 ${overLimit}건  → 나눠서 다시: `}
+          <CommandChip command="가져오기" />
+        </Line>
+      )}
+    </>
+  );
+}
+
 /** ARC-012 사용자 문구 찾아두기 결과. 결과 목록은 searchResult 줄이 이어서 그린다. */
 function SearchSavedLines({ query, total, already }: { query: string; total: number; already: boolean }) {
   if (already) return <Line tone="warn">{`이미 찾아둠: ${query}`}</Line>;
@@ -1167,6 +1193,26 @@ function OutputLine({ line, failed, savedInBlock, onMoreRequested }: OutputLineP
     case "revived":
       // ARC-008 사용자 문구.
       return <Line tone="ok">{`되살림 ${line.items.length}건`}</Line>;
+    // #127 북마크 가져오기(commands 6절). 진행은 뒤에서 이어진다(user-flow 10절)
+    case "importPrompt":
+      return <Line tone="info">북마크 파일을 끌어다 놓기 (브라우저에서 내보낸 HTML, 한 번에 200건)</Line>;
+    case "importProgress":
+      return (
+        <>
+          <Line tone="info">{`가져오는 중  ${line.done} / ${line.total}건`}</Line>
+          <Plain dim>{"  다른 명령을 쳐도 계속됨"}</Plain>
+        </>
+      );
+    case "importFinished":
+      return (
+        <ImportFinishedLines
+          saved={line.saved}
+          skipped={line.skipped}
+          failed={line.failed}
+          overLimit={line.overLimit}
+          failedUrls={line.failedUrls}
+        />
+      );
     // #134 찾아두기(ARC-012 사용자 문구)
     case "searchSaved":
       return <SearchSavedLines query={line.query} total={line.total} already={line.already} />;
