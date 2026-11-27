@@ -28,6 +28,7 @@ extension TerminalInteractor {
 
     /// 결과가 5건 이하면 바로 복사하고, 넘으면 복사하지 않고 묻는다(COM-008 규칙 1~3). 0건은 찾기와 같다.
     private func searchThenHandOff(_ query: SearchQuery, typed: String) {
+        let sequence = inputSequence
         run(typed: typed) { [weak self] token in
             guard let self else { return }
             let outcome = await BrowseAPI.search(
@@ -39,6 +40,9 @@ extension TerminalInteractor {
                 await showNoResults(for: query, typed: typed, accessToken: token)
             case .page(let items, let total, _) where total <= PendingHandoff.instantLimit:
                 await handOff(items.map(\.number), typed: typed, accessToken: token)
+            // 기다리는 동안 다른 입력이 있었으면 그 입력이 이미 답이다. 묻자마자 취소한다(COM-007 규칙 1·3).
+            case .page(_, let total, _) where inputSequence != sequence:
+                update(viewState.appending(lines: [.handoffConfirm(total: total), .cancelled]))
             case .page(let items, let total, let nextCursor):
                 pendingHandoff = PendingHandoff(
                     query: query, total: total, firstPage: items.map(\.number), nextCursor: nextCursor

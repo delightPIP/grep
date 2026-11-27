@@ -79,6 +79,10 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     private var loadingPage: ListPage?
     /// 답을 기다리는 `찾기 … | 넘기기` 확인. 다음 입력 한 번이 답이다(COM-007 규칙 1).
     var pendingHandoff: PendingHandoff?
+    /// 사용자가 넣은 입력(엔터·붙여 넣기·파일 놓기)의 차례. 늦게 온 응답이 그 뒤의 입력을 답으로 삼지 않게 한다.
+    private(set) var inputSequence = 0
+    /// `로그아웃`으로 기록을 지웠다. 늦게 끝난 되살리기가 다시 남기지 않게 한다.
+    var isHistoryForgotten = false
     /// 기록을 남길 계정(접근 토큰의 `sub`). 알기 전과 로그아웃 뒤에는 nil이라 남기지 않는다(COM-009).
     var historySubject: String?
     /// 남긴 기록을 읽었는지. 읽기 전에는 첫 화면을 정하지 않는다.
@@ -169,6 +173,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     }
 
     private func submit(_ text: String) {
+        inputSequence += 1
         if let pending = pendingHandoff, let choice = pending.choice(for: text) {
             pendingHandoff = nil
             confirmHandoff(pending, choice: choice, typed: text)
@@ -252,6 +257,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     private func paste(_ text: String) {
         let content = text.trimmingWhitespace()
         guard !content.isEmpty else { return }
+        inputSequence += 1
         cancelPendingHandoff()
         keep(KeepCommand.request(for: content), typed: "담기 \(content)")
     }
@@ -261,6 +267,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     /// shortcut: `GET /uploads/limits`로 보내기 전에 거르지 않고 서버 판정(413·415)만 쓴다. 큰 파일을 올리기 전에 막아야 할 때 더한다.
     private func drop(_ dropped: [DroppedFile]) {
         guard !dropped.isEmpty else { return }
+        inputSequence += 1
         cancelPendingHandoff()
         update(viewState.appending(lines: [.prompt((["담기"] + dropped.map(\.name)).joined(separator: " "))]))
         startTask { [weak self] in

@@ -50,15 +50,22 @@ final class TerminalFixture: TerminalDependency {
 
     /// 터미널 화면을 붙인다. `itemCount`가 있으면 부모가 자료 수를 넘긴 것으로 본다.
     func attach(itemCount: Int? = 34) async {
-        let build = TerminalBuilder(dependency: self, viewFactory: views).build(listener: listener)
-        parent.attach(build.router)
-        router = build.router
-        handle = build.handle
+        let build = attachWithoutRunning()
         await runCurrent()
         if let itemCount {
             build.handle.showItemCount(itemCount)
             await runCurrent()
         }
+    }
+
+    /// 붙이기만 하고 띄운 Task는 돌리지 않는다. 기록을 되살리기 전의 입력을 만든다.
+    @discardableResult
+    func attachWithoutRunning() -> TerminalBuild {
+        let build = TerminalBuilder(dependency: self, viewFactory: views).build(listener: listener)
+        parent.attach(build.router)
+        router = build.router
+        handle = build.handle
+        return build
     }
 
     /// 화면을 뗀다. 다시 `attach`하면 새 터미널이 붙는다(다시 열기).

@@ -15,7 +15,7 @@ extension TerminalInteractor {
                 isHistoryLoaded = true
                 showWelcomeIfNeeded()
             }
-            guard let token, let subject = AccessTokenSubject.read(from: token) else { return }
+            guard !isHistoryForgotten, let token, let subject = AccessTokenSubject.read(from: token) else { return }
             historySubject = subject
             guard let record = historyStore.load() else { return }
             guard record.subject == subject else {
@@ -31,8 +31,9 @@ extension TerminalInteractor {
     /// 되살린 줄을 앞에 둔다. 기다리는 동안 사용자가 친 것이 있으면 덮지 않는다.
     private func restore(_ saved: TerminalHistory.Snapshot) {
         // 끊기기 전에 기다리던 확인은 취소된 것이다(COM-009 규칙 4, COM-007 규칙 7).
-        let wasWaiting = if case .handoffConfirm = saved.lines.last { true } else { false }
-        let lines = saved.lines + (wasWaiting ? [.cancelled] : []) + viewState.lines
+        // 다음 쪽을 받는 값은 남기지 않으므로 되살린 목록의 `→ 더 보기`는 뺀다.
+        let closed = saved.lines.indices.reduce(TerminalViewState(lines: saved.lines)) { $0.closingList(at: $1) }
+        let lines = closed.lines + (Self.isWaitingForAnswer(saved.lines) ? [.cancelled] : []) + viewState.lines
         update(
             TerminalViewState(
                 itemCount: viewState.itemCount,
@@ -42,6 +43,19 @@ extension TerminalInteractor {
                 isOffline: viewState.isOffline
             )
         )
+    }
+
+    /// 마지막 확인 줄 뒤에 답(명령 줄)도 취소도 없으면 아직 기다리던 것이다.
+    private static func isWaitingForAnswer(_ lines: [TerminalViewState.Line]) -> Bool {
+        guard let asked = lines.lastIndex(where: { if case .handoffConfirm = $0 { true } else { false } }) else {
+            return false
+        }
+        return !lines[asked...].contains { line in
+            switch line {
+            case .prompt, .cancelled: true
+            default: false
+            }
+        }
     }
 
     /// 되살린 선택에서 그새 지워진 자료(휴지통 포함)를 뺀다. 출력은 찍힌 그대로 둔다(규칙 6).
@@ -72,6 +86,7 @@ extension TerminalInteractor {
 
     /// 로그아웃하면 이 기기의 기록을 지우고 더 남기지 않는다(규칙 2).
     func forgetHistory() {
+        isHistoryForgotten = true
         historySubject = nil
         historyStore.clear()
     }

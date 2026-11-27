@@ -176,6 +176,44 @@ struct TerminalHistoryTests {
         #expect(fixture.fakeClipboard.copied.isEmpty)
     }
 
+    @Test func 확인뒤에다른줄이찍힌기록이있을때_터미널을열면_그래도취소된것으로보는지() async {
+        // given
+        let waiting = Snapshot(
+            lines: [.prompt("찾기 pay | 넘기기"), .handoffConfirm(total: 8), .reconnected], input: "", selection: []
+        )
+        let fixture = Fixture(history: Self.record(waiting))
+
+        // when
+        await fixture.attach()
+
+        // then
+        #expect(fixture.state.lines == waiting.lines + [.cancelled])
+    }
+
+    @Test func 더보기가남은목록의기록이있을때_터미널을열면_이어받을수없는더보기를빼는지() async {
+        // given
+        let query = SearchQuery(text: "pay", words: "pay", tags: [])
+        let listed = Snapshot(
+            lines: [
+                .prompt("찾기 pay"), .searchResult(query: query, total: 23, items: [Fixture.item(1)], hasMore: true),
+                .prompt("최근"), .recentList(items: [Fixture.item(2)], hasMore: true),
+            ],
+            input: "", selection: []
+        )
+        let fixture = Fixture(history: Self.record(listed))
+
+        // when
+        await fixture.attach()
+        await fixture.send(.moreRequested)
+
+        // then
+        #expect(fixture.state.lines == [
+            .prompt("찾기 pay"), .searchResult(query: query, total: 23, items: [Fixture.item(1)], hasMore: false),
+            .prompt("최근"), .recentList(items: [Fixture.item(2)], hasMore: false),
+        ])
+        #expect(fixture.transport.requests.isEmpty)
+    }
+
     // MARK: 선택 맞추기(규칙 6)
 
     @Test func 선택이든기록이있을때_터미널을열면_선택한번호가아직있는지확인하는지() async {
@@ -257,6 +295,20 @@ struct TerminalHistoryTests {
 
         // then
         #expect(fixture.fakeHistory.record == nil)
+    }
+
+    @Test func 기록을되살리기전일때_로그아웃을치면_늦게끝난되살리기가기록을다시남기지않는지() async {
+        // given
+        let fixture = Fixture(history: Self.record(Self.saved))
+        fixture.attachWithoutRunning()
+
+        // when
+        await fixture.submit("로그아웃")
+        await fixture.send(.inputChanged("찾"))
+
+        // then
+        #expect(fixture.fakeHistory.record == nil)
+        #expect(fixture.state.lines.isEmpty)
     }
 
     @Test func 기록이남아있을때_세션이만료되면_기록을지우지않는지() async {

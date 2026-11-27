@@ -16,7 +16,7 @@ enum PipeCommand {
 
     private static func barRange(in text: String) -> Range<String.Index>? {
         if let index = text.firstIndex(of: bar) { return index..<text.index(after: index) }
-        let jamo = text.split(whereSeparator: \.isWhitespace).dropFirst().first { $0 == barJamo }
+        let jamo = text.split(whereSeparator: \.isWhitespace).first { $0 == barJamo }
         return jamo.map { $0.startIndex..<$0.endIndex }
     }
 }

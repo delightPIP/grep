@@ -65,7 +65,8 @@ struct TerminalPipeTests {
         #expect(fixture.transport.requests.isEmpty)
     }
 
-    @Test(arguments: [("찾기 | 넘기기", TerminalViewState.Line.missingArgument(.seek)), ("찾기 # | 넘기기", .missingTag)])
+    @Test(arguments: [("찾기 | 넘기기", TerminalViewState.Line.missingArgument(.seek)), ("찾기 ㅣ 넘기기", .missingArgument(.seek)),
+        ("찾기 # | 넘기기", .missingTag),])
     func 터미널화면일때_검색어없이이어쓰면_요청없이찾기의빠진인자줄을그리는지(
         typed: String, line: TerminalViewState.Line
     ) async {
@@ -218,6 +219,24 @@ struct TerminalPipeTests {
 
         // then
         #expect(fixture.state.lines.suffix(3) == [.cancelled, .prompt("앞10"), .unknownCommand("앞10")])
+        #expect(fixture.fakeClipboard.copied.isEmpty)
+    }
+
+    @Test func 이어쓴찾기를기다릴때_그새다른명령을치면_늦게온확인을묻자마자취소하는지() async {
+        // given
+        await fixture.attach()
+        await fixture.submit(Self.typed)
+        await fixture.submit("도움말")
+
+        // when
+        await fixture.respond(json: Fixture.searchJSON(Self.items(1...8), total: 8))
+        await fixture.submit("전부")
+
+        // then
+        #expect(fixture.state.lines == [
+            .prompt(Self.typed), .prompt("도움말"), .guide, .handoffConfirm(total: 8), .cancelled,
+            .prompt("전부"), .unknownCommand("전부"),
+        ])
         #expect(fixture.fakeClipboard.copied.isEmpty)
     }
 
