@@ -214,7 +214,7 @@ struct TerminalStateMapperTests {
         ]))
     }
 
-    @Test func 도움말명령일때_매핑하면_명령13줄을돌려주는지() {
+    @Test func 도움말명령일때_매핑하면_휴지통명령을더한16줄을돌려주는지() {
         // given
         let state = TerminalViewState(lines: [.guide])
 
@@ -226,7 +226,8 @@ struct TerminalStateMapperTests {
             Issue.record("Expected guide line")
             return
         }
-        #expect(rows.count == 13)
+        #expect(rows.count == 16)
+        #expect(rows.map(\.name).contains("휴지통 비우기"))
         #expect(rows.first?.name == "담기")
         #expect(rows.last?.name == "설명")
     }

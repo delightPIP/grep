@@ -5,6 +5,7 @@ public struct SettingsView: View {
     let presentation: SettingsPresentation
     let resetToRootTrigger: Int
     let onSignOut: () -> Void
+    let onOpenTrash: (() -> Void)?
     let onModalVisibilityChange: ((Bool) -> Void)?
 
     @State private var showSignOutSheet = false
@@ -13,11 +14,13 @@ public struct SettingsView: View {
         presentation: SettingsPresentation,
         resetToRootTrigger: Int = 0,
         onSignOut: @escaping () -> Void,
+        onOpenTrash: (() -> Void)? = nil,
         onModalVisibilityChange: ((Bool) -> Void)? = nil
     ) {
         self.presentation = presentation
         self.resetToRootTrigger = resetToRootTrigger
         self.onSignOut = onSignOut
+        self.onOpenTrash = onOpenTrash
         self.onModalVisibilityChange = onModalVisibilityChange
     }
 
@@ -88,14 +91,15 @@ public struct SettingsView: View {
                             )
 
                             sectionHeader("자료")
+                            // ARC-008 규칙 11: 모바일은 설정 탭의 `휴지통`으로 들어간다.
                             GrepSettingRow(
                                 label: "휴지통",
-                                sub: "30일 뒤 영구 삭제 · 준비 중",
+                                sub: onOpenTrash == nil ? "30일 뒤 영구 삭제 · 준비 중" : "30일 뒤 영구 삭제",
                                 actionLabel: "열기",
                                 actionKind: .secondary,
-                                isActionDisabled: true,
-                                actionAccessibilityId: "settingsFuture_trash",
-                                onAction: nil
+                                isActionDisabled: onOpenTrash == nil,
+                                actionAccessibilityId: "settingsTrashButton",
+                                onAction: onOpenTrash
                             )
 
                             sectionHeader("정보")

@@ -16,6 +16,8 @@ enum LoggedInDemoScenario: String, CaseIterable, Identifiable {
     case archiveEmpty = "보관함 · 자료 0건"
     case archiveOfflineThenRecover = "보관함 · 연결 끊김 (다시 시도 복구)"
     case settingsSignOut = "설정 바로 보기 · 로그아웃 확인"
+    case settingsTrash = "설정 › 휴지통 (3건 · 되살리기 · 비우기)"
+    case settingsTrashOffline = "설정 › 휴지통 · 되살리기 실패 (연결 끊김)"
 
     var id: String { rawValue }
 }
@@ -50,6 +52,7 @@ struct LoggedInExampleApp: App {
                     if let tabsModel = harness.tabsModel {
                         LoggedInTabsView(
                             model: tabsModel,
+                            trashModel: harness.trashModel,
                             hidesTabBar: harness.isKeyboardVisible
                         ) {
                             RIBSlotView(slot: harness.terminalSlot)
@@ -76,6 +79,7 @@ final class LoggedInExampleHarness: TerminalListener, TerminalDependency {
     let terminalSlot = RIBScreenSlot()
     var activeScenario: LoggedInDemoScenario?
     var tabsModel: LoggedInTabsModel?
+    var trashModel: TrashScreenModel?
     var isKeyboardVisible = false
     private(set) var lastEvent = "이벤트 없음"
 
@@ -116,11 +120,18 @@ final class LoggedInExampleHarness: TerminalListener, TerminalDependency {
             initialTab = .archive
             loader = ExampleArchiveLoader(mode: .failOnceThenPaginated(.disconnected, Self.sampleItems(count: 6)))
             initialItemCount = nil
-        case .settingsSignOut:
+        case .settingsSignOut, .settingsTrash, .settingsTrashOffline:
             initialTab = .settings
             loader = ExampleArchiveLoader(mode: .paginated(Self.sampleItems(count: 6)))
             initialItemCount = 6
         }
+        let trashClient = ExampleTrashClient(
+            entries: Self.sampleTrash(),
+            restoreFailure: scenario == .settingsTrashOffline ? .disconnected : nil
+        )
+        trashModel = TrashScreenModel(client: trashClient, onSessionExpired: { [weak self] in
+            self?.didExpire(input: "")
+        })
 
         let model = LoggedInTabsModel(
             archiveLoader: loader,
@@ -178,7 +189,31 @@ final class LoggedInExampleHarness: TerminalListener, TerminalDependency {
             currentRouter = nil
         }
         tabsModel = nil
+        trashModel = nil
         isKeyboardVisible = false
+    }
+
+    /// 시안 M11 ①의 휴지통 3건(지운 날 최신순).
+    private static func sampleTrash() -> [TrashListEntry] {
+        let rows: [(Int, ItemKind, String, String?, Int)] = [
+            (29, .file, "주간 업무 메모.md", "md", 30),
+            (21, .file, "사무실 비품 주문 목록.txt", "txt", 12),
+            (31, .text, "겨울 카피 아이디어", nil, 2),
+        ]
+        return rows.map { number, kind, title, source, daysLeft in
+            TrashListEntry(
+                item: ItemSummary(
+                    number: number,
+                    kind: kind,
+                    title: title,
+                    source: source,
+                    status: .ready,
+                    tags: [],
+                    savedAt: "2026-11-20T01:00:00Z"
+                ),
+                daysLeft: daysLeft
+            )
+        }
     }
 
     func didRequestSignOut() {
@@ -328,5 +363,33 @@ private final class ExampleArchiveLoader: ArchiveItemLoader {
 private final class ExampleNoopTransport: HTTPTransport {
     func send(_ request: HTTPRequest) async throws(HTTPTransportError) -> HTTPResponse {
         HTTPResponse(status: 200, body: Array(#"{"items":[],"total":0,"nextCursor":null}"#.utf8))
+    }
+}
+
+/// 메모리 휴지통. 되살리거나 비우면 목록에서 실제로 뺀다.
+@MainActor
+private final class ExampleTrashClient: TrashClient {
+    private var entries: [TrashListEntry]
+    private let restoreFailure: ArchiveLoadFailure?
+
+    init(entries: [TrashListEntry], restoreFailure: ArchiveLoadFailure?) {
+        self.entries = entries
+        self.restoreFailure = restoreFailure
+    }
+
+    func loadPage(limit: Int, cursor: String?) async -> TrashPageOutcome {
+        .page(total: entries.count, entries: Array(entries.prefix(limit)), nextCursor: nil)
+    }
+
+    func restore(numbers: [Int]) async -> TrashRestoreOutcome {
+        if let restoreFailure { return .failed(restoreFailure) }
+        entries.removeAll { numbers.contains($0.item.number) }
+        return .restored(numbers: numbers)
+    }
+
+    func empty() async -> TrashEmptyOutcome {
+        let count = entries.count
+        entries = []
+        return .emptied(count: count)
     }
 }

@@ -96,6 +96,20 @@ public struct TerminalGuideRow: Equatable, Sendable, Identifiable {
     }
 }
 
+/// 휴지통 목록 한 줄. `meta`의 끝은 영구 삭제까지 남은 날(`30일 남음`, ARC-008 규칙 10).
+public struct TerminalTrashRow: Equatable, Sendable, Identifiable {
+    public var id: Int { number }
+    public let number: Int
+    public let title: String
+    public let meta: String
+
+    public init(number: Int, title: String, meta: String) {
+        self.number = number
+        self.title = title
+        self.meta = meta
+    }
+}
+
 public enum TerminalOutputBlockLine: Equatable, Sendable {
     case prompt(command: String, failed: Bool)
     case status(tone: TerminalLineTone, boldPrefix: String?, body: String)
@@ -103,6 +117,7 @@ public enum TerminalOutputBlockLine: Equatable, Sendable {
     case commandHint(prefix: String, command: String, suffix: String)
     case itemRow(TerminalItemRow)
     case list(header: String?, items: [TerminalItemRow], hasMore: Bool)
+    case trashList(header: String, rows: [TerminalTrashRow], hasMore: Bool)
     case handedOff(TerminalHandoffPresentation)
     case handoffFailed(reasonLabel: String, preview: String?, isClipboardDenied: Bool)
     case handoffConfirm(total: Int, choices: [TerminalChoiceItem])

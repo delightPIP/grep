@@ -19,9 +19,10 @@ enum TerminalDemoScenario: String, CaseIterable, Identifiable {
     case handedOff = "넘기기 완료 (미리보기 · 공유)"
     case handoffConfirm = "넘기기 5건 초과 확인 (23건)"
     case handoffDenied = "넘기기 실패 (클립보드 거부)"
-    case guide = "도움말 (명령 13줄)"
+    case guide = "도움말 (명령 16줄)"
     case droppedAndRevived = "버리기 1건 · 되살리기 결과"
     case dropConfirm = "버리기 2건 확인 시트 (실제 입력)"
+    case binList = "휴지통 목록 (남은 날 · 다음 명령)"
     case expired = "로그인 만료 이벤트"
 
     var id: String { rawValue }
@@ -284,6 +285,33 @@ final class TerminalExampleHarness: TerminalListener, TerminalDependency {
         case .dropConfirm:
             // 코어가 확인 대기를 잡도록 실제 입력으로 보낸다. 시트의 `버리기`는 가짜 서버가 받는다.
             currentScreen?.listener?.handle(.submitted("버리기 131 118"))
+        case .binList:
+            let trashed = [(29, "주간 업무 메모.md", "md", 30), (21, "사무실 비품 주문 목록.txt", "txt", 12)]
+            currentScreen?.render(TerminalViewState(
+                itemCount: 129,
+                lines: [
+                    .prompt("휴지통"),
+                    .binList(
+                        total: 12,
+                        items: trashed.map { number, title, source, daysLeft in
+                            TrashEntry(
+                                item: ItemSummary(
+                                    number: number,
+                                    kind: .file,
+                                    title: title,
+                                    source: source,
+                                    status: .ready,
+                                    tags: [],
+                                    savedAt: "2026-11-20T01:00:00Z"
+                                ),
+                                trashedAt: "2026-11-27T01:00:00Z",
+                                daysLeft: daysLeft
+                            )
+                        },
+                        hasMore: true
+                    ),
+                ]
+            ))
         case .expired:
             didExpire(input: "찾기 결제")
         }

@@ -70,6 +70,7 @@ private struct LoggedInTabWrapper: View {
     let context: TerminalHostContext
     let terminalView: AnyView
     @State private var model: LoggedInTabsModel
+    @State private var trashModel: TrashScreenModel
 
     init(
         authService: any AuthService,
@@ -88,11 +89,15 @@ private struct LoggedInTabWrapper: View {
                 onPickItem: { number in sendCommand("고르기 \(number)") }
             )
         )
+        self._trashModel = State(
+            initialValue: TrashScreenModel(client: HTTPTrashClient(authService: authService, httpTransport: httpTransport))
+        )
     }
 
     var body: some View {
         LoggedInTabsView(
             model: model,
+            trashModel: trashModel,
             hidesTabBar: context.isKeyboardVisible.wrappedValue || !context.pickedNumbers.isEmpty
         ) {
             terminalView

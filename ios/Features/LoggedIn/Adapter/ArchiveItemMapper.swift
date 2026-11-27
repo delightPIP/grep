@@ -34,7 +34,7 @@ public enum ArchiveItemMapper {
         item.status == .received || item.status == .processing
     }
 
-    private static func textTitle(_ title: String) -> String {
+    static func textTitle(_ title: String) -> String {
         let firstLine = title.split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: false).first.map(String.init) ?? ""
         return String(firstLine.prefix(textTitleLimit))
             .replacingOccurrences(of: "\\s+$", with: "", options: .regularExpression)

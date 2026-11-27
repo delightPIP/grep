@@ -158,6 +158,19 @@ public struct TerminalView: View {
             .frame(minHeight: 32, alignment: .leading)
         case .itemRow(let item):
             mobileItemRow(item)
+        case .trashList(let header, let rows, let hasMore):
+            TerminalTrashListView(
+                header: header,
+                rows: rows,
+                hasMore: hasMore,
+                palette: palette,
+                onStage: { command in
+                    onInputChange(command)
+                    isInputFocused = true
+                },
+                onSubmit: onSubmit,
+                onMoreRequested: onMoreRequested
+            )
         case .list(let header, let items, let hasMore):
             VStack(alignment: .leading, spacing: 4) {
                 if let header {
