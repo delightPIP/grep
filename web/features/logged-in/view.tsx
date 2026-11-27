@@ -352,6 +352,30 @@ function Preview({ text, selectAll = false }: { text: string; selectAll?: boolea
   );
 }
 
+/** COM-008 값: 6건부터 묻고, 11건부터 `앞10`을 더한다. */
+const HANDOFF_DIRECT_LIMIT = 5;
+const HANDOFF_FIRST_LIMIT = 10;
+
+/** COM-008 확인 질문. 답 낱말은 명령 칩처럼 입력줄에 찍기만 한다(엔터로 답, COM-007). */
+function HandoffConfirmLines({ total }: { total: number }) {
+  return (
+    <>
+      <Line tone="warn">{`${total}건: 바로 복사 안 함 (${HANDOFF_DIRECT_LIMIT}건 초과)`}</Line>
+      <Plain>
+        {"→ "}
+        {total > HANDOFF_FIRST_LIMIT && (
+          <>
+            <CommandChip command={`앞${HANDOFF_FIRST_LIMIT}`} />
+            {`: 앞 ${HANDOFF_FIRST_LIMIT}건만 · `}
+          </>
+        )}
+        <CommandChip command="전부" />
+        {`: ${total}건 전부 · 취소: 그 외 입력`}
+      </Plain>
+    </>
+  );
+}
+
 /** COM-008 값: 직접 복사 키. 터치 기기 문구는 AI 제안(PO 확인 전). */
 function copyKeyHint(): string {
   if (typeof window.matchMedia === "function" && window.matchMedia("(hover: none) and (pointer: coarse)").matches) {
@@ -442,6 +466,11 @@ function OutputLine({ line, failed, onMoreRequested }: OutputLineProps) {
       return <Line tone="error">{`잘못된 번호: ${line.input}  예: ${PICK_EXAMPLE}`}</Line>;
     case "handedOff":
       return <HandedOffLines result={line.result} />;
+    case "handoffConfirm":
+      return <HandoffConfirmLines total={line.total} />;
+    case "cancelled":
+      // COM-007 사용자 문구.
+      return <Line tone="info">취소됨</Line>;
     case "handoffFailed":
       return <HandoffFailedLines reason={line.reason} preview={line.preview} />;
     case "commandFailed":
