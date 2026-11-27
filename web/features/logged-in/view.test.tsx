@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { CommandFailure, ItemSummary, LoggedInState } from "../../support/view-state";
+import type { CommandFailure, ItemDetail, ItemSummary, LoggedInState, TerminalLine } from "../../support/view-state";
 import { LoggedInView } from "./view";
 
 afterEach(cleanup);
@@ -625,7 +625,7 @@ describe("LoggedInView", () => {
       const shown = shownOutput(lines);
 
       // then
-      expect(shown.slice(1)).toEqual(["1건", "131 카페 텀블러 할인, 올겨울 캠페인 늘었다 2026-11-27 11:00", "요약 131"]);
+      expect(shown.slice(1)).toEqual(["1건", "131 카페 텀블러 할인, 올겨울 캠페인 늘었다 2026-11-27 11:00", "요약 131", "→ 찾아두기 결제"]);
     });
 
     it("찾은자료가10건을넘을때_찾기결과를그리면_머리줄에전체중보인건수와더보기를보이는지", () => {
@@ -637,7 +637,7 @@ describe("LoggedInView", () => {
 
       // then
       expect(shown[1]).toBe("23건 중 10건");
-      expect(shown[shown.length - 1]).toBe("→ 더 보기");
+      expect(shown.slice(-2)).toEqual(["→ 더 보기", "→ 찾아두기 결제"]);
     });
 
     it("더보기로다음쪽을이어받았을때_찾기결과를그리면_머리숫자가행수와맞는지", () => {
@@ -1180,7 +1180,7 @@ describe("LoggedInView", () => {
       expect(onSubmit).not.toHaveBeenCalled();
     });
 
-    it("도움말을쳤을때_화면을그리면_안내줄과명령16줄과예시줄을보이는지", () => {
+    it("도움말을쳤을때_화면을그리면_안내줄과명령18줄과예시줄을보이는지", () => {
       // given
       const lines: LoggedInState["lines"] = [{ kind: "prompt", text: "도움말" }, { kind: "guide" }];
 
@@ -1193,6 +1193,8 @@ describe("LoggedInView", () => {
         "담기 keep 자료 저장",
         "최근 recent 최근 자료 목록",
         "찾기 seek 검색",
+        "열기 peek 자료 자세히 보기",
+        "찾아두기 gather 검색어 저장",
         "고르기 pick 번호로 선택",
         "넘기기 handoff AI 도구용 글 복사",
         "묶음 pack 선택에 이름 붙이기",
@@ -1635,6 +1637,20 @@ describe("LoggedInView", () => {
   });
 
   describe("고르기 빼기·비우기(#108, commands 6절)", () => {
+    it("고르기빼기를번호없이쳤을때_화면을그리면_빼기예시를보이는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [
+        { kind: "prompt", text: "고르기 빼기" },
+        { kind: "missingArgument", command: "pick", sub: "unpick" },
+      ];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown.slice(1)).toEqual(["✗ 번호 없음  예: 고르기 빼기 131"]);
+    });
+
     it("선택에서뺐을때_화면을그리면_그때남은선택건수를보이는지", () => {
       // given
       const lines: LoggedInState["lines"] = [
@@ -1809,6 +1825,950 @@ describe("LoggedInView", () => {
 
       // then
       expect(onInputChange).toHaveBeenCalledWith("찾기 결제");
+    });
+  });
+
+  describe("묶음 줄(#121, ARC-003)", () => {
+    function shownBlock(prompt: string, line: TerminalLine): string[] {
+      return shownOutput([{ kind: "prompt", text: prompt }, line]).slice(1);
+    }
+
+    it("묶음이있을때_묶음을치면_묶음수머리와이름별건수를보이는지", () => {
+      // given
+      const line: TerminalLine = {
+        kind: "bundleList",
+        bundles: [
+          { name: "겨울캠페인", count: 3 },
+          { name: "결제조사", count: 0 },
+        ],
+      };
+
+      // when
+      const shown = shownBlock("묶음", line);
+
+      // then
+      expect(shown).toEqual(["2개 묶음", "겨울캠페인 3건", "결제조사 0건"]);
+    });
+
+    it("묶음목록일때_묶음이름을누르면_입력줄에묶음이름을찍기만하는지", () => {
+      // given
+      const { onInputChange, onSubmit } = renderView({
+        lines: [{ kind: "bundleList", bundles: [{ name: "겨울캠페인", count: 3 }] }],
+      });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "겨울캠페인" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("묶음 겨울캠페인");
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+
+    it("묶음이없을때_묶음을치면_묶음0개와고르기묶음을줄나눠안내하는지", () => {
+      // given
+      // when
+      const shown = shownBlock("묶음", { kind: "bundleList", bundles: [] });
+
+      // then
+      expect(shown).toEqual(["· 묶음 0개", "→ 고르기 <번호>", "→ 묶음 <이름>"]);
+    });
+
+    it("묶음이없을때_고르기칩을누르면_입력줄에고르기와빈칸을찍는지", () => {
+      // given
+      const { onInputChange } = renderView({ lines: [{ kind: "bundleList", bundles: [] }] });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "고르기 <번호>" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("고르기 ");
+    });
+
+    it("선택을묶음에넣었을때_화면을그리면_건수와다음부터넘기기를보이는지", () => {
+      // given
+      // when
+      const shown = shownBlock("묶음 겨울캠페인", { kind: "bundleAdded", name: "겨울캠페인", count: 3, alreadyCount: 0 });
+
+      // then
+      expect(shown).toEqual(["✓ 묶음 겨울캠페인: 3건", "→ 다음부터: 넘기기 겨울캠페인"]);
+    });
+
+    it("이미든자료를다시넣었을때_화면을그리면_이미있음건수를붙이는지", () => {
+      // given
+      // when
+      const shown = shownBlock("묶음 겨울캠페인", { kind: "bundleAdded", name: "겨울캠페인", count: 3, alreadyCount: 1 });
+
+      // then
+      expect(shown[0]).toBe("✓ 묶음 겨울캠페인: 3건 (이미 있음 1건)");
+    });
+
+    it("선택없이묶음이름을쳤을때_화면을그리면_묶음머리와자료목록을보이는지", () => {
+      // given
+      const line: TerminalLine = {
+        kind: "bundleView",
+        name: "겨울캠페인",
+        total: 2,
+        items: [item({ number: 30, status: "ready" }), item({ number: 28, status: "ready" })],
+        hasMore: false,
+      };
+
+      // when
+      const shown = shownBlock("묶음 겨울캠페인", line);
+
+      // then
+      expect(shown[0]).toBe("묶음 겨울캠페인  2건");
+      expect(shown.filter((text) => /^(30|28) /.test(text))).toHaveLength(2);
+    });
+
+    it("묶음안자료가한쪽을넘을때_화면을그리면_머리에보인건수와더보기를보이는지", () => {
+      // given
+      const line: TerminalLine = { kind: "bundleView", name: "겨울캠페인", total: 12, items: [item({ number: 30 })], hasMore: true };
+
+      // when
+      const shown = shownBlock("묶음 겨울캠페인", line);
+
+      // then
+      expect(shown[0]).toBe("묶음 겨울캠페인  12건 중 1건");
+      expect(shown).toContain("→ 더 보기");
+    });
+
+    it("없는묶음을봤을때_화면을그리면_없는묶음과묶음칩을보이는지", () => {
+      // given
+      // when
+      const shown = shownBlock("묶음 없는묶음", { kind: "bundleNotFound", name: "없는묶음" });
+
+      // then
+      expect(shown).toEqual(["✗ 없는 묶음: 없는묶음  → 묶음"]);
+    });
+
+    it("묶음에서뺐을때_화면을그리면_남은건수를보이는지", () => {
+      // given
+      // when
+      const shown = shownBlock("묶음 겨울캠페인 빼기 30", { kind: "bundleUnpicked", name: "겨울캠페인", remaining: 2 });
+
+      // then
+      expect(shown).toEqual(["✓ 뺌  묶음 겨울캠페인: 2건 남음"]);
+    });
+
+    it("묶음에없는번호를뺄때_화면을그리면_그번호들을보이는지", () => {
+      // given
+      // when
+      const shown = shownBlock("묶음 겨울캠페인 빼기 57 58", { kind: "notInBundle", name: "겨울캠페인", numbers: [57, 58] });
+
+      // then
+      expect(shown).toEqual(["✗ 묶음에 없음: 57, 58"]);
+    });
+
+    it("묶음을지우려할때_화면을그리면_남는자료수와실행낱말을묻는지", () => {
+      // given
+      // when
+      const shown = shownBlock("묶음 겨울캠페인 지우기", { kind: "bundleDeleteConfirm", name: "겨울캠페인", itemCount: 2 });
+
+      // then
+      expect(shown).toEqual(["! 지우기? 묶음 겨울캠페인 (자료 2건은 남음)", "→ 실행: 지우기 다시 입력 · 취소: 그 외 입력"]);
+    });
+
+    it("묶음을지웠을때_화면을그리면_삭제됨과묶음이름을보이는지", () => {
+      // given
+      // when
+      const shown = shownBlock("지우기", { kind: "bundleDeleted", name: "겨울캠페인" });
+
+      // then
+      expect(shown).toEqual(["✓ 삭제됨  묶음 겨울캠페인"]);
+    });
+
+    it("묶음이름이글자규칙에안맞을때_화면을그리면_이름규칙을알리는지", () => {
+      // given
+      // when
+      const shown = shownBlock("묶음 겨울 캠페인", { kind: "bundleNameInvalid", reason: "format" });
+
+      // then
+      expect(shown).toEqual(["✗ 묶음 이름: 띄어쓰기 없이 1~20자 (한글·영문·숫자·-·_)"]);
+    });
+
+    it("묶음이름이금지이름일때_화면을그리면_금지이름을알리는지", () => {
+      // given
+      // when
+      const shown = shownBlock("묶음 131", { kind: "bundleNameInvalid", reason: "reserved" });
+
+      // then
+      expect(shown).toEqual(["✗ 묶음 이름: 숫자만 · #시작 · 빼기 · 지우기 불가"]);
+    });
+
+    it("묶음을넘길때지운자료가있으면_화면을그리면_복사됨앞에빠진자료건수를보이는지", () => {
+      // given
+      const line: TerminalLine = {
+        kind: "handedOff",
+        result: {
+          items: [{ number: 30, title: "카페 텀블러 할인" }],
+          bundle: "겨울캠페인",
+          removedCount: 1,
+          charCount: 240,
+          missingSummaryCount: 0,
+          text: "[그렙 · 자료 1건]",
+        },
+      };
+
+      // when
+      const shown = shownBlock("넘기기 겨울캠페인", line);
+
+      // then
+      expect(shown.slice(0, 2)).toEqual(["! 빠진 자료 1건 (삭제됨)", "✓ 복사됨  1건 · 240자 (제목·출처·저장 시각·요약)"]);
+    });
+
+    it("고른뒤일때_묶음칩을누르면_입력줄에묶음과빈칸을찍는지", () => {
+      // given
+      const { onInputChange } = renderView({ lines: [{ kind: "picked", items: [{ number: 131, title: "결제위젯 연동 가이드" }] }] });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "묶음 <이름>" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("묶음 ");
+    });
+  });
+
+  describe("자세히 보기(#131, ARC-011)", () => {
+    function detail(overrides: Partial<ItemDetail> = {}, itemOverrides: Partial<ItemSummary> = {}): ItemDetail {
+      return {
+        item: item({
+          number: 131,
+          title: "결제위젯 연동 가이드",
+          source: "docs.tosspayments.com",
+          status: "ready",
+          summarySource: "ai",
+          savedAt: "2026-11-26T05:03:00Z",
+          ...itemOverrides,
+        }),
+        handoffSummary: "결제위젯을 붙이는 순서를 정리한 문서.",
+        allTags: ["결제", "위젯", "연동", "가이드"],
+        bundles: ["결제조사"],
+        bodyLength: 3420,
+        body: "결제위젯 본문",
+        bodyFromImage: false,
+        url: "https://docs.tosspayments.com/guides/widget",
+        originalUrl: null,
+        previewUrl: null,
+        ...overrides,
+      };
+    }
+
+    function shownDetail(value: ItemDetail): string[] {
+      return shownOutput([{ kind: "prompt", text: `열기 ${value.item.number}` }, { kind: "itemDetail", detail: value }]).slice(1);
+    }
+
+    it("링크자료를열었을때_화면을그리면_정책차례대로머리출처저장요약태그묶음본문다음명령을보이는지", () => {
+      // given
+      // when
+      const shown = shownDetail(detail());
+
+      // then
+      expect(shown).toEqual([
+        "131 결제위젯 연동 가이드",
+        "출처 docs.tosspayments.com",
+        "저장 2026-11-26 14:03",
+        "AI 요약 결제위젯을 붙이는 순서를 정리한 문서.",
+        "태그 (AI 추정) #결제 #위젯 #연동 #가이드",
+        "묶음 결제조사",
+        "본문 3,420자  펼치기",
+        "→ 고르기 131 또는 묶음 <이름> 또는 고치기 131 또는 버리기 131",
+      ]);
+    });
+
+    it("직접고친요약이고묶음이없을때_화면을그리면_직접고침이름표와묶음없음을보이는지", () => {
+      // given
+      const value = detail({ bundles: [] }, { summarySource: "user" });
+
+      // when
+      const shown = shownDetail(value);
+
+      // then
+      expect(shown).toContain("요약 (직접 고침) 결제위젯을 붙이는 순서를 정리한 문서.");
+      expect(shown).toContain("묶음 없음");
+    });
+
+    it("자세히보기일때_태그를누르면_입력줄에찾기태그를찍는지", () => {
+      // given
+      const { onInputChange } = renderView({ lines: [{ kind: "itemDetail", detail: detail() }] });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "#위젯" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("찾기 #위젯");
+    });
+
+    it("자세히보기일때_묶음이름을누르면_입력줄에묶음이름을찍는지", () => {
+      // given
+      const { onInputChange } = renderView({ lines: [{ kind: "itemDetail", detail: detail() }] });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "결제조사" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("묶음 결제조사");
+    });
+
+    it("본문이접혀있을때_펼치기를누르면_입력줄을건드리지않고본문과접기를보이는지", () => {
+      // given
+      const { container, onInputChange } = renderView({ lines: [{ kind: "itemDetail", detail: detail() }] });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "펼치기" }));
+
+      // then
+      expect(container.querySelector(".gt-preview")!.textContent).toBe("결제위젯 본문");
+      expect(screen.getByRole("button", { name: "접기" })).toBeTruthy();
+      expect(onInputChange).not.toHaveBeenCalled();
+    });
+
+    it("글자료를열었을때_화면을그리면_출처는직접넣음글이고본문을펼쳐두는지", () => {
+      // given
+      const value = detail({ bodyLength: 12, body: "회의 메모 본문" }, { kind: "text", source: null });
+
+      // when
+      const { container } = renderView({ lines: [{ kind: "itemDetail", detail: value }] });
+
+      // then
+      expect(outputLines(container).map(shownLine)).toContain("출처 직접 넣음 · 글");
+      expect(container.querySelector(".gt-preview")!.textContent).toBe("회의 메모 본문");
+    });
+
+    it("이미지자료를열었을때_화면을그리면_이미지에서읽음과미리보기와원본열기를보이는지", () => {
+      // given
+      const value = detail(
+        {
+          bodyLength: 214,
+          bodyFromImage: true,
+          originalUrl: "https://storage.example/original.png",
+          previewUrl: "https://storage.example/preview.png",
+        },
+        { kind: "file", title: "파란컵 텀블러 캠페인 캡처.png", source: "png" },
+      );
+
+      // when
+      const { container } = renderView({ lines: [{ kind: "itemDetail", detail: value }] });
+      const shown = outputLines(container).map(shownLine);
+
+      // then
+      expect(shown).toContain("출처 직접 넣음 · 이미지");
+      expect(shown).toContain("본문 (이미지에서 읽음) 214자  펼치기");
+      expect(container.querySelector("img")!.getAttribute("src")).toBe("https://storage.example/preview.png");
+      const original = screen.getByRole("link", { name: "원본 열기" });
+      expect(original.getAttribute("href")).toBe("https://storage.example/original.png");
+      expect(original.getAttribute("target")).toBe("_blank");
+    });
+
+    it("링크자료를열었을때_출처호스트를보면_원래주소를새탭으로여는링크인지", () => {
+      // given
+      // when
+      renderView({ lines: [{ kind: "itemDetail", detail: detail() }] });
+
+      // then
+      const source = screen.getByRole("link", { name: "docs.tosspayments.com" });
+      expect(source.getAttribute("href")).toBe("https://docs.tosspayments.com/guides/widget");
+      expect(source.getAttribute("target")).toBe("_blank");
+      expect(source.getAttribute("rel")).toBe("noopener noreferrer");
+    });
+
+    it("링크주소가웹주소가아닐때_화면을그리면_출처를링크로만들지않는지", () => {
+      // given
+      // when
+      renderView({ lines: [{ kind: "itemDetail", detail: detail({ url: "javascript:alert(1)" }) }] });
+
+      // then
+      expect(screen.queryByRole("link", { name: "docs.tosspayments.com" })).toBeNull();
+    });
+
+    it("링크주소가없을때_화면을그리면_출처호스트를글자로만보이는지", () => {
+      // given
+      // when
+      renderView({ lines: [{ kind: "itemDetail", detail: detail({ url: null }) }] });
+
+      // then
+      expect(screen.queryByRole("link", { name: "docs.tosspayments.com" })).toBeNull();
+      expect(screen.getByText("docs.tosspayments.com")).toBeTruthy();
+    });
+
+    it("PDF자료를열었을때_화면을그리면_출처형식을대문자로보이는지", () => {
+      // given
+      const value = detail({ originalUrl: "https://storage.example/a.pdf" }, { kind: "file", title: "보고서.pdf", source: "pdf" });
+
+      // when
+      const shown = shownDetail(value);
+
+      // then
+      expect(shown).toContain("출처 직접 넣음 · PDF");
+    });
+
+    it("본문을못가져온자료를열었을때_화면을그리면_상태줄과본문없음이유를보이고요약줄을빼는지", () => {
+      // given
+      const value = detail(
+        { handoffSummary: null, body: null, bodyLength: 0, allTags: [] },
+        { status: "blocked", blockedReason: "loginRequired", summarySource: null },
+      );
+
+      // when
+      const shown = shownDetail(value);
+
+      // then
+      expect(shown).toContain("상태 ! 본문 못 가져옴: 로그인 필요  제목·링크만 저장");
+      expect(shown).toContain("· 본문 없음: 로그인 필요");
+      expect(shown.some((text) => text.includes("요약"))).toBe(false);
+      expect(shown.some((text) => text.startsWith("태그"))).toBe(false);
+    });
+
+    it("처리중인자료를열었을때_화면을그리면_상태에요약생성중을보이는지", () => {
+      // given
+      const value = detail({ handoffSummary: null, body: null, bodyLength: null }, { status: "processing", summarySource: null });
+
+      // when
+      const shown = shownDetail(value);
+
+      // then
+      expect(shown).toContain("상태 · 요약 생성 중");
+      expect(shown.some((text) => text.includes("본문"))).toBe(false);
+    });
+
+    it("처리에실패해본문이없을때_화면을그리면_본문없음과처리실패를보이는지", () => {
+      // given
+      const value = detail({ handoffSummary: null, body: null, bodyLength: null }, { status: "failed", summarySource: null });
+
+      // when
+      const shown = shownDetail(value);
+
+      // then
+      expect(shown).toContain("· 본문 없음: 처리 실패");
+    });
+
+    it("처리가끝났는데본문이없을때_화면을그리면_본문줄을그리지않는지", () => {
+      // given
+      const value = detail({ body: null, bodyLength: null });
+
+      // when
+      const shown = shownDetail(value);
+
+      // then
+      expect(shown.some((text) => text.includes("본문"))).toBe(false);
+    });
+
+    it("자세히보기일때_다음명령칩을누르면_입력줄에그명령을찍기만하는지", () => {
+      // given
+      const { onInputChange, onSubmit } = renderView({ lines: [{ kind: "itemDetail", detail: detail() }] });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "고치기 131" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("고치기 131");
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+
+    it("열기에번호를둘이상주었을때_화면을그리면_번호하나만과예를보이는지", () => {
+      // given
+      // when
+      const shown = shownOutput([{ kind: "prompt", text: "열기 131 140" }, { kind: "oneNumberOnly", command: "peek" }]);
+
+      // then
+      expect(shown.slice(1)).toEqual(["✗ 번호 하나만  예: 열기 131"]);
+    });
+
+    it("열기에번호가없을때_화면을그리면_번호없음과예를보이는지", () => {
+      // given
+      // when
+      const shown = shownOutput([{ kind: "prompt", text: "열기" }, { kind: "missingArgument", command: "peek" }]);
+
+      // then
+      expect(shown.slice(1)).toEqual(["✗ 번호 없음  예: 열기 131"]);
+    });
+
+    it("목록일때_제목을누르면_입력줄에열기번호를찍는지", () => {
+      // given
+      const { onInputChange } = renderView({
+        lines: [{ kind: "recentList", items: [item({ number: 97, title: "PG사 수수료 비교 정리.pdf" })], hasMore: false }],
+      });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "PG사 수수료 비교 정리.pdf" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("열기 97");
+    });
+  });
+
+  describe("찾아두기(#134, ARC-012)", () => {
+    function shownBlock(prompt: string, ...rest: TerminalLine[]): string[] {
+      return shownOutput([{ kind: "prompt", text: prompt }, ...rest]).slice(1);
+    }
+
+    const QUERY = { text: "결제", words: "결제", tags: [] };
+
+    it("새검색어를찾아뒀을때_화면을그리면_찾아둠건수와보관함안내를보이는지", () => {
+      // given
+      // when
+      const shown = shownBlock("찾아두기 텀블러 캠페인", { kind: "searchSaved", query: "텀블러 캠페인", total: 4, already: false });
+
+      // then
+      expect(shown).toEqual(["✓ 찾아둠: 텀블러 캠페인  4건", "· 보관함 저장한 찾기에 있음"]);
+    });
+
+    it("0건인검색어를찾아뒀을때_화면을그리면_맞는자료가저장되면모임을보이는지", () => {
+      // given
+      // when
+      const shown = shownBlock("찾아두기 겨울 굿즈", { kind: "searchSaved", query: "겨울 굿즈", total: 0, already: false });
+
+      // then
+      expect(shown).toEqual(["✓ 찾아둠: 겨울 굿즈  0건", "· 맞는 자료가 저장되면 모임"]);
+    });
+
+    it("이미찾아둔검색어일때_화면을그리면_이미찾아둠만보이는지", () => {
+      // given
+      // when
+      const shown = shownBlock("찾아두기 텀블러 캠페인", { kind: "searchSaved", query: "텀블러 캠페인", total: 4, already: true });
+
+      // then
+      expect(shown).toEqual(["! 이미 찾아둠: 텀블러 캠페인"]);
+    });
+
+    it("찾아둔것이있을때_찾아두기를치면_개수머리와검색어별건수를보이는지", () => {
+      // given
+      const line: TerminalLine = {
+        kind: "savedSearchList",
+        searches: [
+          { query: "겨울 굿즈", count: 0 },
+          { query: "텀블러 캠페인", count: 4 },
+        ],
+      };
+
+      // when
+      const shown = shownBlock("찾아두기", line);
+
+      // then
+      expect(shown).toEqual(["2개 찾아둠", "겨울 굿즈 0건", "텀블러 캠페인 4건"]);
+    });
+
+    it("찾아둔목록일때_검색어를누르면_입력줄에찾아두기검색어를찍는지", () => {
+      // given
+      const { onInputChange } = renderView({ lines: [{ kind: "savedSearchList", searches: [{ query: "텀블러 캠페인", count: 4 }] }] });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "텀블러 캠페인" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("찾아두기 텀블러 캠페인");
+    });
+
+    it("찾아둔것이없을때_찾아두기를치면_없음과다음명령을보이는지", () => {
+      // given
+      // when
+      const shown = shownBlock("찾아두기", { kind: "savedSearchList", searches: [] });
+
+      // then
+      expect(shown).toEqual(["· 찾아둔 것 없음", "→ 찾아두기 <검색어>"]);
+    });
+
+    it("찾아두기에검색어가없을때_화면을그리면_검색어없음과예를보이는지", () => {
+      // given
+      // when
+      const shown = shownBlock("찾아두기 ", { kind: "missingArgument", command: "gather" });
+
+      // then
+      expect(shown).toEqual(["✗ 검색어 없음  예: 찾아두기 텀블러 캠페인"]);
+    });
+
+    it("시점이붙은검색어를찾아두려할때_화면을그리면_실패와시점없는명령을보이는지", () => {
+      // given
+      // when
+      const shown = shownBlock("찾아두기 텀블러 3주전", { kind: "savedSearchPeriod", period: "3주전", suggestion: "찾아두기 텀블러" });
+
+      // then
+      expect(shown).toEqual(["✗ 시점은 찾아두지 않음: 3주전", "→ 찾아두기 텀블러"]);
+    });
+
+    it("검색어가너무길때_화면을그리면_40자초과를알리는지", () => {
+      // given
+      // when
+      const shown = shownBlock("찾아두기 …", { kind: "savedSearchTooLong" });
+
+      // then
+      expect(shown).toEqual(["✗ 검색어 40자 초과"]);
+    });
+
+    it("찾아둔것을지우려할때_화면을그리면_자료는남음과실행낱말을묻는지", () => {
+      // given
+      // when
+      const shown = shownBlock("찾아두기 텀블러 캠페인 지우기", { kind: "savedSearchDeleteConfirm", query: "텀블러 캠페인" });
+
+      // then
+      expect(shown).toEqual(["! 지우기? 찾아둔 텀블러 캠페인 (자료는 남음)", "→ 실행: 지우기 다시 입력 · 취소: 그 외 입력"]);
+    });
+
+    it("찾아둔것을지웠을때_화면을그리면_지움을보이는지", () => {
+      // given
+      // when
+      const shown = shownBlock("지우기", { kind: "savedSearchDeleted", query: "텀블러 캠페인" });
+
+      // then
+      expect(shown).toEqual(["✓ 지움  찾아둔 텀블러 캠페인"]);
+    });
+
+    it("없는찾아둔것을지우려할때_화면을그리면_찾아둔것없음과검색어를보이는지", () => {
+      // given
+      // when
+      const shown = shownBlock("찾아두기 텀블러 지우기", { kind: "savedSearchNotFound", query: "텀블러" });
+
+      // then
+      expect(shown).toEqual(["✗ 찾아둔 것 없음: 텀블러"]);
+    });
+
+    it("찾기결과일때_화면을그리면_맨아래에찾아두기검색어칩을두는지", () => {
+      // given
+      // when
+      const shown = shownBlock("찾기 결제", { kind: "searchResult", query: QUERY, total: 1, items: [item()], hasMore: false });
+
+      // then
+      expect(shown[shown.length - 1]).toBe("→ 찾아두기 결제");
+    });
+
+    it("찾기결과일때_찾아두기칩을누르면_입력줄에찍기만하는지", () => {
+      // given
+      const { onInputChange, onSubmit } = renderView({
+        lines: [{ kind: "searchResult", query: QUERY, total: 1, items: [item()], hasMore: false }],
+      });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "찾아두기 결제" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("찾아두기 결제");
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+
+    it("시점을붙인찾기결과일때_화면을그리면_찾아두기칩을두지않는지", () => {
+      // given
+      const period = { label: "지난주", from: "2026-11-16T15:00:00Z", to: "2026-11-23T15:00:00Z" };
+      const line: TerminalLine = {
+        kind: "searchResult",
+        query: { text: "결제 지난주", words: "결제", tags: [] },
+        total: 1,
+        items: [item({ savedAt: "2026-11-18T03:00:00Z" })],
+        hasMore: false,
+        period,
+      };
+
+      // when
+      const shown = shownBlock("찾기 결제 지난주", line);
+
+      // then
+      expect(shown.some((text) => text.includes("찾아두기"))).toBe(false);
+    });
+
+    it("이미찾아둔검색어의찾기결과일때_화면을그리면_찾아두기칩을두지않는지", () => {
+      // given
+      const line: TerminalLine = { kind: "searchResult", query: QUERY, total: 1, items: [item()], hasMore: false, isSavedSearch: true };
+
+      // when
+      const shown = shownBlock("찾기 결제", line);
+
+      // then
+      expect(shown.some((text) => text.startsWith("→ 찾아두기"))).toBe(false);
+    });
+
+    it("찾아둔뒤결과일때_화면을그리면_찾아두기칩을두지않는지", () => {
+      // given
+      // when
+      const shown = shownBlock(
+        "찾아두기 결제",
+        { kind: "searchSaved", query: "결제", total: 1, already: false },
+        { kind: "searchResult", query: QUERY, total: 1, items: [item()], hasMore: false },
+      );
+
+      // then
+      expect(shown.some((text) => text.startsWith("→ 찾아두기"))).toBe(false);
+    });
+  });
+
+  describe("가져오기(#127, commands 6절·user-flow 10절)", () => {
+    function shownBlock(prompt: string, line: TerminalLine): string[] {
+      return shownOutput([{ kind: "prompt", text: prompt }, line]).slice(1);
+    }
+
+    function finished(overrides: Partial<Extract<TerminalLine, { kind: "importFinished" }>> = {}): TerminalLine {
+      return { kind: "importFinished", saved: 150, skipped: 25, failed: 0, overLimit: 0, failedUrls: [], ...overrides };
+    }
+
+    it("가져오기를쳤을때_화면을그리면_북마크파일끌어다놓기안내를보이는지", () => {
+      // given
+      // when
+      const shown = shownBlock("가져오기", { kind: "importPrompt" });
+
+      // then
+      expect(shown).toEqual(["· 북마크 파일을 끌어다 놓기 (브라우저에서 내보낸 HTML, 한 번에 200건)"]);
+    });
+
+    it("가져오는중일때_화면을그리면_진행건수와계속됨안내를보이는지", () => {
+      // given
+      // when
+      const shown = shownBlock("가져오기", { kind: "importProgress", done: 120, total: 180 });
+
+      // then
+      expect(shown).toEqual(["· 가져오는 중  120 / 180건", "  다른 명령을 쳐도 계속됨"]);
+    });
+
+    it("가져오기가끝났을때_화면을그리면_저장건너뜀실패건수를보이는지", () => {
+      // given
+      // when
+      const shown = shownBlock("가져오기", finished());
+
+      // then
+      expect(shown).toEqual(["✓ 저장 150건 · 건너뜀 25건 (이미 저장됨) · 실패 0건"]);
+    });
+
+    it("실패한링크가있을때_화면을그리면_실패링크를줄마다보이는지", () => {
+      // given
+      const line = finished({ failed: 2, failedUrls: ["http://old-blog.example/post/12", "http://intra.example/wiki"] });
+
+      // when
+      const shown = shownBlock("가져오기", line);
+
+      // then
+      expect(shown.slice(1)).toEqual(["  실패: http://old-blog.example/post/12", "  실패: http://intra.example/wiki"]);
+    });
+
+    it("200건을넘은링크가있을때_화면을그리면_끝줄다음에안가져온건수와다시가져오기를보이는지", () => {
+      // given
+      // when
+      const shown = shownBlock("가져오기", finished({ saved: 200, skipped: 0, overLimit: 312 }));
+
+      // then
+      expect(shown).toEqual([
+        "✓ 저장 200건 · 건너뜀 0건 (이미 저장됨) · 실패 0건",
+        "! 200건 넘어 안 가져옴 312건  → 나눠서 다시: 가져오기",
+      ]);
+    });
+
+    it("200건을넘었을때_가져오기칩을누르면_입력줄에찍기만하는지", () => {
+      // given
+      const { onInputChange, onSubmit } = renderView({ lines: [finished({ overLimit: 3 })] });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "가져오기" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("가져오기");
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("AI 도구 연결(#124, ACC-002)", () => {
+    const MCP_URL = "https://grep.example/mcp";
+    const MCP_HELP = "  AI 도구의 연결(MCP) 설정에 이 주소를 넣고 그렙 계정으로 로그인. 연결한 도구는 검색·읽기만 가능";
+
+    function shownBlock(prompt: string, line: TerminalLine): string[] {
+      return shownOutput([{ kind: "prompt", text: prompt }, line]).slice(1);
+    }
+
+    it("연결이있을때_연결을치면_주소안내와연결수머리와연결마다한줄을보이는지", () => {
+      // given
+      const line: TerminalLine = {
+        kind: "connectionList",
+        mcpUrl: MCP_URL,
+        connections: [
+          { number: 1, client: "Claude", connectedAt: "2026-11-20T01:00:00Z", lastReadAt: "2026-11-26T01:00:00Z" },
+          { number: 2, client: "Cursor", connectedAt: "2026-11-24T16:00:00Z", lastReadAt: null },
+        ],
+      };
+
+      // when
+      const shown = shownBlock("연결", line);
+
+      // then
+      expect(shown).toEqual([
+        `· 연결 주소  ${MCP_URL}`,
+        MCP_HELP,
+        "2개 연결",
+        "1 Claude 연결 11/20 읽음 11/26",
+        "2 Cursor 연결 11/25",
+        "→ 연결 끊기 <번호>",
+      ]);
+    });
+
+    it("연결목록일때_연결끊기칩을누르면_입력줄에연결끊기와빈칸을찍는지", () => {
+      // given
+      const { onInputChange } = renderView({
+        lines: [
+          {
+            kind: "connectionList",
+            mcpUrl: MCP_URL,
+            connections: [{ number: 1, client: "Claude", connectedAt: "2026-11-20T01:00:00Z", lastReadAt: null }],
+          },
+        ],
+      });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "연결 끊기 <번호>" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("연결 끊기 ");
+    });
+
+    it("연결이없을때_연결을치면_주소안내와연결0개를보이는지", () => {
+      // given
+      // when
+      const shown = shownBlock("연결", { kind: "connectionList", mcpUrl: MCP_URL, connections: [] });
+
+      // then
+      expect(shown).toEqual([`· 연결 주소  ${MCP_URL}`, MCP_HELP, "· 연결 0개"]);
+    });
+
+    it("연결을끊으려할때_화면을그리면_다시연결하려면처음부터와실행낱말을묻는지", () => {
+      // given
+      // when
+      const shown = shownBlock("연결 끊기 2", { kind: "disconnectConfirm", number: 2, client: "Cursor" });
+
+      // then
+      expect(shown).toEqual(["! 끊기? Cursor (다시 연결하려면 처음부터)", "→ 실행: 끊기 다시 입력 · 취소: 그 외 입력"]);
+    });
+
+    it("연결을끊었을때_화면을그리면_끊김과도구이름을보이는지", () => {
+      // given
+      // when
+      const shown = shownBlock("끊기", { kind: "disconnected", client: "Cursor", already: false });
+
+      // then
+      expect(shown).toEqual(["✓ 끊김  Cursor"]);
+    });
+
+    it("이미끊긴연결일때_화면을그리면_이미끊김을보이는지", () => {
+      // given
+      // when
+      const shown = shownBlock("끊기", { kind: "disconnected", client: "Cursor", already: true });
+
+      // then
+      expect(shown).toEqual(["! 이미 끊김  Cursor"]);
+    });
+
+    it("없는연결번호일때_화면을그리면_없는연결과번호를보이는지", () => {
+      // given
+      // when
+      const shown = shownBlock("연결 끊기 9", { kind: "connectionNotFound", number: 9 });
+
+      // then
+      expect(shown).toEqual(["✗ 없는 연결: 9"]);
+    });
+
+    it("로그인만료로연결이끝났을때_그렙을열면_연결끊김이유와연결칩을보이는지", () => {
+      // given
+      // when
+      const shown = shownOutput([{ kind: "connectionEnded", client: "Claude", reason: "expired" }]);
+
+      // then
+      expect(shown).toEqual(["! 연결 끊김: Claude (로그인 만료)", "→ 연결"]);
+    });
+
+    it("다른기기에서끊은연결일때_그렙을열면_다른기기에서끊음을이유로보이는지", () => {
+      // given
+      // when
+      const shown = shownOutput([{ kind: "connectionEnded", client: "Cursor", reason: "revoked" }]);
+
+      // then
+      expect(shown[0]).toBe("! 연결 끊김: Cursor (다른 기기에서 끊음)");
+    });
+
+    it("연결이있는데모든기기로그아웃을칠때_화면을그리면_AI도구연결수를보이는지", () => {
+      // given
+      // when
+      const shown = shownBlock("로그아웃 모든기기", { kind: "signOutEverywhereConfirm", connectionCount: 2 });
+
+      // then
+      expect(shown[0]).toBe("! 로그아웃? 모든 기기 · AI 도구 연결 2개 (다른 기기는 최대 1시간 뒤)");
+    });
+
+    it("연결이없는데모든기기로그아웃을칠때_화면을그리면_연결수칸을빼는지", () => {
+      // given
+      // when
+      const shown = shownBlock("로그아웃 모든기기", { kind: "signOutEverywhereConfirm", connectionCount: 0 });
+
+      // then
+      expect(shown[0]).toBe("! 로그아웃? 모든 기기 (다른 기기는 최대 1시간 뒤)");
+    });
+  });
+
+  describe("폴더 안내(#137, ARC-007 규칙 11)", () => {
+    it("폴더를만들려할때_화면을그리면_묶음이폴더역할이라는안내와명령칩을보이는지", () => {
+      // given
+      // when
+      const shown = shownOutput([{ kind: "prompt", text: "mkdir 결제" }, { kind: "folderHint" }]);
+
+      // then
+      expect(shown.slice(1)).toEqual(["· 폴더 없음: 묶음이 폴더 역할  → 고르기 <번호> · 묶음 <이름>"]);
+    });
+
+    it("폴더안내일때_묶음칩을누르면_입력줄에묶음과빈칸을찍는지", () => {
+      // given
+      const { onInputChange } = renderView({ lines: [{ kind: "folderHint" }] });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "묶음 <이름>" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("묶음 ");
+    });
+  });
+
+  describe("뜻 찾기 0건(#128, ADR-BCK-016)", () => {
+    const QUERY = { text: "텀블러 할인", words: "텀블러 할인", tags: [] };
+    const RELATED = [
+      item({ number: 30, title: "카페 텀블러 할인, 올겨울 캠페인 늘었다", status: "ready" }),
+      item({ number: 28, title: "파란컵 텀블러 캠페인 캡처.png", status: "ready" }),
+    ];
+    const RECENT = [item({ number: 131, title: "결제위젯 연동 가이드", status: "ready" })];
+
+    it("뜻결과가있을때_0건이면_뜻이가까운자료줄과목록만그리는지", () => {
+      // given
+      const line: TerminalLine = { kind: "noResults", query: QUERY, recent: RECENT, related: RELATED };
+
+      // when
+      const shown = shownOutput([{ kind: "prompt", text: "찾기 텀블러 할인" }, line]).slice(1);
+
+      // then
+      expect(shown.slice(0, 2)).toEqual(['· 0건: "텀블러 할인"', "· 뜻이 가까운 자료 2건 (낱말은 다름)"]);
+      expect(shown.filter((text) => /^(30|28) /.test(text))).toHaveLength(2);
+      expect(shown.some((text) => text.includes("최근 저장") || text.startsWith("131 "))).toBe(false);
+    });
+
+    it("뜻결과가없을때_0건이면_최근저장3건을그리는지", () => {
+      // given
+      const line: TerminalLine = { kind: "noResults", query: QUERY, recent: RECENT, related: [] };
+
+      // when
+      const shown = shownOutput([{ kind: "prompt", text: "찾기 텀블러 할인" }, line]).slice(1);
+
+      // then
+      expect(shown.slice(0, 2)).toEqual(['· 0건: "텀블러 할인"', "· 최근 저장 1건 (검색 결과 아님)"]);
+      expect(shown.some((text) => text.includes("뜻이 가까운"))).toBe(false);
+    });
+
+    it("시점이붙은0건에뜻결과가있을때_화면을그리면_기간없이줄다음에뜻결과를그리는지", () => {
+      // given
+      const period = { label: "지난주", from: "2026-11-16T15:00:00Z", to: "2026-11-23T15:00:00Z" };
+      const line: TerminalLine = {
+        kind: "noResults",
+        query: { text: "텀블러 할인 지난주", words: "텀블러 할인", tags: [] },
+        recent: RECENT,
+        period,
+        related: RELATED,
+      };
+
+      // when
+      const shown = shownOutput([line]);
+
+      // then
+      expect(shown.slice(0, 3)).toEqual([
+        '· 0건: "텀블러 할인" (지난주)',
+        "→ 기간 없이: 찾기 텀블러 할인",
+        "· 뜻이 가까운 자료 2건 (낱말은 다름)",
+      ]);
     });
   });
 });

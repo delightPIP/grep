@@ -13,9 +13,13 @@ import {
   type ReactNode,
 } from "react";
 import type {
+  BlockedReason,
+  BundleEntry,
   CommandFailure,
   CommandName,
+  ConnectionEntry,
   HandoffResult,
+  ItemDetail,
   ItemRef,
   ItemSummary,
   LoggedInState,
@@ -23,6 +27,7 @@ import type {
   Revising,
   SaveFailure,
   SaveRecovery,
+  SavedSearchEntry,
   SearchQuery,
   TerminalLine,
   TrashEntry,
@@ -258,6 +263,16 @@ const MATCH_LABEL: Partial<Record<NonNullable<ItemSummary["matchedIn"]>, string>
 const rowTone = (item: ItemSummary) =>
   item.status === "blocked" || item.status === "failed" ? "gt-warn" : "gt-hint";
 
+/** 목록 제목. 누르면 `열기 <번호>`가 입력줄에 찍힌다(ARC-011 규칙 4). */
+function TitleCell({ item }: { item: ItemSummary }) {
+  const { insert } = useContext(ChipContext);
+  return (
+    <button type="button" className="gt-num-chip gt-row-title" onClick={() => insert(`열기 ${item.number}`)}>
+      {item.kind === "text" ? textTitle(item.title) : item.title}
+    </button>
+  );
+}
+
 function ListRow({ item }: { item: ItemSummary }) {
   const tags = item.tags.slice(0, LIST_TAG_LIMIT);
   const summary = rowSummary(item);
@@ -266,7 +281,7 @@ function ListRow({ item }: { item: ItemSummary }) {
     <>
       <div className="gt-line gt-row">
         <NumberCell number={item.number} />
-        <span>{item.kind === "text" ? textTitle(item.title) : item.title}</span>
+        <TitleCell item={item} />
         {item.source && <span className="gt-row-meta">{item.source}</span>}
         <span className="gt-row-meta">{savedAtText(item.savedAt)}</span>
       </div>
@@ -369,13 +384,90 @@ type SearchResultLinesProps = {
   hasMore: boolean;
   onMoreRequested?: () => void;
   period?: Period | null;
+  /** 결과 맨 아래 `→ 찾아두기 <검색어>` 칩의 검색어(ARC-012 규칙 9). 두지 않으면 null·없음 */
+  saveQuery?: string | null;
 };
 
-function SearchResultLines({ total, items, hasMore, onMoreRequested, period }: SearchResultLinesProps) {
+function SearchResultLines({ total, items, hasMore, onMoreRequested, period, saveQuery }: SearchResultLinesProps) {
   return (
     <>
       <Plain>{listHeader(total, items.length, period)}</Plain>
       <ListLines items={items} hasMore={hasMore} onMoreRequested={onMoreRequested} period={period} />
+      {saveQuery != null && (
+        <Plain>
+          {"→ "}
+          <CommandChip command={`찾아두기 ${saveQuery}`} />
+        </Plain>
+      )}
+    </>
+  );
+}
+
+/**
+ * ARC-012 규칙 9: 찾기 결과의 `찾아두기 <검색어>` 칩. 이미 찾아둔 검색어(isSavedSearch, 찾아두기 바로 뒤 결과)와
+ * 시점이 붙은 찾기(규칙 4, 저장하지 않음)에는 두지 않는다.
+ */
+function saveQueryFor(line: Extract<TerminalLine, { kind: "searchResult" }>, savedInBlock: boolean): string | null {
+  if (line.isSavedSearch === true || savedInBlock || line.period != null) return null;
+  return line.query.text;
+}
+
+/** 가져오기 한 번에 받는 링크 수(COM-005, 발표 전 임시값). */
+const IMPORT_LIMIT = 200;
+
+type ImportFinishedLinesProps = { saved: number; skipped: number; failed: number; overLimit: number; failedUrls: string[] };
+
+/**
+ * commands 6절 가져오기 끝. 실패 링크는 줄마다(시안 Import ③).
+ * overLimit 문구는 정책에 없어 개발 제안을 통합 세션이 승인했다(#127). commands.md에는 통합 PR에서 적는다.
+ */
+function ImportFinishedLines({ saved, skipped, failed, overLimit, failedUrls }: ImportFinishedLinesProps) {
+  return (
+    <>
+      <Line tone="ok">{`저장 ${saved}건 · 건너뜀 ${skipped}건 (이미 저장됨) · 실패 ${failed}건`}</Line>
+      {failedUrls.map((url) => (
+        <Plain key={url} dim>{`  실패: ${url}`}</Plain>
+      ))}
+      {overLimit > 0 && (
+        <Line tone="warn">
+          {`${IMPORT_LIMIT}건 넘어 안 가져옴 ${overLimit}건  → 나눠서 다시: `}
+          <CommandChip command="가져오기" />
+        </Line>
+      )}
+    </>
+  );
+}
+
+/** ARC-012 사용자 문구 찾아두기 결과. 결과 목록은 searchResult 줄이 이어서 그린다. */
+function SearchSavedLines({ query, total, already }: { query: string; total: number; already: boolean }) {
+  if (already) return <Line tone="warn">{`이미 찾아둠: ${query}`}</Line>;
+  return (
+    <>
+      <Line tone="ok">{`찾아둠: ${query}  ${total}건`}</Line>
+      <Line tone="info">{total === 0 ? "맞는 자료가 저장되면 모임" : "보관함 저장한 찾기에 있음"}</Line>
+    </>
+  );
+}
+
+/** ARC-012 규칙 6 찾아둔 목록. 순서는 서버가 만든 순서 최신부터 준다. 검색어를 누르면 `찾아두기 <검색어>`가 찍힌다. */
+function SavedSearchListLines({ searches }: { searches: SavedSearchEntry[] }) {
+  if (searches.length === 0) {
+    return (
+      <>
+        <Line tone="info">찾아둔 것 없음</Line>
+        <Plain>
+          {"→ "}
+          <CommandChip command="찾아두기 ">찾아두기 &lt;검색어&gt;</CommandChip>
+        </Plain>
+      </>
+    );
+  }
+  return (
+    <>
+      <Plain>{`${searches.length}개 찾아둠`}</Plain>
+      {searches.map((search) => (
+        <NameCountRow key={search.query} name={search.query} count={search.count} command={`찾아두기 ${search.query}`} />
+      ))}
     </>
   );
 }
@@ -411,9 +503,30 @@ function UnknownCommandLines({ name, suggestion }: { name: string; suggestion: s
 /** 시점 낱말을 뺀 검색어(`결제 #위젯`). 시점이 붙은 찾기에서 query.text는 시점까지 친 그대로라 다시 만든다. */
 const queryWithoutPeriod = (query: SearchQuery) => [query.words, ...query.tags.map((tag) => `#${tag}`)].filter(Boolean).join(" ");
 
-type NoResultsLinesProps = { query: SearchQuery; recent: ItemSummary[]; period?: Period | null };
+type NoResultsLinesProps = { query: SearchQuery; recent: ItemSummary[]; period?: Period | null; related?: ItemSummary[] | null };
 
-function NoResultsLines({ query, recent, period }: NoResultsLinesProps) {
+/**
+ * 0건 뒤 목록. 뜻이 가까운 자료(#128, ADR-BCK-016)가 있으면 최근 저장 대신 그것을 보인다. 문구는 통합 세션 확정(사용자 승인).
+ * 시점이 붙은 0건이어도 같고, `→ 기간 없이` 줄은 그 위에 그대로 둔다.
+ */
+function NoResultsList({ recent, related }: { recent: ItemSummary[]; related: ItemSummary[] }) {
+  if (related.length > 0) {
+    return (
+      <>
+        <Line tone="info">{`뜻이 가까운 자료 ${related.length}건 (낱말은 다름)`}</Line>
+        <ListLines items={related} hasMore={false} />
+      </>
+    );
+  }
+  return (
+    <>
+      {recent.length > 0 && <Line tone="info">{`최근 저장 ${recent.length}건 (검색 결과 아님)`}</Line>}
+      <ListLines items={recent} hasMore={false} />
+    </>
+  );
+}
+
+function NoResultsLines({ query, recent, period, related }: NoResultsLinesProps) {
   const bare = queryWithoutPeriod(query);
   return (
     <>
@@ -429,8 +542,7 @@ function NoResultsLines({ query, recent, period }: NoResultsLinesProps) {
           </Plain>
         </>
       )}
-      {recent.length > 0 && <Line tone="info">{`최근 저장 ${recent.length}건 (검색 결과 아님)`}</Line>}
-      <ListLines items={recent} hasMore={false} />
+      <NoResultsList recent={recent} related={related ?? []} />
     </>
   );
 }
@@ -454,8 +566,8 @@ function PickedLines({ items }: { items: ItemRef[] }) {
       <Plain>
         {"→ "}
         <CommandChip command="넘기기" />
-        {/* shortcut: `묶음`은 데모 범위 명령이 아니어서 칩 대신 글자로만 둔다. 묶음이 들어오면 칩으로. */}
-        {" 또는 묶음 <이름>"}
+        {" 또는 "}
+        <CommandChip command="묶음 ">묶음 &lt;이름&gt;</CommandChip>
       </Plain>
     </>
   );
@@ -551,18 +663,51 @@ function BinEmptyConfirmLines({ total }: { total: number }) {
   );
 }
 
-/**
- * ACC-002 모든 기기 로그아웃 확인. 정책 문구의 `· AI 도구 연결 N개`는 연결(F7)을 만들 때부터 적용한다(ACC-002 적용 범위).
- * shortcut: 연결 수가 계약에 없어 그 칸을 뺐다. F7에서 연결 수를 계약에 더할 때 넣는다.
- */
-function SignOutEverywhereConfirmLines() {
+/** ACC-002 모든 기기 로그아웃 확인. 끊길 AI 도구 연결이 있으면 `· AI 도구 연결 N개`, 없거나 모르면 그 칸을 뺀다. */
+function SignOutEverywhereConfirmLines({ connectionCount }: { connectionCount: number | null }) {
+  const connections = connectionCount !== null && connectionCount > 0 ? ` · AI 도구 연결 ${connectionCount}개` : "";
   return (
     <>
-      <Line tone="warn">로그아웃? 모든 기기 (다른 기기는 최대 1시간 뒤)</Line>
+      <Line tone="warn">{`로그아웃? 모든 기기${connections} (다른 기기는 최대 1시간 뒤)`}</Line>
       <ConfirmAnswer word="로그아웃" />
     </>
   );
 }
+
+/** 연결 목록 날짜 `11/20`. 한국 날짜다(ARC-004 규칙 7). */
+const connectionDay = (iso: string) => monthDay(kstDay(Date.parse(iso)));
+
+/** ACC-002 규칙 7·10 `연결`: 연결 주소 안내 두 줄, 그 아래 연결 목록. 읽은 적 없는 연결은 `읽음` 칸을 뺀다. */
+function ConnectionListLines({ mcpUrl, connections }: { mcpUrl: string; connections: ConnectionEntry[] }) {
+  return (
+    <>
+      <Line tone="info">{`연결 주소  ${mcpUrl}`}</Line>
+      <Plain dim>{"  AI 도구의 연결(MCP) 설정에 이 주소를 넣고 그렙 계정으로 로그인. 연결한 도구는 검색·읽기만 가능"}</Plain>
+      {connections.length === 0 ? (
+        <Line tone="info">연결 0개</Line>
+      ) : (
+        <>
+          <Plain>{`${connections.length}개 연결`}</Plain>
+          {connections.map((connection) => (
+            <div key={connection.number} className="gt-line gt-name-row">
+              <span className="gt-row-num">{connection.number}</span>
+              <span>{connection.client}</span>
+              <span className="gt-hint">{`연결 ${connectionDay(connection.connectedAt)}`}</span>
+              {connection.lastReadAt !== null && <span className="gt-hint">{`읽음 ${connectionDay(connection.lastReadAt)}`}</span>}
+            </div>
+          ))}
+          <Plain>
+            {"→ "}
+            <CommandChip command="연결 끊기 ">연결 끊기 &lt;번호&gt;</CommandChip>
+          </Plain>
+        </>
+      )}
+    </>
+  );
+}
+
+/** ACC-002 규칙 11 연결이 끝난 이유. revoked 낱말은 정책에 없어 계약 설명(다른 기기에서 끊음·모든 기기 로그아웃)에서 줄였다. */
+const CONNECTION_END_REASON = { expired: "로그인 만료", revoked: "다른 기기에서 끊음" } as const;
 
 /** 휴지통 행. 시각 칸에 영구 삭제까지 남은 날(ARC-008 규칙 10). */
 function TrashRow({ entry: { item, daysLeft } }: { entry: TrashEntry }) {
@@ -603,6 +748,267 @@ function BinListLines({ total, items, hasMore, onMoreRequested }: BinListLinesPr
   );
 }
 
+/** 이름 목록 한 줄 `<이름>  N건`(묶음·찾아둔 것). 이름을 누르면 그 명령이 찍힌다(commands 6절 출력 원칙). */
+function NameCountRow({ name, count, command }: { name: string; count: number; command: string }) {
+  return (
+    <div className="gt-line gt-name-row">
+      <CommandChip command={command}>{name}</CommandChip>
+      <span className="gt-hint">{`${count}건`}</span>
+    </div>
+  );
+}
+
+/** ARC-003 규칙 3 묶음 목록. 순서는 서버가 최근에 바뀐 순으로 준다. 없으면 차례로 할 일을 줄을 나눠 안내한다. */
+function BundleListLines({ bundles }: { bundles: BundleEntry[] }) {
+  if (bundles.length === 0) {
+    return (
+      <>
+        <Line tone="info">묶음 0개</Line>
+        <Plain>
+          {"→ "}
+          <CommandChip command="고르기 ">고르기 &lt;번호&gt;</CommandChip>
+        </Plain>
+        <Plain>
+          {"→ "}
+          <CommandChip command="묶음 ">묶음 &lt;이름&gt;</CommandChip>
+        </Plain>
+      </>
+    );
+  }
+  return (
+    <>
+      <Plain>{`${bundles.length}개 묶음`}</Plain>
+      {bundles.map((bundle) => (
+        <NameCountRow key={bundle.name} name={bundle.name} count={bundle.count} command={`묶음 ${bundle.name}`} />
+      ))}
+    </>
+  );
+}
+
+/** ARC-003 넣기. count는 넣은 뒤 묶음 건수다. */
+function BundleAddedLines({ name, count, alreadyCount }: { name: string; count: number; alreadyCount: number }) {
+  const already = alreadyCount > 0 ? ` (이미 있음 ${alreadyCount}건)` : "";
+  return (
+    <>
+      <Line tone="ok">{`묶음 ${name}: ${count}건${already}`}</Line>
+      <Plain>
+        {"→ 다음부터: "}
+        <CommandChip command={`넘기기 ${name}`} />
+      </Plain>
+    </>
+  );
+}
+
+type BundleViewLinesProps = { name: string; total: number; items: ItemSummary[]; hasMore: boolean; onMoreRequested?: () => void };
+
+/** ARC-003 규칙 5 묶음 안 자료(번호 큰 순). 다음 쪽이 남으면 머리 숫자를 보인 행 수와 맞춘다(commands 6절 더 보기). */
+function BundleViewLines({ name, total, items, hasMore, onMoreRequested }: BundleViewLinesProps) {
+  return (
+    <>
+      <Plain>{`묶음 ${name}  ${searchHeader(total, items.length)}`}</Plain>
+      <ListLines items={items} hasMore={hasMore} onMoreRequested={onMoreRequested} />
+    </>
+  );
+}
+
+/** ARC-003 규칙 8 묶음 지우기 확인. */
+function BundleDeleteConfirmLines({ name, itemCount }: { name: string; itemCount: number }) {
+  return (
+    <>
+      <Line tone="warn">{`지우기? 묶음 ${name} (자료 ${itemCount}건은 남음)`}</Line>
+      <ConfirmAnswer word="지우기" />
+    </>
+  );
+}
+
+/** ARC-003 사용자 문구 이름 규칙 위반·금지 이름. */
+const BUNDLE_NAME_RULE = {
+  format: "묶음 이름: 띄어쓰기 없이 1~20자 (한글·영문·숫자·-·_)",
+  reserved: "묶음 이름: 숫자만 · #시작 · 빼기 · 지우기 불가",
+} as const;
+
+/** ARC-005·COM-004 `본문 못 가져옴: <이유>`의 이유 낱말. */
+const BLOCKED_REASON_LABEL: Record<BlockedReason, string> = {
+  loginRequired: "로그인 필요",
+  accessDenied: "접근 거부",
+  disallowedURL: "열지 않는 주소",
+  encrypted: "암호 걸린 PDF",
+  noText: "글자 없음",
+};
+
+/** ARC-005 처리 상태 문구. 파일 이유(COM-004)에는 `제목·링크만 저장`을 붙이지 않는다. ready면 null. */
+function statusText(item: ItemSummary): { tone: "hint" | "warn"; text: string } | null {
+  if (isProcessing(item)) return { tone: "hint", text: "· 요약 생성 중" };
+  if (item.status === "failed") return { tone: "warn", text: "! 요약 못 만듦  제목·출처만 넘김" };
+  if (item.status !== "blocked" || item.blockedReason === null) return null;
+  const reason = BLOCKED_REASON_LABEL[item.blockedReason];
+  return {
+    tone: "warn",
+    text: item.kind === "link" ? `! 본문 못 가져옴: ${reason}  제목·링크만 저장` : `! 본문 못 가져옴: ${reason}`,
+  };
+}
+
+/** 새 탭으로 열 주소. http·https만 링크로 만든다(`javascript:` 같은 주소를 막는다). */
+function isWebUrl(url: string): boolean {
+  try {
+    const { protocol } = new URL(url);
+    return protocol === "http:" || protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+/** ARC-011 규칙 6-2 출처 칸. 링크 자료는 호스트를 누르면 원래 주소를 새 탭으로 연다. */
+function DetailSource({ detail }: { detail: ItemDetail }) {
+  const text = detailSource(detail);
+  if (detail.item.kind !== "link" || detail.url === null || !isWebUrl(detail.url)) return <>{text}</>;
+  return (
+    <a className="gt-chip" href={detail.url} target="_blank" rel="noopener noreferrer">
+      {text}
+    </a>
+  );
+}
+
+/** ARC-011 규칙 6-2 출처 글. 링크는 호스트, 아니면 `직접 넣음 · <형식>`(ARC-007 형식 값). 이미지는 미리보기 URL이 있는 파일이다(계약). */
+function detailSource(detail: ItemDetail): string {
+  const { item } = detail;
+  if (item.kind === "link") return item.source ?? "";
+  if (item.kind === "text") return "직접 넣음 · 글";
+  if (detail.previewUrl !== null) return "직접 넣음 · 이미지";
+  return item.source ? `직접 넣음 · ${item.source.toUpperCase()}` : "직접 넣음";
+}
+
+/** 자세히 보기 한 줄. 이름표 칸과 값 칸(시안 ItemDetail). */
+function DetailRow({ label, tone, children }: { label: string; tone?: "hint" | "warn"; children: ReactNode }) {
+  return (
+    <div className={tone ? `gt-line gt-detail-row gt-${tone}` : "gt-line gt-detail-row"}>
+      <span className="gt-detail-label">{label}</span>
+      <span>{children}</span>
+    </div>
+  );
+}
+
+/** 칩 여럿을 한 칸 띄어 잇는다. */
+function ChipList({ commands }: { commands: ReadonlyArray<readonly [label: string, command: string]> }) {
+  return (
+    <>
+      {commands.map(([label, command], index) => (
+        <Fragment key={command}>
+          {index > 0 && " "}
+          <CommandChip command={command}>{label}</CommandChip>
+        </Fragment>
+      ))}
+    </>
+  );
+}
+
+/** ARC-011 규칙 6-8·7 본문 머리. 일부만 읽었으면 ARC-004 규칙 8 문구를 붙인다. */
+function bodyHead(detail: ItemDetail): string {
+  const from = detail.bodyFromImage ? "(이미지에서 읽음) " : "";
+  const partial = detail.item.partialNote ? ` (${detail.item.partialNote})` : "";
+  // 본문이 있으면 서버가 글자 수도 준다. 없으면 받은 본문(앞 2만 자) 길이로 대신한다.
+  return `${from}${charCountText(detail.bodyLength ?? Array.from(detail.body ?? "").length)}${partial}  `;
+}
+
+/** ARC-011 규칙 6-9 원본. 이미지는 그림, 파일은 `원본 열기`(서명 URL 10분). PDF 첫 쪽 그림은 계약에 아직 없다. */
+function OriginalRow({ detail }: { detail: ItemDetail }) {
+  if (detail.previewUrl === null && detail.originalUrl === null) return null;
+  return (
+    <DetailRow label="원본">
+      <span className="gt-detail-original">
+        {detail.previewUrl !== null && (
+          <img className="gt-detail-image" src={detail.previewUrl} alt={`${detail.item.title} 미리보기`} />
+        )}
+        {detail.originalUrl !== null && (
+          <a className="gt-chip" href={detail.originalUrl} target="_blank" rel="noopener noreferrer">
+            원본 열기
+          </a>
+        )}
+      </span>
+    </DetailRow>
+  );
+}
+
+/** ARC-011 규칙 6-8 본문. 본문이 없으면 이유가 있을 때만 `· 본문 없음: <이유>`. */
+/**
+ * 본문이 없을 때 `· 본문 없음: <이유>`의 이유(통합 세션 규칙, #131). blocked·failed만 그리고,
+ * 처리 중(상태 줄이 알림)과 ready(본문 열이 생기기 전에 처리된 자료)는 본문 줄을 그리지 않는다.
+ * failed 이유 `처리 실패`는 handoff-format 3절과 같은 낱말이다(`(요약 없음: 처리 실패)`, 통합 세션 확정).
+ */
+function noBodyReason(item: ItemSummary): string | null {
+  if (item.status === "failed") return "처리 실패";
+  if (item.status === "blocked" && item.blockedReason !== null) return BLOCKED_REASON_LABEL[item.blockedReason];
+  return null;
+}
+
+function DetailBody({ detail }: { detail: ItemDetail }) {
+  const { item } = detail;
+  const [isExpanded, setExpanded] = useState(item.kind === "text");
+  if (detail.body === null) {
+    const reason = noBodyReason(item);
+    return reason === null ? null : <Line tone="info">{`본문 없음: ${reason}`}</Line>;
+  }
+  return (
+    <>
+      <DetailRow label="본문">
+        {bodyHead(detail)}
+        <button type="button" className="gt-chip" aria-expanded={isExpanded} onClick={() => setExpanded(!isExpanded)}>
+          {isExpanded ? "접기" : "펼치기"}
+        </button>
+      </DetailRow>
+      {isExpanded && <Preview text={detail.body} />}
+    </>
+  );
+}
+
+/**
+ * ARC-011 규칙 6 자세히 보기. 값이 없는 줄은 뺀다. 터미널 출력 블록은 연 때 모습 그대로 둔다(규칙 9).
+ * 글 자료는 본문이 곧 원본이라 펼쳐 둔다. `펼치기`는 화면 칩이라 누르면 바로 펼친다.
+ */
+function ItemDetailLines({ detail }: { detail: ItemDetail }) {
+  const { item } = detail;
+  const status = statusText(item);
+  const summaryLabel = item.summarySource === "user" ? "요약 (직접 고침)" : "AI 요약";
+  return (
+    <section className="gt-detail" aria-label="자세히 보기">
+      <div className="gt-line gt-row">
+        <NumberCell number={item.number} />
+        <b>{item.title}</b>
+      </div>
+      <DetailRow label="출처">
+        <DetailSource detail={detail} />
+      </DetailRow>
+      <DetailRow label="저장">{savedAtText(item.savedAt)}</DetailRow>
+      {status !== null && (
+        <DetailRow label="상태" tone={status.tone}>
+          {status.text}
+        </DetailRow>
+      )}
+      {detail.handoffSummary !== null && <DetailRow label={summaryLabel}>{detail.handoffSummary}</DetailRow>}
+      {detail.allTags.length > 0 && (
+        <DetailRow label="태그 (AI 추정)">
+          <ChipList commands={detail.allTags.map((tag) => [`#${tag}`, `찾기 #${tag}`] as const)} />
+        </DetailRow>
+      )}
+      <DetailRow label="묶음">
+        {detail.bundles.length === 0 ? "없음" : <ChipList commands={detail.bundles.map((name) => [name, `묶음 ${name}`] as const)} />}
+      </DetailRow>
+      <DetailBody detail={detail} />
+      <OriginalRow detail={detail} />
+      <Plain>
+        {"→ "}
+        <CommandChip command={`고르기 ${item.number}`} />
+        {" 또는 "}
+        <CommandChip command="묶음 ">묶음 &lt;이름&gt;</CommandChip>
+        {" 또는 "}
+        <CommandChip command={`고치기 ${item.number}`} />
+        {" 또는 "}
+        <CommandChip command={`버리기 ${item.number}`} />
+      </Plain>
+    </section>
+  );
+}
+
 /** COM-008 값: 직접 복사 키. 터치 기기 문구는 AI 제안(PO 확인 전). */
 function copyKeyHint(): string {
   if (typeof window.matchMedia === "function" && window.matchMedia("(hover: none) and (pointer: coarse)").matches) {
@@ -631,6 +1037,8 @@ function HandedOffLines({ result }: { result: HandoffResult }) {
   const [isExpanded, setExpanded] = useState(false);
   return (
     <>
+      {/* ARC-003 규칙 10. 시안 Bundles ④는 복사됨 앞에 둔다. */}
+      {(result.removedCount ?? 0) > 0 && <Line tone="warn">{`빠진 자료 ${result.removedCount}건 (삭제됨)`}</Line>}
       <Line tone="ok">{`복사됨  ${result.items.length}건 · ${charCountText(result.charCount)} (제목·출처·저장 시각·요약)`}</Line>
       <ItemRefRows items={result.items} />
       {result.missingSummaryCount > 0 && <Line tone="warn">{`요약 없음 ${result.missingSummaryCount}건`}</Line>}
@@ -717,6 +1125,8 @@ const GUIDE_ROWS: ReadonlyArray<readonly [string, string, string]> = [
   ["담기", "keep", "자료 저장"],
   ["최근", "recent", "최근 자료 목록"],
   ["찾기", "seek", "검색"],
+  ["열기", "peek", "자료 자세히 보기"],
+  ["찾아두기", "gather", "검색어 저장"],
   ["고르기", "pick", "번호로 선택"],
   ["넘기기", "handoff", "AI 도구용 글 복사"],
   ["묶음", "pack", "선택에 이름 붙이기"],
@@ -753,9 +1163,10 @@ function GuideLines() {
   );
 }
 
-type OutputLineProps = { line: TerminalLine; failed: boolean; onMoreRequested?: () => void };
+/** savedInBlock: 같은 블록에 찾아두기 결과(searchSaved)가 있다. 뒤따르는 찾기 결과는 이미 찾아둔 검색어다. */
+type OutputLineProps = { line: TerminalLine; failed: boolean; savedInBlock: boolean; onMoreRequested?: () => void };
 
-function OutputLine({ line, failed, onMoreRequested }: OutputLineProps) {
+function OutputLine({ line, failed, savedInBlock, onMoreRequested }: OutputLineProps) {
   switch (line.kind) {
     case "prompt":
       return <Prompt cmd={line.text} failed={failed} />;
@@ -767,7 +1178,13 @@ function OutputLine({ line, failed, onMoreRequested }: OutputLineProps) {
       // commands 6절 "빠진 인자".
       if (line.command === "seek") return <Line tone="error">검색어 없음  예: 찾기 결제</Line>;
       // ARC-001 사용자 문구.
+      // #154 `고르기 빼기`를 번호 없이 치면 빼기 예시.
+      if (line.command === "pick" && line.sub === "unpick") return <Line tone="error">번호 없음  예: 고르기 빼기 131</Line>;
       if (line.command === "pick") return <Line tone="error">번호 없음  예: 고르기 131</Line>;
+      // ARC-011 사용자 문구.
+      if (line.command === "peek") return <Line tone="error">번호 없음  예: 열기 131</Line>;
+      // ARC-012 사용자 문구.
+      if (line.command === "gather") return <Line tone="error">검색어 없음  예: 찾아두기 텀블러 캠페인</Line>;
       return null;
     case "missingTag":
       // ARC-002 사용자 문구.
@@ -800,10 +1217,11 @@ function OutputLine({ line, failed, onMoreRequested }: OutputLineProps) {
           hasMore={line.hasMore}
           onMoreRequested={onMoreRequested}
           period={line.period}
+          saveQuery={saveQueryFor(line, savedInBlock)}
         />
       );
     case "noResults":
-      return <NoResultsLines query={line.query} recent={line.recent} period={line.period} />;
+      return <NoResultsLines query={line.query} recent={line.recent} period={line.period} related={line.related} />;
     case "picked":
       return <PickedLines items={line.items} />;
     case "notFound":
@@ -848,7 +1266,32 @@ function OutputLine({ line, failed, onMoreRequested }: OutputLineProps) {
       // ARC-008 사용자 문구.
       return <Line tone="ok">{`비움  ${line.count}건 영구 삭제`}</Line>;
     case "signOutEverywhereConfirm":
-      return <SignOutEverywhereConfirmLines />;
+      return <SignOutEverywhereConfirmLines connectionCount={line.connectionCount ?? null} />;
+    // #124 AI 도구 연결(ACC-002 사용자 문구)
+    case "connectionList":
+      return <ConnectionListLines mcpUrl={line.mcpUrl} connections={line.connections} />;
+    case "disconnectConfirm":
+      return (
+        <>
+          <Line tone="warn">{`끊기? ${line.client} (다시 연결하려면 처음부터)`}</Line>
+          <ConfirmAnswer word="끊기" />
+        </>
+      );
+    case "disconnected":
+      if (line.already) return <Line tone="warn">{`이미 끊김  ${line.client}`}</Line>;
+      return <Line tone="ok">{`끊김  ${line.client}`}</Line>;
+    case "connectionNotFound":
+      return <Line tone="error">{`없는 연결: ${line.number}`}</Line>;
+    case "connectionEnded":
+      return (
+        <>
+          <Line tone="warn">{`연결 끊김: ${line.client} (${CONNECTION_END_REASON[line.reason]})`}</Line>
+          <Plain>
+            {"→ "}
+            <CommandChip command="연결" />
+          </Plain>
+        </>
+      );
     case "unpicked":
       // commands 6절 선택 빼기. 남은 수는 그 시점 값을 줄이 들고 온다(지난 줄이 나중 선택에 따라 바뀌지 않게).
       return <Line tone="ok">{`뺌  선택 ${line.remaining}건 남음`}</Line>;
@@ -865,6 +1308,102 @@ function OutputLine({ line, failed, onMoreRequested }: OutputLineProps) {
     case "revived":
       // ARC-008 사용자 문구.
       return <Line tone="ok">{`되살림 ${line.items.length}건`}</Line>;
+    // #137 ARC-007 규칙 11: `폴더`·`mkdir` 입력은 없는 명령이 아니라 안내.
+    case "folderHint":
+      return (
+        <Line tone="info">
+          {"폴더 없음: 묶음이 폴더 역할  → "}
+          <CommandChip command="고르기 ">고르기 &lt;번호&gt;</CommandChip>
+          {" · "}
+          <CommandChip command="묶음 ">묶음 &lt;이름&gt;</CommandChip>
+        </Line>
+      );
+    // #127 북마크 가져오기(commands 6절). 진행은 뒤에서 이어진다(user-flow 10절)
+    case "importPrompt":
+      return <Line tone="info">북마크 파일을 끌어다 놓기 (브라우저에서 내보낸 HTML, 한 번에 200건)</Line>;
+    case "importProgress":
+      return (
+        <>
+          <Line tone="info">{`가져오는 중  ${line.done} / ${line.total}건`}</Line>
+          <Plain dim>{"  다른 명령을 쳐도 계속됨"}</Plain>
+        </>
+      );
+    case "importFinished":
+      return (
+        <ImportFinishedLines
+          saved={line.saved}
+          skipped={line.skipped}
+          failed={line.failed}
+          overLimit={line.overLimit}
+          failedUrls={line.failedUrls}
+        />
+      );
+    // #134 찾아두기(ARC-012 사용자 문구)
+    case "searchSaved":
+      return <SearchSavedLines query={line.query} total={line.total} already={line.already} />;
+    case "savedSearchList":
+      return <SavedSearchListLines searches={line.searches} />;
+    case "savedSearchPeriod":
+      return (
+        <>
+          <Line tone="error">{`시점은 찾아두지 않음: ${line.period}`}</Line>
+          <Plain>
+            {"→ "}
+            <CommandChip command={line.suggestion} />
+          </Plain>
+        </>
+      );
+    case "savedSearchTooLong":
+      return <Line tone="error">검색어 40자 초과</Line>;
+    case "savedSearchDeleteConfirm":
+      return (
+        <>
+          <Line tone="warn">{`지우기? 찾아둔 ${line.query} (자료는 남음)`}</Line>
+          <ConfirmAnswer word="지우기" />
+        </>
+      );
+    case "savedSearchDeleted":
+      return <Line tone="ok">{`지움  찾아둔 ${line.query}`}</Line>;
+    case "savedSearchNotFound":
+      return <Line tone="error">{`찾아둔 것 없음: ${line.query}`}</Line>;
+    // #131 자세히 보기(ARC-011)
+    case "itemDetail":
+      return <ItemDetailLines detail={line.detail} />;
+    case "oneNumberOnly":
+      return <Line tone="error">{`번호 하나만  예: ${COMMAND_LABEL[line.command]} 131`}</Line>;
+    // #121 묶음(ARC-003 사용자 문구)
+    case "bundleList":
+      return <BundleListLines bundles={line.bundles} />;
+    case "bundleAdded":
+      return <BundleAddedLines name={line.name} count={line.count} alreadyCount={line.alreadyCount} />;
+    case "bundleView":
+      return (
+        <BundleViewLines
+          name={line.name}
+          total={line.total}
+          items={line.items}
+          hasMore={line.hasMore}
+          onMoreRequested={onMoreRequested}
+        />
+      );
+    case "bundleNotFound":
+      return (
+        <Line tone="error">
+          {`없는 묶음: ${line.name}  → `}
+          <CommandChip command="묶음" />
+        </Line>
+      );
+    case "bundleUnpicked":
+      return <Line tone="ok">{`뺌  묶음 ${line.name}: ${line.remaining}건 남음`}</Line>;
+    case "notInBundle":
+      // 없는 번호(notFound)와 같게 쉼표로 잇는다.
+      return <Line tone="error">{`묶음에 없음: ${line.numbers.join(", ")}`}</Line>;
+    case "bundleDeleteConfirm":
+      return <BundleDeleteConfirmLines name={line.name} itemCount={line.itemCount} />;
+    case "bundleDeleted":
+      return <Line tone="ok">{`삭제됨  묶음 ${line.name}`}</Line>;
+    case "bundleNameInvalid":
+      return <Line tone="error">{BUNDLE_NAME_RULE[line.reason]}</Line>;
     default:
       // 나머지 줄 종류(#56 계약)는 각 실행 이슈(#58~#68)가 정책 원문으로 그린다.
       return null;
@@ -873,10 +1412,11 @@ function OutputLine({ line, failed, onMoreRequested }: OutputLineProps) {
 
 function Block({ lines, onMoreRequested }: { lines: TerminalLine[]; onMoreRequested?: () => void }) {
   const failed = lines.some((line) => line.kind === "unknownCommand");
+  const savedInBlock = lines.some((line) => line.kind === "searchSaved");
   return (
     <div className="gt-block">
       {lines.map((line, index) => (
-        <OutputLine key={index} line={line} failed={failed} onMoreRequested={onMoreRequested} />
+        <OutputLine key={index} line={line} failed={failed} savedInBlock={savedInBlock} onMoreRequested={onMoreRequested} />
       ))}
     </div>
   );

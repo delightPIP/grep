@@ -113,3 +113,13 @@ html, body, #root, #app { height: 100%; }
 /* 이름 칸은 가장 긴 `휴지통 비우기`(한글 6자 + 빈칸 = 13ch), 영문 칸은 `bin empty`(9ch)에 맞춘다. */
 .gt-guide-row { display: grid; grid-template-columns: 14ch 10ch minmax(0, 1fr); column-gap: 1ch; padding-left: 2ch; }
 .gt-guide-name { color: var(--command); }
+
+/* 자세히 보기(ARC-011, 시안 ItemDetail): 이름표 칸과 값 칸 */
+.gt-detail > * + * { margin-top: var(--space-1); }
+.gt-detail-row { display: grid; grid-template-columns: 15ch minmax(0, 1fr); column-gap: 2ch; white-space: pre-wrap; overflow-wrap: anywhere; }
+.gt-detail-label { color: var(--ink-muted); }
+.gt-detail-row.gt-warn > :last-child { color: var(--notice); }
+.gt-detail-original { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); }
+.gt-detail-image { display: block; max-width: min(100%, 320px); max-height: 240px; border: 1px solid var(--line); border-radius: var(--radius-sm); }
+.gt-row-title { text-align: left; }
+.gt-name-row { display: flex; flex-wrap: wrap; column-gap: 2ch; padding-left: 2ch; }

@@ -91,12 +91,15 @@ export type Period = { label: string; from: string; to: string };
 /** 자세히 보기(api `ItemDetail`, ARC-011 규칙 6). 차례와 문구는 뷰가 정책대로 그린다. */
 export type ItemDetail = {
   item: ItemSummary;
+  /** 링크 자료의 원래 주소(추적 꼬리표를 뺀 사람용 주소, 넘길 글 출처 칸과 같은 값). 링크가 아니면 null. 출처 호스트를 누르면 새 탭으로 연다(ARC-011 규칙 6-2, 통합 승인) */
+  url: string | null;
   /** 넘기기용 요약 또는 직접 고친 요약. 이름표는 item.summarySource */
   handoffSummary: string | null;
   allTags: string[];
   /** 든 묶음 이름. 비면 `묶음  없음` */
   bundles: string[];
-  bodyLength: number;
+  /** 본문 글자 수. body가 null이면 null(#131, 통합 승인) */
+  bodyLength: number | null;
   /** 펼치기용 본문(앞 2만 자). null이면 `· 본문 없음: <이유>`(item.blockedReason·status) */
   body: string | null;
   bodyFromImage: boolean;
@@ -155,7 +158,8 @@ export type TerminalLine =
   | { kind: "prompt"; text: string }
   /** suggestion: 가까운 명령으로 고친 입력 전체(`찾기 결제`, F17). 없으면 null(#118, 통합 승인) */
   | { kind: "unknownCommand"; name: string; suggestion?: string | null }
-  | { kind: "missingArgument"; command: CommandName }
+  /** sub: 하위 명령에서 인자가 빠졌다. `고르기 빼기`를 번호 없이 치면 "unpick"(#154, 통합 승인). 없거나 null이면 명령 자체 */
+  | { kind: "missingArgument"; command: CommandName; sub?: "unpick" | null }
   | { kind: "missingTag" }
   | { kind: "saved"; item: ItemSummary }
   | { kind: "alreadySaved"; item: ItemSummary }
@@ -163,9 +167,19 @@ export type TerminalLine =
   | { kind: "saveFailed"; reason: SaveFailure; recovery: SaveRecovery }
   /** total: 시점이 붙은 `최근`이면 그 기간 전체 건수, 시점이 없으면 null(#114, 통합 승인) */
   | { kind: "recentList"; items: ItemSummary[]; hasMore: boolean; period?: Period | null; total?: number | null }
-  | { kind: "searchResult"; query: SearchQuery; total: number; items: ItemSummary[]; hasMore: boolean; period?: Period | null }
+  /** isSavedSearch: 이 검색어가 이미 찾아둔 것이면 true. `→ 찾아두기 <검색어>` 칩을 숨긴다. null·없음이면 보인다(#134, 통합 승인) */
+  | {
+      kind: "searchResult";
+      query: SearchQuery;
+      total: number;
+      items: ItemSummary[];
+      hasMore: boolean;
+      period?: Period | null;
+      isSavedSearch?: boolean | null;
+    }
   /** period: 시점을 붙인 찾기가 0건이면 그 시점. `→ 기간 없이: 찾기 <검색어>`를 보인다(#114, 통합 승인) */
-  | { kind: "noResults"; query: SearchQuery; recent: ItemSummary[]; period?: Period | null }
+  /** related: 뜻이 가까운 자료(최대 3건). 1건 이상이면 최근 저장 대신 그린다. 비었거나 null·없음이면 최근 저장(#128, 통합 승인) */
+  | { kind: "noResults"; query: SearchQuery; recent: ItemSummary[]; period?: Period | null; related?: ItemSummary[] | null }
   | { kind: "picked"; items: ItemRef[] }
   | { kind: "notFound"; numbers: number[] }
   | { kind: "invalidNumber"; input: string }
