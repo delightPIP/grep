@@ -853,6 +853,89 @@ describe("LoggedInView", () => {
     });
   });
 
+  describe("넘기기 결과(#64, commands 6절·넘길 글 형식 3절)", () => {
+    const HANDOFF = { kind: "prompt", text: "넘기기" } as const;
+    const TEXT = "[그렙 · 자료 2건]\n\n131. 결제위젯 연동 가이드";
+
+    function handedOff(missingSummaryCount = 0): LoggedInState["lines"] {
+      return [
+        HANDOFF,
+        {
+          kind: "handedOff",
+          result: {
+            items: [
+              { number: 131, title: "결제위젯 연동 가이드" },
+              { number: 97, title: "PG사 수수료 비교 정리.pdf" },
+            ],
+            charCount: 1240,
+            missingSummaryCount,
+            text: TEXT,
+          },
+        },
+      ];
+    }
+
+    it("두건을넘겼을때_화면을그리면_복사됨건수글자수와자료줄과미리보기와붙여넣기안내를보이는지", () => {
+      // given
+      // when
+      const shown = shownOutput(handedOff());
+
+      // then
+      expect(shown.slice(1)).toEqual([
+        "✓ 복사됨  2건 · 1,240자 (제목·출처·저장 시각·요약)",
+        "131 결제위젯 연동 가이드",
+        "97 PG사 수수료 비교 정리.pdf",
+        "· 미리보기: 펼치기",
+        "· 클립보드에 있음 → AI 도구 입력창에 붙여 넣기",
+      ]);
+    });
+
+    it("요약없는자료가있을때_화면을그리면_자료줄다음미리보기앞에요약없음N건을보이는지", () => {
+      // given
+      // when
+      const shown = shownOutput(handedOff(1));
+
+      // then
+      expect(shown.slice(4, 6)).toEqual(["! 요약 없음 1건", "· 미리보기: 펼치기"]);
+    });
+
+    it("넘긴뒤일때_펼치기를누르면_입력줄을건드리지않고넘긴글전체와접기를보이는지", () => {
+      // given
+      const { container, onInputChange } = renderView({ lines: handedOff() });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "펼치기" }));
+
+      // then
+      expect(container.querySelector(".gt-preview")!.textContent).toBe(TEXT);
+      expect(screen.getByRole("button", { name: "접기" })).toBeTruthy();
+      expect(onInputChange).not.toHaveBeenCalled();
+    });
+
+    it("미리보기를펼쳤을때_접기를누르면_넘긴글을숨기는지", () => {
+      // given
+      const { container } = renderView({ lines: handedOff() });
+      fireEvent.click(screen.getByRole("button", { name: "펼치기" }));
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "접기" }));
+
+      // then
+      expect(container.querySelector(".gt-preview")).toBeNull();
+    });
+
+    it("넘긴뒤일때_자료번호를누르면_입력줄에고르기번호를찍는지", () => {
+      // given
+      const { onInputChange } = renderView({ lines: handedOff() });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "97" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("고르기 97");
+    });
+  });
+
   describe("상태줄·연결(#60, ARC-005·COM-010)", () => {
     it("처리중인자료가있을때_화면을그리면_상태줄에요약생성중N을보이는지", () => {
       // given

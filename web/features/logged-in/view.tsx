@@ -4,6 +4,7 @@ import { createContext, useContext, useRef, useState, type ClipboardEvent, type 
 import type {
   CommandFailure,
   CommandName,
+  HandoffResult,
   ItemRef,
   ItemSummary,
   LoggedInState,
@@ -82,6 +83,19 @@ function CommandChip({ command, children }: { command: string; children?: ReactN
     <button type="button" className="gt-chip" onClick={() => insert(command)}>
       {children ?? command}
     </button>
+  );
+}
+
+/** 자료 번호 칸. 누르면 `고르기 <번호>`가 입력줄에 찍히고, 고른 자료면 앞에 `▸`(commands 6절). */
+function NumberCell({ number }: { number: number }) {
+  const { insert, selected } = useContext(ChipContext);
+  return (
+    <span className="gt-row-num">
+      {selected.has(number) && <span aria-label="선택됨">▸</span>}
+      <button type="button" className="gt-num-chip" onClick={() => insert(`고르기 ${number}`)}>
+        {number}
+      </button>
+    </span>
   );
 }
 
@@ -213,17 +227,10 @@ function ListRow({ item }: { item: ItemSummary }) {
   const tags = item.tags.slice(0, LIST_TAG_LIMIT);
   const summary = rowSummary(item);
   const match = item.matchedIn === null ? undefined : MATCH_LABEL[item.matchedIn];
-  const { insert, selected } = useContext(ChipContext);
   return (
     <>
       <div className="gt-line gt-row">
-        <span className="gt-row-num">
-          {selected.has(item.number) && <span aria-label="선택됨">▸</span>}
-          {/* 번호를 누르면 `고르기 <번호>`가 입력줄에 찍힌다(commands 6절). */}
-          <button type="button" className="gt-num-chip" onClick={() => insert(`고르기 ${item.number}`)}>
-            {item.number}
-          </button>
-        </span>
+        <NumberCell number={item.number} />
         <span>{item.kind === "text" ? textTitle(item.title) : item.title}</span>
         {item.source && <span className="gt-row-meta">{item.source}</span>}
         <span className="gt-row-meta">{savedAtText(item.savedAt)}</span>
@@ -310,7 +317,48 @@ function PickedLines({ items }: { items: ItemRef[] }) {
   );
 }
 
-type OutputLineProps ={ line: TerminalLine; failed: boolean; onMoreRequested?: () => void };
+const charCountText = (count: number) => `${count.toLocaleString("ko-KR")}자`;
+
+/** 넘긴 자료마다 `<번호>  <제목>` 한 줄. */
+function ItemRefRows({ items }: { items: ItemRef[] }) {
+  return (
+    <>
+      {items.map((ref) => (
+        <div key={ref.number} className="gt-line gt-row">
+          <NumberCell number={ref.number} />
+          <span>{ref.title}</span>
+        </div>
+      ))}
+    </>
+  );
+}
+
+/** 넘긴 글 전체. 터미널 글꼴이 아닌 읽기 글꼴로 줄바꿈을 그대로 보인다(시안 Handoff). */
+function Preview({ text }: { text: string }) {
+  return <pre className="gt-preview">{text}</pre>;
+}
+
+/** commands 6절 넘기기, 넘길 글 형식 3절. `펼치기`는 화면 칩이라 누르면 바로 펼친다. */
+function HandedOffLines({ result }: { result: HandoffResult }) {
+  const [isExpanded, setExpanded] = useState(false);
+  return (
+    <>
+      <Line tone="ok">{`복사됨  ${result.items.length}건 · ${charCountText(result.charCount)} (제목·출처·저장 시각·요약)`}</Line>
+      <ItemRefRows items={result.items} />
+      {result.missingSummaryCount > 0 && <Line tone="warn">{`요약 없음 ${result.missingSummaryCount}건`}</Line>}
+      <Line tone="info">
+        {"미리보기: "}
+        <button type="button" className="gt-chip" aria-expanded={isExpanded} onClick={() => setExpanded(!isExpanded)}>
+          {isExpanded ? "접기" : "펼치기"}
+        </button>
+      </Line>
+      {isExpanded && <Preview text={result.text} />}
+      <Line tone="info">클립보드에 있음 → AI 도구 입력창에 붙여 넣기</Line>
+    </>
+  );
+}
+
+type OutputLineProps = { line: TerminalLine; failed: boolean; onMoreRequested?: () => void };
 
 function OutputLine({ line, failed, onMoreRequested }: OutputLineProps) {
   switch (line.kind) {
@@ -355,6 +403,8 @@ function OutputLine({ line, failed, onMoreRequested }: OutputLineProps) {
       return <Line tone="error">{`없는 번호: ${line.numbers.join(", ")}`}</Line>;
     case "invalidNumber":
       return <Line tone="error">{`잘못된 번호: ${line.input}  예: ${PICK_EXAMPLE}`}</Line>;
+    case "handedOff":
+      return <HandedOffLines result={line.result} />;
     case "commandFailed":
       return <CommandFailedLines command={line.command} reason={line.reason} retry={line.retry} />;
     case "reconnected":

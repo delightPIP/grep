@@ -54,6 +54,8 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
 .gt-num-chip { padding: 0; font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
 .gt-num-chip:hover { text-decoration: underline; text-underline-offset: 3px; }
 .gt-num-chip:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+/* 넘긴 글 미리보기(시안 Handoff). 터미널 글꼴이 아닌 본문 글꼴로, 넘긴 줄바꿈 그대로. */
+.gt-preview { max-width: 72ch; margin: var(--space-1) 0 var(--space-1) 2ch; padding: var(--space-3); font-family: var(--font-read); color: var(--ink); background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--radius-sm); white-space: pre-wrap; overflow-wrap: anywhere; }
 /* 입력줄 바로 위 선택 줄 `선택 2  <제목> · <제목>`(commands 6절 고르기, 시안 Handoff). */
 .gt-selection { color: var(--command); white-space: pre-wrap; overflow-wrap: anywhere; }
 
