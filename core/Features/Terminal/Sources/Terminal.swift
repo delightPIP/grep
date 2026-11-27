@@ -75,6 +75,8 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     private var listPage: ListPage?
     /// 다음 쪽을 받고 있는 목록. 그 목록의 `더 보기`만 무시한다.
     private var loadingPage: ListPage?
+    /// 답을 기다리는 `찾기 … | 넘기기` 확인. 다음 입력 한 번이 답이다(COM-007 규칙 1).
+    var pendingHandoff: PendingHandoff?
     private var isPolling = false
     private var isCheckingHealth = false
     /// 폴링에서 없는 번호(휴지통·삭제)로 온 자료. 더 묻지 않는다.
@@ -155,6 +157,12 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     }
 
     private func submit(_ text: String) {
+        if let pending = pendingHandoff, let choice = pending.choice(for: text) {
+            pendingHandoff = nil
+            confirmHandoff(pending, choice: choice, typed: text)
+            return
+        }
+        cancelPendingHandoff()
         guard let command = InputCommand(text) else { return }
         switch command.name {
         case .signOut where command.argument.isEmpty:
@@ -165,6 +173,8 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             keep(KeepCommand.request(for: command.argument), typed: text)
         case .recent:
             showRecent(limit: RecentCommand.limit(for: command.argument), typed: text)
+        case .seek where pipe(seekArgument: command.argument, typed: text):
+            break
         case .seek:
             seek(SeekCommand.parse(command.argument), typed: text)
         case .pick:
@@ -219,6 +229,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     private func paste(_ text: String) {
         let content = text.trimmingWhitespace()
         guard !content.isEmpty else { return }
+        cancelPendingHandoff()
         keep(KeepCommand.request(for: content), typed: "담기 \(content)")
     }
 
@@ -227,6 +238,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     /// shortcut: `GET /uploads/limits`로 보내기 전에 거르지 않고 서버 판정(413·415)만 쓴다. 큰 파일을 올리기 전에 막아야 할 때 더한다.
     private func drop(_ dropped: [DroppedFile]) {
         guard !dropped.isEmpty else { return }
+        cancelPendingHandoff()
         update(viewState.appending(lines: [.prompt((["담기"] + dropped.map(\.name)).joined(separator: " "))]))
         startTask { [weak self] in
             guard let self else { return }
@@ -458,7 +470,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     }
 
     /// `· 0건` 뒤에 붙일 최근 저장 자료를 받는다. 받지 못해도 찾기는 끝난 것이라 0건 줄은 찍는다.
-    private func showNoResults(for query: SearchQuery, typed: String, accessToken: String) async {
+    func showNoResults(for query: SearchQuery, typed: String, accessToken: String) async {
         let outcome = await BrowseAPI.recent(
             limit: SeekCommand.noResultsRecentCount, cursor: nil, transport: httpTransport, accessToken: accessToken
         )
