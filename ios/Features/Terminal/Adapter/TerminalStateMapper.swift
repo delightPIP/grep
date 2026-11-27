@@ -346,6 +346,10 @@ public enum TerminalStateMapper {
         case .guide: "전체 명령 목록  예: 도움말"
         case .about: "명령 사용법 안내  예: 설명 찾기"
         case .signOut: "이 기기의 세션 종료  예: 로그아웃"
+        case .revise: "제목·요약 수정, 태그 지우기  예: 고치기 131 -#위젯"
+        case .drop: "자료를 휴지통으로  예: 버리기 131, 버리기 1-8"
+        case .revive: "휴지통에서 돌리기  예: 되살리기 131"
+        case .bin: "휴지통 목록·비우기  예: 휴지통, 휴지통 비우기"
         }
     }
 
