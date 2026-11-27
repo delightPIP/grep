@@ -562,6 +562,120 @@ describe("LoggedInView", () => {
     });
   });
 
+  describe("찾기 결과(#61, commands 6절·ARC-002)", () => {
+    const SEEK = { kind: "prompt", text: "찾기 결제" } as const;
+    const QUERY = { text: "결제", words: "결제", tags: [] };
+    const ready = (number: number) => item({ number, status: "ready", listSummary: `요약 ${number}`, source: null });
+
+    function found(total: number, items: ItemSummary[], hasMore = false): LoggedInState["lines"] {
+      return [SEEK, { kind: "searchResult", query: QUERY, total, items, hasMore }];
+    }
+
+    function noResults(text: string, recent: ItemSummary[]): LoggedInState["lines"] {
+      return [{ kind: "prompt", text: `찾기 ${text}` }, { kind: "noResults", query: { text, words: "", tags: [] }, recent }];
+    }
+
+    it("찾은자료가모두보일때_찾기결과를그리면_머리줄에전체건수와두줄행을보이는지", () => {
+      // given
+      const lines = found(1, [ready(131)]);
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown.slice(1)).toEqual(["1건", "131 카페 텀블러 할인, 올겨울 캠페인 늘었다 2026-11-27 11:00", "요약 131"]);
+    });
+
+    it("찾은자료가10건을넘을때_찾기결과를그리면_머리줄에전체중보인건수와더보기를보이는지", () => {
+      // given
+      const items = Array.from({ length: 10 }, (_, index) => ready(140 - index));
+
+      // when
+      const shown = shownOutput(found(23, items, true));
+
+      // then
+      expect(shown[1]).toBe("23건 중 10건");
+      expect(shown[shown.length - 1]).toBe("→ 더 보기");
+    });
+
+    it("더보기로다음쪽을이어받았을때_찾기결과를그리면_머리숫자가행수와맞는지", () => {
+      // given
+      const items = Array.from({ length: 20 }, (_, index) => ready(150 - index));
+
+      // when
+      const shown = shownOutput(found(23, items, true));
+
+      // then
+      expect(shown[1]).toBe("23건 중 20건");
+    });
+
+    it("다음쪽이있을때_찾기결과의더보기를누르면_더보기를알리는지", () => {
+      // given
+      const { onMoreRequested } = renderView({ lines: found(23, [ready(131)], true) });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "더 보기" }));
+
+      // then
+      expect(onMoreRequested).toHaveBeenCalledOnce();
+    });
+
+    it("이미지속글자에서찾았을때_찾기결과를그리면_요약줄끝에흐린이미지속글자를보이는지", () => {
+      // given
+      const capture = item({ number: 28, status: "ready", listSummary: "파란컵 반값 캠페인 캡처", matchedIn: "imageText", tags: ["텀블러"] });
+
+      // when
+      const { container } = renderView({ lines: found(1, [capture]) });
+
+      // then
+      const sub = container.querySelector(".gt-row-sub")!;
+      expect(shownLine(sub)).toBe("파란컵 반값 캠페인 캡처 · 이미지 속 글자 #텀블러");
+      expect(sub.querySelector(".gt-row-match")!.textContent).toBe("· 이미지 속 글자");
+    });
+
+    it("화면에보이는곳에서찾았을때_찾기결과를그리면_일치위치를붙이지않는지", () => {
+      // given
+      const byTitle = item({ status: "ready", listSummary: "요약", matchedIn: "title" });
+
+      // when
+      const { container } = renderView({ lines: found(1, [byTitle]) });
+
+      // then
+      expect(container.querySelector(".gt-row-match")).toBeNull();
+    });
+
+    it("찾은자료가없을때_찾기결과를그리면_0건과검색결과아님머리줄뒤에최근자료를보이는지", () => {
+      // given
+      const recent = [ready(133), ready(132), ready(131)];
+
+      // when
+      const shown = shownOutput(noResults("결제", recent));
+
+      // then
+      expect(shown.slice(1, 3)).toEqual(['· 0건: "결제"', "· 최근 저장 3건 (검색 결과 아님)"]);
+      expect(shown.slice(3).filter((row) => /^\d+ /.test(row))).toHaveLength(3);
+    });
+
+    it("태그로찾아없을때_찾기결과를그리면_친태그그대로0건을보이는지", () => {
+      // given
+      // when
+      const shown = shownOutput(noResults("#결제", [ready(131)]));
+
+      // then
+      expect(shown[1]).toBe('· 0건: "#결제"');
+      expect(shown[2]).toBe("· 최근 저장 1건 (검색 결과 아님)");
+    });
+
+    it("찾은자료도최근자료도없을때_찾기결과를그리면_0건한줄만보이는지", () => {
+      // given
+      // when
+      const shown = shownOutput(noResults("결제", []));
+
+      // then
+      expect(shown.slice(1)).toEqual(['· 0건: "결제"']);
+    });
+  });
+
   describe("상태줄·연결(#60, ARC-005·COM-010)", () => {
     it("처리중인자료가있을때_화면을그리면_상태줄에요약생성중N을보이는지", () => {
       // given
