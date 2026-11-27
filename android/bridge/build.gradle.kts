@@ -39,7 +39,8 @@ val swiftAbis = mapOf(
 val swiftRuntimeLibs = listOf(
     "libswiftCore.so", "libswift_Concurrency.so", "libswift_StringProcessing.so", "libswift_RegexParser.so",
     "libswift_Builtin_float.so", "libswift_math.so", "libswiftAndroid.so", "libswiftObservation.so",
-    "libswiftSynchronization.so", "libdispatch.so", "libBlocksRuntime.so", "libFoundationEssentials.so",
+    "libswiftSynchronization.so", "libdispatch.so", "libswiftDispatch.so", "libBlocksRuntime.so",
+    "libFoundation.so", "libFoundationEssentials.so", "libFoundationInternationalization.so", "lib_FoundationICU.so",
 )
 val requestedAbis: List<String> =
     (findProperty("swiftAbis") as String?)?.split(",")?.map(String::trim) ?: listOf("arm64-v8a")

@@ -3,7 +3,6 @@ import GrepAndroidSupport
 import RIBs
 
 /// 터미널 피처의 Android 화면을 만든다.
-/// shortcut: #79 2단계에서 `:feature:terminal` 전체 화면 및 상태 브리지로 확장한다.
 @MainActor
 public final class TerminalAndroidViewFactory: TerminalViewFactory {
     nonisolated public static let kind = "terminal"

@@ -26,6 +26,8 @@ android {
 
 dependencies {
     implementation(project(":feature:loggedout:adapter"))
+    implementation(project(":feature:terminal:adapter"))
+    implementation(project(":feature:loggedin:ui"))
 
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))

@@ -60,7 +60,7 @@ let package = Package(
         ),
         .testTarget(
             name: "GrepAndroidTests",
-            dependencies: ["GrepAndroid", "GrepAndroidSupport", ribs, core("GrepCore"), core("GrepCoreTesting")]
+            dependencies: ["GrepAndroid", "GrepAndroidSupport", ribs, core("GrepCore"), core("GrepCoreTesting"), core("FeatureTerminalInterface")]
                 + features.map { .target(name: "Feature\($0)Android") }
         ),
     ] + featureTargets,

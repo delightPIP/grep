@@ -21,7 +21,7 @@ dependencyResolutionManagement {
 //   :feature:<f>:adapter   swift-java 브리지를 구현하고 값을 :ui에 넘기는 화면
 //   :feature:<f>:demo      피처 하나만 띄우는 앱
 //   :app                   모든 :adapter를 잇는 전체 앱
-include(":bridge", ":app")
-listOf("loggedout").forEach { feature ->
+include(":bridge", ":app", ":feature:loggedin:ui")
+listOf("loggedout", "terminal").forEach { feature ->
     include(":feature:$feature:ui", ":feature:$feature:adapter", ":feature:$feature:demo")
 }

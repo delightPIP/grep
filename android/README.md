@@ -31,4 +31,5 @@ cd android
 ./gradlew test
 ./gradlew :app:assembleDebug
 ./gradlew :feature:loggedout:demo:assembleDebug
+./gradlew :feature:terminal:demo:assembleDebug
 ```

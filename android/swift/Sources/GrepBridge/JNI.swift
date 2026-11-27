@@ -54,17 +54,16 @@ public func nativeStart(env: Env, thiz: jobject) {
     }
 }
 
-/// 피처 하나만 띄운다. `feature`는 `DemoFeature`, `scenario`는 `DemoLoggedOutScenario`의 원시값(UTF-8).
+/// 피처 하나만 띄운다. `feature`는 `DemoFeature`, `scenario`는 각 피처 시나리오의 원시값(UTF-8).
 @_cdecl("Java_com_unwrap_grep_core_SwiftBridge_nativeStartDemo")
 public func nativeStartDemo(env: Env, thiz: jobject, feature: jbyteArray, scenario: jbyteArray?) {
     let name = string(env, from: feature)
-    let scenarioName = scenario.map { string(env, from: $0) }
+    let scenarioName = scenario.map { string(env, from: $0) } ?? "initial"
     guard let demo = DemoFeature(rawValue: name) else { preconditionFailure("Unknown demo feature: \(name)") }
-    let demoScenario = scenarioName.flatMap(DemoLoggedOutScenario.init(rawValue:)) ?? .initial
     start(env) {
         FeatureDemoController(
             feature: demo,
-            scenario: demoScenario,
+            scenarioName: scenarioName,
             sink: sendToKotlin
         )
     }
