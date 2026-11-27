@@ -65,7 +65,8 @@ final class LoggedInInteractor: PresentableInteractor<any LoggedInPresentable>, 
     private var retryableSave: (typed: String, key: UUID)?
     /// 마지막 `최근` 목록에 다음 쪽이 있을 때만 있다.
     private var recentPage: RecentPage?
-    private var isLoadingMore = false
+    /// 다음 쪽을 받고 있는 목록. 그 목록의 `더 보기`만 무시한다.
+    private var loadingPage: RecentPage?
     private var isPolling = false
     private var isCheckingHealth = false
     /// 폴링에서 없는 번호(휴지통·삭제)로 온 자료. 더 묻지 않는다.
@@ -353,11 +354,11 @@ final class LoggedInInteractor: PresentableInteractor<any LoggedInPresentable>, 
 
     /// 마지막 목록에 다음 쪽을 이어 붙인다. 받는 중에 또 누르면 무시한다.
     private func loadMoreRecent() {
-        guard let page = recentPage, !isLoadingMore else { return }
-        isLoadingMore = true
+        guard let page = recentPage, loadingPage != page else { return }
+        loadingPage = page
         startTask { [weak self] in
             guard let self else { return }
-            defer { isLoadingMore = false }
+            defer { if loadingPage == page { loadingPage = nil } }
             let token = await authService.accessToken()
             guard !Task.isCancelled else { return }
             guard let token else {
@@ -406,7 +407,7 @@ final class LoggedInInteractor: PresentableInteractor<any LoggedInPresentable>, 
         }
     }
 
-    /// 계속 폴링해도 되면 true. 만료나 취소면 false.
+    /// 계속 폴링해도 되면 true. 만료·취소·인증 거절이면 false.
     private func refreshStatuses(of numbers: [Int]) async -> Bool {
         let token = await authService.accessToken()
         guard !Task.isCancelled else { return false }
@@ -426,7 +427,8 @@ final class LoggedInInteractor: PresentableInteractor<any LoggedInPresentable>, 
         case .sessionExpired:
             expire()
             return false
-        case .cancelled:
+        // 인증이 거절되면 다시 물어도 같다. 화면이 바뀌어 폴링이 새로 시작될 때까지 멈춘다.
+        case .unauthorized, .cancelled:
             return false
         }
     }

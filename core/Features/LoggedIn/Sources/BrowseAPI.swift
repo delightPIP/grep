@@ -20,6 +20,8 @@ enum BrowseAPI {
         /// `missing`은 없거나 휴지통에 있는 번호다.
         case found(items: [ItemSummary], missing: [Int])
         case sessionExpired
+        /// 세션 만료가 아닌 401(`unauthorized`). 같은 요청을 다시 보내도 같은 답이다.
+        case unauthorized
         case failed(CommandFailure)
         case cancelled
     }
@@ -50,6 +52,7 @@ enum BrowseAPI {
     private enum Reply<Body> {
         case body(Body)
         case sessionExpired
+        case unauthorized
         case failed(CommandFailure)
         case cancelled
     }
@@ -66,6 +69,8 @@ enum BrowseAPI {
         switch await get("\(itemsPath)?\(query)", as: PageBody.self, transport: transport, accessToken: accessToken) {
         case .body(let page): return .page(items: page.items, nextCursor: page.nextCursor)
         case .sessionExpired: return .sessionExpired
+        // 명령 실패 이유는 COM-010의 셋뿐이다.
+        case .unauthorized: return .failed(.serverError)
         case .failed(let reason): return .failed(reason)
         case .cancelled: return .cancelled
         }
@@ -82,6 +87,7 @@ enum BrowseAPI {
         switch await get(path, as: LookupBody.self, transport: transport, accessToken: accessToken) {
         case .body(let lookup): return .found(items: lookup.items, missing: lookup.missing)
         case .sessionExpired: return .sessionExpired
+        case .unauthorized: return .unauthorized
         case .failed(let reason): return .failed(reason)
         case .cancelled: return .cancelled
         }
@@ -111,9 +117,9 @@ enum BrowseAPI {
             case .timedOut: return .failed(.timedOut)
             }
         }
-        if response.status == unauthorizedStatus,
-           decode(ErrorBody.self, from: response.body)?.code == sessionExpiredCode {
-            return .sessionExpired
+        if response.status == unauthorizedStatus {
+            let isSessionExpired = decode(ErrorBody.self, from: response.body)?.code == sessionExpiredCode
+            return isSessionExpired ? .sessionExpired : .unauthorized
         }
         guard successStatuses.contains(response.status), let body = decode(type, from: response.body) else {
             return .failed(.serverError)

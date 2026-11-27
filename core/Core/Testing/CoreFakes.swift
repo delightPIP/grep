@@ -87,6 +87,12 @@ public final class FakeHTTPTransport: HTTPTransport {
     public func respond(status: Int = 200, json: String) {
         respond(.success(HTTPResponse(status: status, body: Array(json.utf8))))
     }
+
+    /// 가장 늦게 기다리기 시작한 요청에 먼저 응답한다. 응답 순서가 뒤바뀌는 경우를 만든다.
+    public func respondToLatest(status: Int = 200, json: String) {
+        guard !pending.isEmpty else { return }
+        pending.removeLast().resume(returning: .success(HTTPResponse(status: status, body: Array(json.utf8))))
+    }
 }
 
 /// 피처를 단독으로 테스트할 때 부모 역할을 하는 Router. 자식을 붙이면 활성화되고, 떼면 비활성화된다.

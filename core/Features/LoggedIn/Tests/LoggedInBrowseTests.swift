@@ -292,6 +292,60 @@ final class LoggedInBrowseTests {
         ])
     }
 
+    @Test func 앞목록의다음쪽을기다릴때_새목록의더보기를누르면_새목록의다음쪽을요청하는지() async {
+        // given
+        await attachLoaded()
+        await send(.submitted("최근 2"))
+        await respond(json: Self.pageJSON([Self.item(34), Self.item(33)], nextCursor: "33"))
+        await send(.moreRequested)
+        await send(.submitted("최근 1"))
+        transport.respondToLatest(json: Self.pageJSON([Self.item(34)], nextCursor: "34"))
+        await runCurrent()
+
+        // when
+        await send(.moreRequested)
+
+        // then
+        #expect(transport.requests.last == Self.get("/items?limit=1&cursor=34"))
+    }
+
+    @Test func 최근을다시쳐새목록이왔을때_앞목록의다음쪽이늦게오면_그쪽을버리는지() async {
+        // given
+        let first = [Self.item(34), Self.item(33)]
+        await attachLoaded()
+        await send(.submitted("최근 2"))
+        await respond(json: Self.pageJSON(first, nextCursor: "33"))
+        await send(.moreRequested)
+        await send(.submitted("최근 1"))
+        transport.respondToLatest(json: Self.pageJSON([Self.item(34)], nextCursor: "34"))
+        await runCurrent()
+
+        // when
+        await respond(json: Self.pageJSON([Self.item(32)]))
+
+        // then
+        #expect(state.lines == [
+            .prompt("최근 2"),
+            .recentList(items: first, hasMore: false),
+            .prompt("최근 1"),
+            .recentList(items: [Self.item(34)], hasMore: true),
+        ])
+    }
+
+    @Test func 더보기있는목록일때_토큰을못받은채더보기를누르면_만료를알리는지() async {
+        // given
+        await attachLoaded()
+        await send(.submitted("최근 2"))
+        await respond(json: Self.pageJSON([Self.item(34), Self.item(33)], nextCursor: "33"))
+        auth.token = nil
+
+        // when
+        await send(.moreRequested)
+
+        // then
+        #expect(listener.expiredPending.count == 1)
+    }
+
     // MARK: 처리 중 자료 폴링(ARC-005 규칙 10)
 
     @Test func 목록에처리중자료가있을때_목록을그리면_상태줄에처리중건수를세는지() async {
@@ -447,6 +501,73 @@ final class LoggedInBrowseTests {
 
         // then
         #expect(transport.requests.count == requestCount)
+    }
+
+    @Test func 저장한자료가처리중일때_2초가지나면_목록없이도그번호의상태를묻는지() async {
+        // given
+        let waiting = Self.item(35, status: .received, summary: nil)
+        await attachLoaded()
+        await send(.pasted("https://example.com/a"))
+        await respond(status: 201, json: #"{"result":"saved","item":\#(Self.json(waiting))}"#)
+
+        // when
+        await sleeper.advance(by: .seconds(2))
+
+        // then
+        #expect(transport.requests.last == Self.get("/items/status?numbers=35"))
+    }
+
+    @Test func 상태를기다릴때_세션이만료됐다고오면_만료를알리고더묻지않는지() async {
+        // given
+        await attachLoaded()
+        await send(.submitted("최근"))
+        await respond(json: Self.pageJSON([Self.item(34, status: .received, summary: nil)]))
+        await sleeper.advance(by: .seconds(2))
+        await respond(status: 401, json: Self.sessionExpiredJSON)
+        let requestCount = transport.requests.count
+
+        // when
+        await sleeper.advance(by: .seconds(2))
+        await sleeper.advance(by: .seconds(2))
+
+        // then
+        #expect(listener.expiredPending.count == 1)
+        #expect(transport.requests.count == requestCount)
+    }
+
+    @Test func 상태를기다릴때_인증이거절되면_같은요청을되풀이하지않는지() async {
+        // given: 세션 만료가 아닌 401(api/openapi.yaml `unauthorized`)
+        await attachLoaded()
+        await send(.submitted("최근"))
+        await respond(json: Self.pageJSON([Self.item(34, status: .received, summary: nil)]))
+        await sleeper.advance(by: .seconds(2))
+        await respond(status: 401, json: #"{"code":"unauthorized"}"#)
+        let requestCount = transport.requests.count
+
+        // when
+        await sleeper.advance(by: .seconds(2))
+        await sleeper.advance(by: .seconds(2))
+
+        // then
+        #expect(transport.requests.count == requestCount)
+        #expect(listener.expiredPending.isEmpty)
+    }
+
+    @Test func 연결이끊겨폴링을쉬었을때_다시연결되고2초가지나면_상태를다시묻는지() async {
+        // given
+        await attachLoaded()
+        await send(.submitted("최근"))
+        await respond(json: Self.pageJSON([Self.item(34, status: .received, summary: nil)]))
+        await send(.submitted("최근"))
+        await fail(.unreachable)
+        await sleeper.advance(by: .seconds(5))
+        await respond(json: #"{"status":"ok"}"#)
+
+        // when
+        await sleeper.advance(by: .seconds(2))
+
+        // then
+        #expect(transport.requests.last == Self.get("/items/status?numbers=34"))
     }
 
     // MARK: 연결 끊김과 다시 연결(COM-010)

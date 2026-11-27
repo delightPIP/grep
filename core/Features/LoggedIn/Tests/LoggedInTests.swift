@@ -157,7 +157,7 @@ final class LoggedInTests {
     }
 
     @Test(arguments: [HTTPTransportError.unreachable, .timedOut])
-    func me를기다릴때_응답을받지못하면_자료수없이터미널을그대로두는지(error: HTTPTransportError) async {
+    func me를기다릴때_응답을받지못하면_자료수없이두고네트워크오류일때만연결끊김을두는지(error: HTTPTransportError) async {
         // given: 네트워크 오류일 때만 상태줄에 `연결 끊김`을 둔다(COM-010 규칙 3)
         let expected = error == .unreachable
             ? [LoggedInViewState(), LoggedInViewState(isOffline: true)]
