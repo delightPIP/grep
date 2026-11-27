@@ -8,7 +8,6 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.testcontainers.postgresql.PostgreSQLContainer
-import org.testcontainers.utility.DockerImageName
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -18,7 +17,7 @@ class SupabaseLikePostgres {
 	@Bean
 	@ServiceConnection
 	fun postgresContainer(): PostgreSQLContainer =
-		PostgreSQLContainer(DockerImageName.parse(PGROONGA_IMAGE).asCompatibleSubstituteFor("postgres"))
+		PostgreSQLContainer(searchDatabaseImage())
 			.withInitScript("supabase-like-public-schema.sql")
 }
 
@@ -39,6 +38,6 @@ class SupabaseLikeSchemaMigrationTest {
 		val applied = jdbc.sql("SELECT version FROM flyway_schema_history WHERE success ORDER BY installed_rank")
 			.query(String::class.java)
 			.list()
-		assertEquals(listOf("0", "1", "2", "3", "4"), applied)
+		assertEquals(listOf("0", "1", "2", "3", "4", "5", "6", "7"), applied)
 	}
 }

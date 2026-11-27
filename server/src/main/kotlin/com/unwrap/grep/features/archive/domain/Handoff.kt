@@ -23,8 +23,18 @@ data class HandoffSource(
 /** openapi `Handoff.items`의 한 줄(`<번호>  <제목>`). */
 data class HandoffLine(val number: Long, val title: String)
 
-/** openapi `Handoff`. [charCount]는 [text]의 유니코드 문자 수(줄바꿈 포함). */
-data class Handoff(val text: String, val charCount: Int, val items: List<HandoffLine>, val missingSummaryCount: Int)
+/**
+ * openapi `Handoff`. [charCount]는 [text]의 유니코드 문자 수(줄바꿈 포함).
+ * [bundle]은 묶음으로 넘겼을 때 그 이름, [removedCount]는 그 묶음에서 휴지통으로 빠진 자료 수다.
+ */
+data class Handoff(
+	val text: String,
+	val charCount: Int,
+	val items: List<HandoffLine>,
+	val missingSummaryCount: Int,
+	val bundle: String? = null,
+	val removedCount: Int = 0,
+)
 
 interface HandoffSourceRepository {
 	/** [numbers] 중 휴지통 밖 자료. 순서는 정하지 않는다. */
@@ -47,10 +57,13 @@ object HandoffComposer {
 	private val LINE_BREAKS = Regex("\\s*[\\r\\n]+\\s*")
 	private val IMAGE_FORMATS = setOf(FileFormat.PNG, FileFormat.JPEG, FileFormat.WEBP, FileFormat.HEIC)
 
-	fun compose(sources: List<HandoffSource>, copiedAt: Instant): Handoff {
+	/** [bundle]을 주면 여는 줄에 `묶음="<이름>"`을 더한다(handoff-format 2절). */
+	fun compose(sources: List<HandoffSource>, copiedAt: Instant, bundle: String? = null, removedCount: Int = 0): Handoff {
 		val blocks = sources.mapIndexed { index, source -> block(index + 1, source) }
 		val text = buildString {
-			append("<그렙_자료 건수=\"").append(sources.size).append("\" 복사=\"").append(date(copiedAt)).append("\">\n")
+			append("<그렙_자료 건수=\"").append(sources.size).append("\" 복사=\"").append(date(copiedAt)).append('"')
+			bundle?.let { append(" 묶음=\"").append(it).append('"') }
+			append(">\n")
 			append(NOTICE).append("\n\n")
 			append(blocks.joinToString("\n\n"))
 			append('\n').append(CLOSE_TAG)
@@ -60,6 +73,8 @@ object HandoffComposer {
 			charCount = text.codePointCount(0, text.length),
 			items = sources.map { HandoffLine(it.number, it.title) },
 			missingSummaryCount = sources.count { it.userSummary == null && it.handoffSummary == null },
+			bundle = bundle,
+			removedCount = removedCount,
 		)
 	}
 

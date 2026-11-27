@@ -1,5 +1,6 @@
 package com.unwrap.grep.features.processing.domain
 
+import com.unwrap.grep.features.archive.api.ItemBody
 import com.unwrap.grep.features.archive.api.ItemOriginals
 import com.unwrap.grep.features.archive.api.ProcessingJob
 import com.unwrap.grep.features.archive.api.ProcessingOutcome
@@ -25,10 +26,11 @@ class ProcessingWorker(
 	private val documents: DocumentText,
 	private val summarizer: Summarizer,
 	private val clock: Clock,
+	private val limits: ProcessingLimits,
 ) {
 	/** 작업 하나를 처리했으면 true, 기다리는 작업이 없으면 false. */
 	fun runOnce(): Boolean {
-		val job = queue.claimNext(LEASE) ?: return false
+		val job = queue.claimNext(LEASE, limits.lowPriorityGate(startOfKoreanDay(clock.instant()))) ?: return false
 		if (job.inTrash) {
 			queue.discard(job)
 			return true
@@ -50,22 +52,31 @@ class ProcessingWorker(
 			is Read.Failed -> return finish(job, ProcessingOutcome.Failed(read.error, null))
 		}
 		val searchBody = content.text?.take(MAX_SEARCH_CHARS)
-		if (queue.countClaimedSince(job.userId, startOfKoreanDay(clock.instant())) > DAILY_LIMIT) {
-			return finish(job, ProcessingOutcome.Failed("daily_limit", searchBody))
+		// 글 자료는 text_body가 곧 본문이라 따로 남기지 않는다(V5).
+		val body = content.text?.takeIf { job.kind != "text" }?.let { ItemBody.of(it) }
+		if (limits.exceeded(queue.countClaimedSince(job.userId, startOfKoreanDay(clock.instant())))) {
+			return finish(job, ProcessingOutcome.Failed("daily_limit", searchBody, body))
 		}
 		val input = SummaryInput(job.title, job.source, content.text?.let(::forLlm), content.image)
 		when (val result = summarizer.summarize(input)) {
-			is SummaryResult.Summary -> finish(job, ready(job, content, result, searchBody))
-			is SummaryResult.Refused -> finish(job, ProcessingOutcome.Failed("refused: ${result.reason}", searchBody))
-			is SummaryResult.Transient -> retryOrFail(job, result.error, searchBody)
+			is SummaryResult.Summary -> finish(job, ready(job, content, result, searchBody, body))
+			is SummaryResult.Refused -> finish(job, ProcessingOutcome.Failed("refused: ${result.reason}", searchBody, body))
+			is SummaryResult.Transient -> retryOrFail(job, result.error, searchBody, body)
 		}
 	}
 
 	/** 빈 요약은 거절과 같이 `failed`(H-06 가정). 글자 없는 이미지는 `blocked`(no_text, handoff-format 3절). */
-	private fun ready(job: ProcessingJob, content: Read.Content, result: SummaryResult.Summary, searchBody: String?): ProcessingOutcome {
+	private fun ready(
+		job: ProcessingJob,
+		content: Read.Content,
+		result: SummaryResult.Summary,
+		searchBody: String?,
+		textBody: ItemBody?,
+	): ProcessingOutcome {
 		if (content.image != null && result.imageText.isNullOrBlank()) return ProcessingOutcome.Blocked(NO_TEXT, null)
+		val body = textBody ?: result.imageText?.let { ItemBody.of(it, fromImage = true) }
 		if (result.listSummary.isBlank() || result.handoffSummary.isBlank()) {
-			return ProcessingOutcome.Failed("empty response", searchBody)
+			return ProcessingOutcome.Failed("empty response", searchBody, body)
 		}
 		val truncatedForLlm = (content.text?.length ?: 0) > MAX_LLM_CHARS
 		return ProcessingOutcome.Ready(
@@ -77,6 +88,7 @@ class ProcessingWorker(
 			model = summarizer.model,
 			promptVersion = summarizer.promptVersion,
 			searchBody = searchBody ?: result.imageText?.take(MAX_SEARCH_CHARS),
+			body = body,
 		)
 	}
 
@@ -126,8 +138,8 @@ class ProcessingWorker(
 	}
 
 	/** 일시적 오류는 [MAX_ATTEMPTS]번까지 미뤄 다시 하고, 다 쓰면 `failed`(ARC-005 규칙 5). */
-	private fun retryOrFail(job: ProcessingJob, error: String, searchBody: String?) {
-		if (job.attempts >= MAX_ATTEMPTS) return finish(job, ProcessingOutcome.Failed(error, searchBody))
+	private fun retryOrFail(job: ProcessingJob, error: String, searchBody: String?, body: ItemBody? = null) {
+		if (job.attempts >= MAX_ATTEMPTS) return finish(job, ProcessingOutcome.Failed(error, searchBody, body))
 		queue.retryLater(job, RETRY_DELAY.multipliedBy(job.attempts.toLong()), error)
 	}
 
@@ -157,9 +169,6 @@ class ProcessingWorker(
 	}
 
 	companion object {
-		/** COM-005 계정당 하루 AI 처리(가정값). 50건째까지 처리한다. */
-		const val DAILY_LIMIT = 50
-
 		/** 일시적 오류 시도 횟수와 간격(ARC-005 규칙 5, 개발자 값). */
 		const val MAX_ATTEMPTS = 3
 		val RETRY_DELAY: Duration = Duration.ofMinutes(1)

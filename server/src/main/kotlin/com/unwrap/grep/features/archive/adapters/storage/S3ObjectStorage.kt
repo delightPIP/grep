@@ -13,6 +13,7 @@ import software.amazon.awssdk.services.s3.S3Configuration
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 import software.amazon.awssdk.services.s3.model.S3Exception
 import software.amazon.awssdk.services.s3.presigner.S3Presigner
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest
 import java.net.URI
 import java.time.Duration
@@ -61,6 +62,14 @@ class S3ObjectStorage(
 			.putObjectRequest { it.bucket(bucket).key(objectPath) }
 			.build()
 		return presigner.presignPutObject(request).url().toURI()
+	}
+
+	override fun presignGet(objectPath: String, expiresIn: Duration): URI {
+		val request = GetObjectPresignRequest.builder()
+			.signatureDuration(expiresIn)
+			.getObjectRequest { it.bucket(bucket).key(objectPath) }
+			.build()
+		return presigner.presignGetObject(request).url().toURI()
 	}
 
 	override fun put(objectPath: String, bytes: ByteArray, contentType: String) {

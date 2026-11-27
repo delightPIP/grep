@@ -1,6 +1,7 @@
 package com.unwrap.grep.features.demoseed.domain
 
 import com.unwrap.grep.features.account.domain.AuthProvider
+import com.unwrap.grep.features.archive.api.ItemBody
 import com.unwrap.grep.features.archive.domain.ItemKind
 import com.unwrap.grep.features.archive.domain.ObjectStorage
 import com.unwrap.grep.features.archive.domain.StoredFile
@@ -30,6 +31,8 @@ data class SeedRow(
 	val tags: List<String>,
 	val searchText: String,
 	val savedAt: Instant,
+	/** 링크·파일의 본문(V5). 글 자료는 textBody가 본문이다. */
+	val body: ItemBody? = null,
 )
 
 interface DemoSeedRepository {

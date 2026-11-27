@@ -1,7 +1,10 @@
 package com.unwrap.grep.features.archive.adapters.http
 
 import com.unwrap.grep.features.archive.domain.BrowseItemsService
+import com.unwrap.grep.features.archive.domain.GroupKind
+import com.unwrap.grep.features.archive.domain.ItemFilter
 import com.unwrap.grep.features.archive.domain.SavedRange
+import com.unwrap.grep.features.archive.domain.SavedSearchService
 import com.unwrap.grep.features.archive.domain.SearchQuery
 import com.unwrap.grep.shared.kernel.ApiProblem
 import com.unwrap.grep.shared.kernel.CURRENT_USER_ID
@@ -16,8 +19,14 @@ import java.util.UUID
 /** openapi `ItemPage`. [total]은 기간이 있을 때만 숫자, 없으면 null로 싣는다. */
 data class ItemPageResponse(val items: List<ItemSummaryResponse>, val total: Long?, val nextCursor: String?)
 
-/** openapi `SearchPage`. */
-data class SearchPageResponse(val items: List<ItemSummaryResponse>, val total: Long, val nextCursor: String?)
+/** openapi `SearchPage`. [isSavedSearch]는 같은 검색어를 찾아뒀는지(ARC-012 규칙 9, 시점은 비교하지 않음). */
+data class SearchPageResponse(
+	val items: List<ItemSummaryResponse>,
+	val total: Long,
+	val nextCursor: String?,
+	val isSavedSearch: Boolean,
+	val related: List<ItemSummaryResponse>,
+)
 
 /** openapi `ItemLookup`. */
 data class ItemLookupResponse(val items: List<ItemSummaryResponse>, val missing: List<Long>)
@@ -28,7 +37,7 @@ data class ItemLookupResponse(val items: List<ItemSummaryResponse>, val missing:
  * 커서는 앞 쪽 마지막 자료 번호다. 클라이언트는 뜻을 모르는 문자열로만 다룬다.
  */
 @RestController
-class BrowseItemsController(private val browse: BrowseItemsService) {
+class BrowseItemsController(private val browse: BrowseItemsService, private val savedSearches: SavedSearchService) {
 
 	@GetMapping("/items")
 	fun recent(
@@ -37,8 +46,11 @@ class BrowseItemsController(private val browse: BrowseItemsService) {
 		@RequestParam(required = false) limit: String?,
 		@RequestParam(required = false) from: String?,
 		@RequestParam(required = false) to: String?,
+		@RequestParam(required = false) kind: String?,
+		@RequestParam(required = false) source: String?,
+		@RequestParam(required = false) tag: String?,
 	): ItemPageResponse {
-		val page = browse.recent(userId, beforeNumber(cursor), pageSizeOf(limit), savedRange(from, to))
+		val page = browse.recent(userId, beforeNumber(cursor), pageSizeOf(limit), savedRange(from, to), filterOf(kind, source, tag))
 		return ItemPageResponse(page.items.map { ItemSummaryResponse.of(it) }, page.total, page.nextBeforeNumber?.toString())
 	}
 
@@ -61,6 +73,8 @@ class BrowseItemsController(private val browse: BrowseItemsService) {
 			items = page.hits.map { ItemSummaryResponse.of(it.item, it.matchedIn) },
 			total = page.total,
 			nextCursor = page.nextBeforeNumber?.toString(),
+			isSavedSearch = savedSearches.isSaved(userId, words, tags),
+			related = page.related.map { ItemSummaryResponse.of(it) },
 		)
 	}
 
@@ -75,6 +89,13 @@ class BrowseItemsController(private val browse: BrowseItemsService) {
 		val lookup = browse.lookup(userId, parsed)
 		return ItemLookupResponse(lookup.items.map { ItemSummaryResponse.of(it) }, lookup.missing)
 	}
+
+	/** 자동 묶음 하나(ARC-007). 출처는 호스트 그대로, 태그는 `#` 없이 소문자로 맞춘다(ARC-002 규칙 5). */
+	private fun filterOf(kind: String?, source: String?, tag: String?) = ItemFilter(
+		kind = kind?.let { GroupKind.of(it) ?: invalid("kind must be link, text, image or file") },
+		source = source?.let { it.trim().ifEmpty { invalid("source must not be blank") } },
+		tag = tag?.let { it.trim().ifEmpty { invalid("tag must not be blank") }.lowercase() },
+	)
 
 	private fun beforeNumber(cursor: String?): Long? = cursor?.let { positiveLong(it) ?: invalid("cursor is invalid") }
 

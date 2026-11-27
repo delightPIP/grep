@@ -5,6 +5,7 @@ import com.unwrap.grep.features.archive.api.ItemSavedTimes
 import com.unwrap.grep.features.archive.domain.FileFormat
 import com.unwrap.grep.features.archive.domain.HandoffSource
 import com.unwrap.grep.features.archive.domain.HandoffSourceRepository
+import com.unwrap.grep.features.archive.domain.ItemFilter
 import com.unwrap.grep.features.archive.domain.ItemKind
 import com.unwrap.grep.features.archive.domain.ItemRepository
 import com.unwrap.grep.features.archive.domain.ItemStatus
@@ -92,7 +93,7 @@ class JdbcItemRepository(private val jdbc: JdbcClient) :
 				FROM issued
 				RETURNING *
 			), queued AS (
-				INSERT INTO item_jobs (item_id) SELECT id FROM created
+				INSERT INTO item_jobs (item_id, priority) SELECT id, :priority FROM created
 			)
 			SELECT $SUMMARY_COLUMNS FROM created
 			""".trimIndent(),
@@ -110,22 +111,40 @@ class JdbcItemRepository(private val jdbc: JdbcClient) :
 			.param("title", item.title)
 			.param("source", item.source, Types.VARCHAR)
 			.param("idempotencyKey", item.idempotencyKey)
+			.param("priority", if (item.lowPriority) LOW_PRIORITY else NORMAL_PRIORITY)
 			.query(ITEM_ROW)
 			.single()
 	}
 
-	override fun countActive(userId: UUID, saved: SavedRange): Long =
+	/** 아직 기다리는 작업만 올린다. 이미 집혀 도는 작업은 그대로 둔다. */
+	override fun raiseProcessingPriority(userId: UUID, numbers: Collection<Long>) {
+		jdbc.sql(
+			"""
+			UPDATE item_jobs j SET priority = $NORMAL_PRIORITY
+			FROM items i
+			WHERE i.id = j.item_id AND i.user_id = :userId AND i.number = ANY(:numbers) AND i.deleted_at IS NULL
+			  AND j.status = 'queued' AND j.priority = $LOW_PRIORITY
+			""".trimIndent(),
+		)
+			.param("userId", userId)
+			.param("numbers", numbers.toLongArray())
+			.update()
+	}
+
+	override fun countActive(userId: UUID, saved: SavedRange, filter: ItemFilter): Long =
 		jdbc.sql(
 			"""
 			SELECT count(*) FROM items
 			WHERE user_id = :userId AND deleted_at IS NULL
 			  AND (CAST(:from AS timestamptz) IS NULL OR created_at >= CAST(:from AS timestamptz))
 			  AND (CAST(:to AS timestamptz) IS NULL OR created_at < CAST(:to AS timestamptz))
+			  $GROUP_FILTER_SQL
 			""".trimIndent(),
 		)
 			.param("userId", userId)
 			.param("from", saved.from?.let { OffsetDateTime.ofInstant(it, ZoneOffset.UTC) })
 			.param("to", saved.to?.let { OffsetDateTime.ofInstant(it, ZoneOffset.UTC) })
+			.filterParams(filter)
 			.query(Long::class.java)
 			.single()
 
@@ -138,13 +157,14 @@ class JdbcItemRepository(private val jdbc: JdbcClient) :
 			.query { rs, _ -> rs.getObject("created_at", OffsetDateTime::class.java).toInstant() }
 			.list()
 
-	override fun findActive(userId: UUID, beforeNumber: Long?, limit: Int, saved: SavedRange): List<StoredItem> =
+	override fun findActive(userId: UUID, beforeNumber: Long?, limit: Int, saved: SavedRange, filter: ItemFilter): List<StoredItem> =
 		jdbc.sql(
 			"""
 			SELECT $SUMMARY_COLUMNS FROM items
 			WHERE user_id = :userId AND deleted_at IS NULL AND (CAST(:before AS bigint) IS NULL OR number < :before)
 			  AND (CAST(:from AS timestamptz) IS NULL OR created_at >= CAST(:from AS timestamptz))
 			  AND (CAST(:to AS timestamptz) IS NULL OR created_at < CAST(:to AS timestamptz))
+			  $GROUP_FILTER_SQL
 			ORDER BY number DESC
 			LIMIT :limit
 			""".trimIndent(),
@@ -154,6 +174,7 @@ class JdbcItemRepository(private val jdbc: JdbcClient) :
 			.param("from", saved.from?.let { OffsetDateTime.ofInstant(it, ZoneOffset.UTC) })
 			.param("to", saved.to?.let { OffsetDateTime.ofInstant(it, ZoneOffset.UTC) })
 			.param("limit", limit)
+			.filterParams(filter)
 			.query(ITEM_ROW)
 			.list()
 
@@ -178,7 +199,16 @@ class JdbcItemRepository(private val jdbc: JdbcClient) :
 			.query(HANDOFF_ROW)
 			.list()
 
+	private fun JdbcClient.StatementSpec.filterParams(filter: ItemFilter): JdbcClient.StatementSpec =
+		param("kind", filter.kind?.value, Types.VARCHAR)
+			.param("source", filter.source, Types.VARCHAR)
+			.param("tag", filter.tag, Types.VARCHAR)
+
 	private companion object {
+		/** item_jobs.priority(V7). 숫자가 작을수록 먼저 집는다. */
+		const val NORMAL_PRIORITY = 0
+		const val LOW_PRIORITY = 1
+
 		val HANDOFF_ROW = RowMapper { rs, _ ->
 			HandoffSource(
 				number = rs.getLong("number"),

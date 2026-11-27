@@ -22,9 +22,28 @@ data class ProcessingJob(
 	val fileFormat: String?,
 )
 
-/** 처리 결과. [searchBody]는 찾기용 본문 일부(제목·출처·요약·태그는 저장소가 더한다). */
+/**
+ * 처리 때 읽은 본문(V5). [text]는 앞 [MAX_CHARS]자, [length]는 전체 글자 수(유니코드 문자).
+ * 자세히 보기(ARC-011)와 AI 도구 읽기(ARC-009)가 쓴다.
+ */
+data class ItemBody(val text: String, val length: Int, val fromImage: Boolean) {
+	companion object {
+		const val MAX_CHARS = 20_000
+
+		/** 빈 본문은 없는 것으로 본다. 자를 때 글자(코드 포인트) 가운데를 자르지 않는다. */
+		fun of(full: String, fromImage: Boolean = false): ItemBody? {
+			if (full.isBlank()) return null
+			val length = full.codePointCount(0, full.length)
+			val text = if (length <= MAX_CHARS) full else full.substring(0, full.offsetByCodePoints(0, MAX_CHARS))
+			return ItemBody(text, length, fromImage)
+		}
+	}
+}
+
+/** 처리 결과. [searchBody]는 찾기용 본문 일부(제목·출처·요약·태그는 저장소가 더한다), [body]는 읽은 본문. */
 sealed interface ProcessingOutcome {
 	val searchBody: String?
+	val body: ItemBody?
 
 	data class Ready(
 		val fetchedTitle: String?,
@@ -35,22 +54,38 @@ sealed interface ProcessingOutcome {
 		val model: String,
 		val promptVersion: String,
 		override val searchBody: String?,
+		override val body: ItemBody? = null,
 	) : ProcessingOutcome
 
 	/** ARC-005 `blocked`. [reason]은 V2 `blocked_reason` 값. */
-	data class Blocked(val reason: String, override val searchBody: String?) : ProcessingOutcome
+	data class Blocked(
+		val reason: String,
+		override val searchBody: String?,
+		override val body: ItemBody? = null,
+	) : ProcessingOutcome
 
 	/** ARC-005 `failed`. [error]는 작업 기록용(사용자에게 보이지 않는다). */
-	data class Failed(val error: String, override val searchBody: String?) : ProcessingOutcome
+	data class Failed(
+		val error: String,
+		override val searchBody: String?,
+		override val body: ItemBody? = null,
+	) : ProcessingOutcome
 }
+
+/**
+ * 낮은 우선순위(가져온 자료) 작업을 그날 몇 건까지 집을지(ADR-BCK-017). 그 사용자의 [dayStart] 뒤 집힌 작업이
+ * [maxClaims]건에 닿으면 낮은 작업은 다음 날까지 기다린다. 보통 작업은 이 값과 상관없이 집는다.
+ */
+data class LowPriorityGate(val dayStart: Instant, val maxClaims: Int)
 
 interface ProcessingQueue {
 	/**
 	 * 때가 된 작업 또는 [lease]보다 오래 `running`인 작업 하나를 `SKIP LOCKED`로 집는다(ADR-BCK-002).
+	 * 우선순위가 높은(보통) 작업부터, 같으면 run_at 순이다(ADR-BCK-017). [lowPriorityGate]가 null이면 낮은 작업도 제한 없이 집는다.
 	 * 집으면 시도 횟수를 늘리고, 휴지통 밖 자료면 상태를 `processing`으로 바꾼다.
 	 * 큐의 시각은 모두 DB `now()`로 잰다(run_at 기본값과 같은 시계).
 	 */
-	fun claimNext(lease: Duration): ProcessingJob?
+	fun claimNext(lease: Duration, lowPriorityGate: LowPriorityGate?): ProcessingJob?
 
 	/** [since] 뒤에 집힌 그 사용자의 작업 수(지금 작업 포함). 하루 한도(COM-005)를 센다. */
 	fun countClaimedSince(userId: UUID, since: Instant): Int

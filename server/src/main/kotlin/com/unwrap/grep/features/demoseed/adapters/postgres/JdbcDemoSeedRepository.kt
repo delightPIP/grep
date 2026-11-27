@@ -49,11 +49,11 @@ class JdbcDemoSeedRepository(private val jdbc: JdbcClient) : DemoSeedRepository 
 			INSERT INTO items (user_id, number, kind, url, normalized_url, text_body, object_path, file_name,
 			                   file_format, file_size, content_hash, title, source, status, blocked_reason,
 			                   list_summary, handoff_summary, summary_model, summary_prompt_version, tags,
-			                   search_text, created_at, updated_at)
+			                   search_text, created_at, updated_at, body_text, body_length, body_from_image)
 			SELECT :userId, last_item_number, :kind, :url, :normalizedUrl, :textBody, :objectPath, :fileName,
 			       :fileFormat, :fileSize, :contentHash, :title, :source, :status, :blockedReason,
 			       :listSummary, :handoffSummary, :model, :promptVersion, CAST(:tags AS text[]),
-			       :searchText, :savedAt, :savedAt
+			       :searchText, :savedAt, :savedAt, :bodyText, :bodyLength, :bodyFromImage
 			FROM issued
 			RETURNING number
 			""".trimIndent(),
@@ -79,6 +79,9 @@ class JdbcDemoSeedRepository(private val jdbc: JdbcClient) : DemoSeedRepository 
 			.param("tags", row.tags.toTypedArray())
 			.param("searchText", row.searchText)
 			.param("savedAt", savedAt)
+			.param("bodyText", row.body?.text, Types.VARCHAR)
+			.param("bodyLength", row.body?.length, Types.INTEGER)
+			.param("bodyFromImage", row.body?.fromImage ?: false)
 			.query(Long::class.java)
 			.single()
 	}

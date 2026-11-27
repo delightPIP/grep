@@ -28,6 +28,9 @@ class FakeObjectStorage : ObjectStorage {
 	override fun presignPut(objectPath: String, expiresIn: Duration): URI =
 		URI("https://storage.test/items/$objectPath?expires=${expiresIn.seconds}")
 
+	override fun presignGet(objectPath: String, expiresIn: Duration): URI =
+		URI("https://storage.test/items/$objectPath?get&expires=${expiresIn.seconds}")
+
 	override fun read(objectPath: String, maxBytes: Long): StoredObject? {
 		val bytes = objects[objectPath] ?: return null
 		return if (bytes.size > maxBytes) StoredObject.TooLarge(bytes.size.toLong()) else StoredObject.Content(bytes)

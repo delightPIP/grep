@@ -11,12 +11,15 @@ enum class ApiErrorCode(val value: String, val status: Int) {
 	FILE_TOO_LARGE("file_too_large", 413),
 	UNSUPPORTED_FORMAT("unsupported_format", 415),
 	NOT_FOUND("not_found", 404),
+	INVALID_BUNDLE_NAME("invalid_bundle_name", 400),
+	NOT_IN_BUNDLE("not_in_bundle", 404),
 }
 
 /** openapi `Error` 본문. 코드에 딸린 필드만 넣고 나머지 키는 빼고 보낸다. */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 data class ApiErrorBody(
 	val code: String,
+	val reason: String? = null,
 	val numbers: List<Long>? = null,
 	val fileName: String? = null,
 	val bytes: Long? = null,
@@ -26,13 +29,14 @@ data class ApiErrorBody(
 /** 기능 모듈이 계약의 오류로 답할 때 던진다. [ApiErrorHandler]가 상태 코드와 본문으로 바꾼다. */
 class ApiProblem(
 	val code: ApiErrorCode,
+	val reason: String? = null,
 	val numbers: List<Long>? = null,
 	val fileName: String? = null,
 	val bytes: Long? = null,
 	val fileExtension: String? = null,
 	detail: String = code.value,
 ) : RuntimeException(detail) {
-	fun toBody() = ApiErrorBody(code.value, numbers, fileName, bytes, fileExtension)
+	fun toBody() = ApiErrorBody(code.value, reason, numbers, fileName, bytes, fileExtension)
 
 	companion object {
 		fun invalidRequest(detail: String) = ApiProblem(ApiErrorCode.INVALID_REQUEST, detail = detail)

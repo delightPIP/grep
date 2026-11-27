@@ -17,7 +17,7 @@ import org.springframework.test.web.servlet.post
 import java.util.UUID
 
 /** 자료 API 테스트 공통 바탕. 두 테스트 클래스가 같은 Spring 문맥(DB 컨테이너 하나)을 나눠 쓴다. */
-@Import(TestcontainersConfiguration::class, FakeObjectStorageConfiguration::class)
+@Import(TestcontainersConfiguration::class, FakeObjectStorageConfiguration::class, FakeEmbedderConfiguration::class)
 @SpringBootTest
 @AutoConfigureMockMvc
 abstract class ArchiveApiTestSupport {

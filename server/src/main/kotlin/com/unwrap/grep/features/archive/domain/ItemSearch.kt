@@ -31,8 +31,16 @@ data class SearchQuery(val words: List<String>, val tags: List<String>, val save
 
 data class SearchHit(val item: StoredItem, val matchedIn: MatchedIn)
 
-/** 찾은 자료 한 쪽. [total]은 조건에 맞는 전체 건수, [nextBeforeNumber]가 null이면 다음 쪽이 없다. */
-data class SearchPage(val hits: List<SearchHit>, val total: Long, val nextBeforeNumber: Long?)
+/**
+ * 찾은 자료 한 쪽. [total]은 조건에 맞는 전체 건수, [nextBeforeNumber]가 null이면 다음 쪽이 없다.
+ * [related]는 [total]이 0일 때만 채우는 뜻이 가까운 자료(가까운 순).
+ */
+data class SearchPage(
+	val hits: List<SearchHit>,
+	val total: Long,
+	val nextBeforeNumber: Long?,
+	val related: List<StoredItem> = emptyList(),
+)
 
 /** 찾기 쿼리 포트. 구현은 PGroonga 어댑터 하나뿐이다(V2 주석, ADR-BCK-002 결정 4). */
 interface ItemSearch {

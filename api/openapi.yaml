@@ -987,7 +987,7 @@ components:
           description: 다음 쪽이 없으면 null
     SearchPage:
       type: object
-      required: [items, total, nextCursor]
+      required: [items, total, nextCursor, isSavedSearch, related]
       properties:
         items:
           type: array
@@ -999,6 +999,18 @@ components:
           description: 조건에 맞는 전체 건수
         nextCursor:
           type: [string, "null"]
+        isSavedSearch:
+          type: boolean
+          description: 같은 검색어(`q` 낱말 차례와 `tag`, ARC-012 규칙 2 공백 정리)를 찾아뒀으면 true. 시점(`from`·`to`)은 비교하지 않는다. true면 `찾아두기 <검색어>` 칩을 두지 않는다(ARC-012 규칙 9)
+        related:
+          type: array
+          maxItems: 3
+          description: |
+            뜻이 가까운 자료(F15, ADR-BCK-016). `total`이 0일 때만 채우고 그 밖에는 빈 배열이다. 가까운 순 최대 3건.
+            휴지통 자료와 남의 자료는 빼고(COM-006), 기간(`from`·`to`)이 있으면 그 안에서만 찾는다. 임베딩이 아직 없는 자료는 빠진다.
+            검색어 임베딩을 받지 못하면 빈 배열이다
+          items:
+            $ref: "#/components/schemas/ItemSummary"
     ItemLookup:
       type: object
       required: [items, missing]
@@ -1031,10 +1043,13 @@ components:
     ItemDetail:
       type: object
       description: 자세히 보기(ARC-011 규칙 6). 문구와 차례는 클라이언트가 정책대로 그린다
-      required: [item, handoffSummary, allTags, bundles, bodyLength, body, bodyFromImage, originalUrl, previewUrl]
+      required: [item, url, handoffSummary, allTags, bundles, bodyLength, body, bodyFromImage, originalUrl, previewUrl]
       properties:
         item:
           $ref: "#/components/schemas/ItemSummary"
+        url:
+          type: [string, "null"]
+          description: 링크의 원래 주소에서 추적 꼬리표만 뺀 사람용 주소(넘길 글 출처 칸과 같은 값, COM-001 정규화 주소와 다름). 출처 호스트를 누르면 새 탭으로 연다(ARC-011 규칙 6-2). 링크가 아니면 null
         handoffSummary:
           type: [string, "null"]
           description: 넘기기용 요약 또는 직접 고친 요약(`summarySource`로 이름표). 없으면 null
@@ -1049,9 +1064,9 @@ components:
             type: string
           description: 이 자료가 든 묶음 이름들. 없으면 빈 배열(`묶음  없음`)
         bodyLength:
-          type: integer
+          type: [integer, "null"]
           minimum: 0
-          description: 본문 글자 수(`본문 3,420자`)
+          description: 본문 전체 글자 수(`본문 3,420자`). `body`가 null이면 null(처리 전이거나 본문을 읽지 못했거나, 본문 저장 전에 처리한 자료. `status`로 구분한다)
         body:
           type: [string, "null"]
           description: "본문 텍스트(펼치기용, 앞 2만 자). 본문이 없으면 null(`· 본문 없음: <이유>`)"
