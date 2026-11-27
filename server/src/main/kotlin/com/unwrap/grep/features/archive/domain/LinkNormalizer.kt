@@ -1,0 +1,61 @@
+package com.unwrap.grep.features.archive.domain
+
+import java.net.URI
+import java.net.URISyntaxException
+
+/** [value]는 같은 링크 판정에만 쓰는 정규화 주소, [host]는 출처로 보여 줄 호스트다. */
+data class NormalizedLink(val value: String, val host: String)
+
+/**
+ * COM-001 값 표대로 링크 주소를 정규화한다. http·https가 아니거나 호스트가 없으면 null(클라이언트가 글로 보낸다).
+ * 값 표에 없는 부분(포트, 경로 대소문자, 퍼센트 인코딩)은 건드리지 않는다. 사용자 정보(`user@`)는 버린다.
+ * shortcut: java.net.URI는 한글 도메인(IDN) 호스트를 읽지 못해 null을 준다. 한글 도메인 링크가 실제로 들어오면 IDN 변환을 붙인다.
+ */
+object LinkNormalizer {
+	private val TRACKING_PARAMS = setOf("fbclid", "gclid", "igsh", "si", "ref_src")
+	private const val TRACKING_PREFIX = "utm_"
+	private const val SHORT_YOUTUBE_HOST = "youtu.be"
+
+	fun normalize(raw: String): NormalizedLink? {
+		val uri = try {
+			URI(raw.trim())
+		} catch (_: URISyntaxException) {
+			return null
+		}
+		if (uri.scheme?.lowercase() !in setOf("http", "https")) return null
+		val rawHost = uri.host?.lowercase()?.takeIf { it.isNotEmpty() } ?: return null
+
+		var host = rawHost.removePrefix("www.")
+		var path = uri.rawPath.orEmpty()
+		val params = uri.rawQuery.orEmpty().split('&').filter { it.isNotEmpty() }.toMutableList()
+
+		if (host == SHORT_YOUTUBE_HOST) {
+			val videoId = path.trim('/')
+			if (videoId.isNotEmpty() && '/' !in videoId) {
+				host = "youtube.com"
+				path = "/watch"
+				params += "v=$videoId"
+			}
+		}
+
+		path = path.removeSuffix("/")
+		val query = params
+			.filterNot { isTracking(it.substringBefore('=')) }
+			.sortedBy { it.substringBefore('=') }
+			.joinToString("&")
+		val port = if (uri.port == -1) "" else ":${uri.port}"
+		val fragment = uri.rawFragment?.takeIf { it.startsWith("/") }
+
+		val value = buildString {
+			append("https://").append(host).append(port).append(path)
+			if (query.isNotEmpty()) append('?').append(query)
+			if (fragment != null) append('#').append(fragment)
+		}
+		return NormalizedLink(value, host)
+	}
+
+	private fun isTracking(name: String): Boolean {
+		val lower = name.lowercase()
+		return lower.startsWith(TRACKING_PREFIX) || lower in TRACKING_PARAMS
+	}
+}

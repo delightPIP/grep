@@ -26,6 +26,9 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
 	implementation("org.flywaydb:flyway-database-postgresql")
+	// 파일 원본은 S3 호환 스토리지(Supabase Storage S3, ADR-BCK-002 결정 2). 서명 URL과 객체 읽기·지우기에 쓴다.
+	implementation(platform("software.amazon.awssdk:bom:2.59.5"))
+	implementation("software.amazon.awssdk:s3")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	implementation("tools.jackson.module:jackson-module-kotlin")
 	runtimeOnly("org.postgresql:postgresql")
