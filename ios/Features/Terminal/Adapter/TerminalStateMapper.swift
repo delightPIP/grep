@@ -41,8 +41,28 @@ public enum TerminalStateMapper {
             blocks: mapBlocks(lines: state.lines, pickedNumbers: pickedNumbers),
             selection: state.selection.map { TerminalItemRef(number: $0.number, title: $0.title) },
             input: state.input,
-            isOffline: state.isOffline
+            isOffline: state.isOffline,
+            pendingConfirm: pendingConfirm(lines: state.lines)
         )
+    }
+
+    /// 마지막 확인 줄 뒤에 답(명령 줄)도 취소도 없으면 아직 기다리는 것이다(코어 `isWaitingForAnswer`와 같은 기준).
+    private static func pendingConfirm(lines: [TerminalViewState.Line]) -> TerminalConfirmPrompt? {
+        guard let askedIndex = lines.lastIndex(where: { if case .dropConfirm = $0 { true } else { false } }),
+              case .dropConfirm(let total) = lines[askedIndex] else {
+            return nil
+        }
+        let answered = lines[askedIndex...].contains { line in
+            switch line {
+            case .prompt, .cancelled: true
+            default: false
+            }
+        }
+        return answered ? nil : TerminalConfirmPrompt(question: dropConfirmQuestion(total), answer: "버리기")
+    }
+
+    private static func dropConfirmQuestion(_ total: Int) -> String {
+        "버리기? \(total)건 (휴지통으로)"
     }
 
     private static func windowTitle(lines: [TerminalViewState.Line]) -> String {
@@ -227,9 +247,19 @@ public enum TerminalStateMapper {
             return [.status(tone: .info, boldPrefix: "\(commandLabel(command))", body: "  \(aboutDescription(command))")]
         case .reconnected:
             return [.status(tone: .ok, boldPrefix: nil, body: "연결됨")]
-        case .dropConfirm, .dropped, .revived, .binList, .binEmptyConfirm, .binEmptied,
+        case .dropConfirm(let total):
+            // ARC-008 사용자 문구. 답은 확인 시트의 낱말 버튼으로 받는다(MOB-002 규칙 4, 시안 M9).
+            return [.status(tone: .warn, boldPrefix: "버리기?", body: " \(total)건 (휴지통으로)")]
+        case .dropped(let items):
+            // ARC-008 사용자 문구. 되살리기는 `<번호...>`를 받으므로 옮긴 번호를 모두 적는다.
+            let numbers = items.map { String($0.number) }.joined(separator: " ")
+            return [.status(tone: .ok, boldPrefix: "휴지통 \(items.count)건", body: " (30일 뒤 삭제, 되살리기 \(numbers))")]
+        case .revived(let items):
+            // ARC-008 사용자 문구.
+            return [.status(tone: .ok, boldPrefix: "되살림 \(items.count)건", body: "")]
+        case .binList, .binEmptyConfirm, .binEmptied,
              .revised, .tagsRemoved, .samplesSaved, .unpicked, .pickCleared, .signOutEverywhereConfirm:
-            // 후속 iOS 이슈(#94~)에서 정책 원문으로 추가한다.
+            // 후속 iOS 이슈(#97~)에서 정책 원문으로 추가한다.
             return []
         }
     }

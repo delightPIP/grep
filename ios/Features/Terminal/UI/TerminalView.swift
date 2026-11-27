@@ -48,6 +48,11 @@ public struct TerminalView: View {
         }
         .background(palette.surface.ignoresSafeArea())
         .preferredColorScheme(.dark)
+        .modifier(TerminalConfirmSheetModifier(
+            prompt: presentation.pendingConfirm,
+            palette: palette,
+            onSubmit: onSubmit
+        ))
         .onChange(of: isInputFocused) { _, focused in
             onKeyboardVisibilityChange?(focused)
         }
@@ -894,7 +899,7 @@ private struct TerminalMoleView: View {
     }
 }
 
-private struct TerminalPalette {
+struct TerminalPalette {
     let bg: Color
     let surface: Color
     let surfaceRaised: Color

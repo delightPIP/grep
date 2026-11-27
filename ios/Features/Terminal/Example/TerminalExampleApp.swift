@@ -20,6 +20,8 @@ enum TerminalDemoScenario: String, CaseIterable, Identifiable {
     case handoffConfirm = "넘기기 5건 초과 확인 (23건)"
     case handoffDenied = "넘기기 실패 (클립보드 거부)"
     case guide = "도움말 (명령 13줄)"
+    case droppedAndRevived = "버리기 1건 · 되살리기 결과"
+    case dropConfirm = "버리기 2건 확인 시트 (실제 입력)"
     case expired = "로그인 만료 이벤트"
 
     var id: String { rawValue }
@@ -269,6 +271,19 @@ final class TerminalExampleHarness: TerminalListener, TerminalDependency {
                     .guide,
                 ]
             ))
+        case .droppedAndRevived:
+            currentScreen?.render(TerminalViewState(
+                itemCount: 130,
+                lines: [
+                    .prompt("버리기 131"),
+                    .dropped([ItemRef(number: 131, title: "결제위젯 연동 가이드")]),
+                    .prompt("되살리기 131"),
+                    .revived([ItemRef(number: 131, title: "결제위젯 연동 가이드")]),
+                ]
+            ))
+        case .dropConfirm:
+            // 코어가 확인 대기를 잡도록 실제 입력으로 보낸다. 시트의 `버리기`는 가짜 서버가 받는다.
+            currentScreen?.listener?.handle(.submitted("버리기 131 118"))
         case .expired:
             didExpire(input: "찾기 결제")
         }
@@ -303,7 +318,27 @@ private final class CapturingTerminalFactory: TerminalViewFactory {
 
 @MainActor
 private final class ExampleTerminalTransport: HTTPTransport {
+    private static let titles = [131: "결제위젯 연동 가이드", 118: "결제 실패 화면 모음.png"]
+
     func send(_ request: HTTPRequest) async throws(HTTPTransportError) -> HTTPResponse {
-        HTTPResponse(status: 200, body: Array(#"{"items":[],"total":0,"nextCursor":null}"#.utf8))
+        switch (request.method, request.path) {
+        case (.post, "/items/trash"), (.post, "/items/restore"):
+            return HTTPResponse(status: 200, body: Array(Self.movedBody(for: request).utf8))
+        default:
+            return HTTPResponse(status: 200, body: Array(#"{"items":[],"total":0,"nextCursor":null}"#.utf8))
+        }
+    }
+
+    /// 받은 번호를 그대로 옮겼다고 답한다(api `ItemRefList`).
+    private static func movedBody(for request: HTTPRequest) -> String {
+        struct Numbers: Decodable { let numbers: [Int] }
+        let numbers = request.body
+            .flatMap { try? JSONDecoder().decode(Numbers.self, from: Data($0.utf8)) }?
+            .numbers ?? []
+        let items = numbers.map { number in
+            let title = titles[number] ?? "자료 \(number)"
+            return #"{"number":\#(number),"title":"\#(title)"}"#
+        }
+        return #"{"items":[\#(items.joined(separator: ","))]}"#
     }
 }

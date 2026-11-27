@@ -120,6 +120,17 @@ public struct TerminalOutputBlock: Equatable, Sendable, Identifiable {
     }
 }
 
+/// 답을 기다리는 확인 질문(시안 M9 확인 시트). `answer`는 COM-007 실행 낱말이고 버튼 이름도 같다(MOB-002 규칙 4).
+public struct TerminalConfirmPrompt: Equatable, Sendable {
+    public let question: String
+    public let answer: String
+
+    public init(question: String, answer: String) {
+        self.question = question
+        self.answer = answer
+    }
+}
+
 public struct TerminalPresentation: Equatable, Sendable {
     public let title: String
     public let statusText: String
@@ -127,6 +138,7 @@ public struct TerminalPresentation: Equatable, Sendable {
     public let selection: [TerminalItemRef]
     public let input: String
     public let isOffline: Bool
+    public let pendingConfirm: TerminalConfirmPrompt?
 
     public init(
         title: String = "처음",
@@ -134,7 +146,8 @@ public struct TerminalPresentation: Equatable, Sendable {
         blocks: [TerminalOutputBlock] = [],
         selection: [TerminalItemRef] = [],
         input: String = "",
-        isOffline: Bool = false
+        isOffline: Bool = false,
+        pendingConfirm: TerminalConfirmPrompt? = nil
     ) {
         self.title = title
         self.statusText = statusText
@@ -142,5 +155,6 @@ public struct TerminalPresentation: Equatable, Sendable {
         self.selection = selection
         self.input = input
         self.isOffline = isOffline
+        self.pendingConfirm = pendingConfirm
     }
 }
