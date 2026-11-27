@@ -32,18 +32,14 @@ enum GrepWebApp {
     private static var app: GrepApp<WebViewFactory>?
     private static var renderer: SlotRenderer?
 
-    static func start(viewFactory: WebViewFactory, authService: JSObject, apiBaseURL: String) {
+    static func start(viewFactory: WebViewFactory, platform: PlatformServices) {
         precondition(app == nil, "startGrepApp called twice")
         guard let container = JSObject.global.document.getElementById(appContainerID).object else {
             preconditionFailure("index.html should have #\(appContainerID)")
         }
         let host = WebViewHost<RootScreen>()
         renderer = SlotRenderer(slot: host.slot, container: container)
-        let app = GrepApp(
-            viewFactory: viewFactory,
-            authService: JSAuthService(service: authService),
-            httpTransport: FetchHTTPTransport(baseURL: apiBaseURL)
-        )
+        let app = GrepApp(viewFactory: viewFactory, platform: platform)
         app.start(host: host)
         self.app = app
     }

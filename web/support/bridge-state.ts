@@ -39,21 +39,43 @@ export function toLoggedOutState(
   return { notice: toNotice(noticeKind, failureReason), isSigningIn };
 }
 
-function toLine(row: { kind: string; text: string }): TerminalLine {
-  switch (row.kind) {
-    case "prompt":
-      return { kind: "prompt", text: row.text };
-    case "unknownCommand":
-      return { kind: "unknownCommand", name: row.text };
-    default:
-      throw new Error(`unknown line kind: ${row.kind}`);
-  }
+/** Swift가 넘기는 터미널 값(Sources/GrepWeb/LoggedInStateValue.swift). 줄은 `TerminalLine`과 같은 모양의 객체다. */
+export type BridgedLine = { kind: string; [field: string]: unknown };
+export type BridgedLoggedInState = Omit<LoggedInState, "lines"> & { lines: readonly BridgedLine[] };
+
+/** 계약의 줄 종류 전부. 종류가 늘거나 줄면 여기서 타입 오류가 난다. */
+const LINE_KINDS: Record<TerminalLine["kind"], true> = {
+  prompt: true,
+  unknownCommand: true,
+  missingArgument: true,
+  missingTag: true,
+  saved: true,
+  alreadySaved: true,
+  inTrash: true,
+  saveFailed: true,
+  recentList: true,
+  searchResult: true,
+  noResults: true,
+  picked: true,
+  notFound: true,
+  invalidNumber: true,
+  handedOff: true,
+  handoffFailed: true,
+  commandFailed: true,
+  handoffConfirm: true,
+  cancelled: true,
+  welcome: true,
+  guide: true,
+  about: true,
+  reconnected: true,
+};
+
+/** 줄 안의 값은 Swift 브리지가 계약 모양으로 만든다. 여기서는 종류만 확인한다. */
+function toLine(line: BridgedLine): TerminalLine {
+  if (!Object.hasOwn(LINE_KINDS, line.kind)) throw new Error(`unknown line kind: ${line.kind}`);
+  return line as TerminalLine;
 }
 
-export function toLoggedInState(
-  itemCount: number | null,
-  rows: readonly { kind: string; text: string }[],
-  input: string,
-): LoggedInState {
-  return { itemCount, lines: rows.map(toLine), input };
+export function toLoggedInState(bridged: BridgedLoggedInState): LoggedInState {
+  return { ...bridged, lines: bridged.lines.map(toLine) };
 }

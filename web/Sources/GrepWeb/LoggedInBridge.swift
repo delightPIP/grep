@@ -1,35 +1,48 @@
+import FeatureLoggedInInterface
+import GrepCore
 import JavaScriptKit
 
-/// 출력 한 줄. `LoggedInViewState.Line`은 다른 패키지에 있어 `@JS`를 붙일 수 없으므로 경계용 값 타입을 따로 둔다.
-/// `kind`는 `web/support/view-state.ts`의 `TerminalLine.kind`와 같다. `text`는 `prompt`의 친 줄, `unknownCommand`의 명령 이름이다.
-@JS struct TerminalLineRow {
-    let kind: String
-    let text: String
+/// 끌어다 놓은 파일 하나. `web/support/view-state.ts`의 `DroppedFile`과 같다.
+/// `DroppedFile`은 다른 패키지에 있어 `@JS`를 붙일 수 없으므로 경계용 값 타입을 따로 둔다.
+@JS struct DroppedFileRow {
+    let id: String
+    let name: String
+    let size: Int
 }
 
 /// 웹 뷰가 구현한다. `features/logged-in/adapter.tsx`가 구현한다.
 @JS protocol LoggedInViewBridge {
     func mount(host: JSObject, handle: LoggedInScreenHandle)
-    func render(itemCount: Int?, lines: [TerminalLineRow], input: String)
+    /// `state`는 `web/support/view-state.ts`의 `LoggedInState`와 같은 모양의 객체다(`LoggedInStateValue.swift`).
+    func render(state: JSObject)
 }
 
+/// 웹 뷰가 `mount`에서 받아 쥐고 입력을 보낸다. 메서드는 `LoggedInViewAction`의 case와 하나씩 짝이다.
 @JS final class LoggedInScreenHandle: Sendable {
-    private let onInputChanged: @MainActor @Sendable (String) -> Void
-    private let onSubmitted: @MainActor @Sendable (String) -> Void
+    private let send: @MainActor @Sendable (LoggedInViewAction) -> Void
 
-    init(
-        onInputChanged: @escaping @MainActor @Sendable (String) -> Void,
-        onSubmitted: @escaping @MainActor @Sendable (String) -> Void
-    ) {
-        self.onInputChanged = onInputChanged
-        self.onSubmitted = onSubmitted
+    init(send: @escaping @MainActor @Sendable (LoggedInViewAction) -> Void) {
+        self.send = send
     }
 
     @JS func inputChanged(text: String) {
-        MainActor.assumeIsolated { onInputChanged(text) }
+        MainActor.assumeIsolated { send(.inputChanged(text)) }
     }
 
     @JS func submitted(text: String) {
-        MainActor.assumeIsolated { onSubmitted(text) }
+        MainActor.assumeIsolated { send(.submitted(text)) }
+    }
+
+    @JS func pasted(text: String) {
+        MainActor.assumeIsolated { send(.pasted(text)) }
+    }
+
+    @JS func filesDropped(files: [DroppedFileRow]) {
+        let dropped = files.map { DroppedFile(id: $0.id, name: $0.name, size: $0.size) }
+        MainActor.assumeIsolated { send(.filesDropped(dropped)) }
+    }
+
+    @JS func moreRequested() {
+        MainActor.assumeIsolated { send(.moreRequested) }
     }
 }
