@@ -177,7 +177,7 @@ final class TerminalTests {
         await send(.submitted("찻기 결제"))
 
         // then
-        #expect(view.state?.lines == [.prompt("찻기 결제"), .unknownCommand("찻기")])
+        #expect(view.state?.lines == [.prompt("찻기 결제"), .unknownCommand("찻기", suggestion: "찾기 결제")])
     }
 
     @Test func 없는명령을한번쳤을때_다시없는명령을치면_앞출력뒤에이어서그리는지() async {
@@ -189,7 +189,10 @@ final class TerminalTests {
         await send(.submitted("최긴"))
 
         // then
-        #expect(view.state?.lines == [.prompt("찻기"), .unknownCommand("찻기"), .prompt("최긴"), .unknownCommand("최긴")])
+        #expect(view.state?.lines == [
+            .prompt("찻기"), .unknownCommand("찻기", suggestion: "찾기"),
+            .prompt("최긴"), .unknownCommand("최긴", suggestion: "최근"),
+        ])
     }
 
     @Test func 터미널이떠있을때_빈줄에서엔터를치면_아무것도그리지않는지() async {

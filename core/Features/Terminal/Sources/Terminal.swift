@@ -88,6 +88,8 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     var pendingBinEmpty: PendingBinEmpty?
     /// 답을 기다리는 `로그아웃 모든기기` 확인(ACC-002 규칙 4, COM-007).
     var pendingSignOutEverywhere = false
+    /// 오타 제안(#118, commands.md 207줄). 빈 입력 엔터면 이 문자열을 실행하고, 다른 입력이면 지운다.
+    var pendingSuggestion: String?
     /// `POST /samples` 중복 실행 방지.
     var isSavingSamples = false
     /// 사용자가 넣은 입력(엔터·붙여 넣기·파일 놓기)의 차례. 늦게 온 응답이 그 뒤의 입력을 답으로 삼지 않게 한다.
@@ -191,6 +193,12 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
 
     private func submit(_ text: String) {
         inputSequence += 1
+        if text.trimmingWhitespace().isEmpty, let suggested = pendingSuggestion {
+            pendingSuggestion = nil
+            submit(suggested)
+            return
+        }
+        pendingSuggestion = nil
         if let pending = pendingHandoff, let choice = pending.choice(for: text) {
             pendingHandoff = nil
             confirmHandoff(pending, choice: choice, typed: text)
@@ -255,7 +263,9 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
         case .handoff:
             update(viewState.appending(lines: [.prompt(text), .unknownCommand(text.trimmingWhitespace())]).with(input: ""))
         default:
-            update(viewState.appending(lines: [.prompt(text), .unknownCommand(command.word)]).with(input: ""))
+            let suggestion = CommandSuggester.suggest(word: command.word, argument: command.argument)
+            pendingSuggestion = suggestion
+            update(viewState.appending(lines: [.prompt(text), .unknownCommand(command.word, suggestion: suggestion)]).with(input: ""))
         }
     }
 
