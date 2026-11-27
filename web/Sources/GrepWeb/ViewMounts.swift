@@ -26,14 +26,9 @@ enum ViewMounts {
 
     static func loggedIn(_ view: any LoggedInViewBridge) -> LoggedInWebViewFactory {
         LoggedInWebViewFactory { screen in
-            let handle = LoggedInScreenHandle(
-                onInputChanged: { [weak screen] text in screen?.send(.inputChanged(text)) },
-                onSubmitted: { [weak screen] text in screen?.send(.submitted(text)) }
-            )
+            let handle = LoggedInScreenHandle { [weak screen] action in screen?.send(action) }
             view.mount(host: screen.element, handle: handle)
-            screen.attach { state in
-                view.render(itemCount: state.itemCount, lines: state.lines.map(\.bridgeRow), input: state.input)
-            }
+            screen.attach { state in view.render(state: state.bridgeValue) }
         }
     }
 }

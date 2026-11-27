@@ -38,11 +38,64 @@ extension LoggedOutViewState.Notice {
     }
 }
 
-extension LoggedInViewState.Line {
-    var bridgeRow: TerminalLineRow {
+extension CommandName {
+    var bridgeName: String {
         switch self {
-        case .prompt(let text): TerminalLineRow(kind: "prompt", text: text)
-        case .unknownCommand(let name): TerminalLineRow(kind: "unknownCommand", text: name)
+        case .keep: "keep"
+        case .recent: "recent"
+        case .seek: "seek"
+        case .pick: "pick"
+        case .handoff: "handoff"
+        case .guide: "guide"
+        case .about: "about"
+        case .signOut: "signOut"
+        }
+    }
+}
+
+extension CommandFailure {
+    var bridgeName: String {
+        switch self {
+        case .disconnected: "disconnected"
+        case .timedOut: "timedOut"
+        case .serverError: "serverError"
+        case .clipboardDenied: "clipboardDenied"
+        }
+    }
+}
+
+/// API 값(`login_required`)이 아니라 Swift case 이름으로 넘긴다(view-state.ts `BlockedReason`).
+extension BlockedReason {
+    var bridgeName: String {
+        switch self {
+        case .loginRequired: "loginRequired"
+        case .accessDenied: "accessDenied"
+        case .disallowedURL: "disallowedURL"
+        case .encrypted: "encrypted"
+        case .noText: "noText"
+        }
+    }
+}
+
+extension ClipboardResult {
+    init?(bridgeName: String) {
+        switch bridgeName {
+        case "copied": self = .copied
+        case "denied": self = .denied
+        default: return nil
+        }
+    }
+}
+
+extension FileUploadError {
+    init?(bridgeName: String) {
+        switch bridgeName {
+        case "cancelled": self = .cancelled
+        case "unreachable": self = .unreachable
+        case "timedOut": self = .timedOut
+        case "rejected": self = .rejected
+        case "missingFile": self = .missingFile
+        default: return nil
         }
     }
 }

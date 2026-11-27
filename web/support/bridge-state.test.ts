@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { toLoggedInState, toLoggedOutState } from "./bridge-state";
+import { type BridgedLoggedInState, toLoggedInState, toLoggedOutState } from "./bridge-state";
 
 describe("브리지 값을 뷰 상태로 바꾸기", () => {
   it("알림이없을때_로그인화면값을바꾸면_알림없는상태가되는지", () => {
@@ -62,16 +62,7 @@ describe("브리지 값을 뷰 상태로 바꾸기", () => {
 
   it("출력줄이섞여있을때_터미널값을바꾸면_종류별줄로순서대로바뀌는지", () => {
     // given
-    const rows = [
-      { kind: "prompt", text: "찻기 결제" },
-      { kind: "unknownCommand", text: "찻기" },
-    ];
-
-    // when
-    const state = toLoggedInState(34, rows, "찾");
-
-    // then
-    expect(state).toEqual({
+    const bridged = terminal({
       itemCount: 34,
       lines: [
         { kind: "prompt", text: "찻기 결제" },
@@ -79,14 +70,67 @@ describe("브리지 값을 뷰 상태로 바꾸기", () => {
       ],
       input: "찾",
     });
+
+    // when
+    const state = toLoggedInState(bridged);
+
+    // then
+    expect(state.itemCount).toBe(34);
+    expect(state.lines).toEqual([
+      { kind: "prompt", text: "찻기 결제" },
+      { kind: "unknownCommand", name: "찻기" },
+    ]);
+    expect(state.input).toBe("찾");
+  });
+
+  it("값이든줄일때_터미널값을바꾸면_자료값이그대로남는지", () => {
+    // given
+    const item = {
+      number: 30,
+      kind: "link",
+      title: "결제 연동 가이드",
+      source: "docs.example.com",
+      status: "processing",
+      blockedReason: null,
+      listSummary: null,
+      summarySource: null,
+      partialNote: null,
+      tags: [],
+      matchedIn: null,
+      savedAt: "2026-11-27T03:00:00Z",
+    };
+    const bridged = terminal({ lines: [{ kind: "alreadySaved", item }] });
+
+    // when
+    const state = toLoggedInState(bridged);
+
+    // then
+    expect(state.lines).toEqual([{ kind: "alreadySaved", item }]);
+  });
+
+  it("고른자료와상태줄값이있을때_터미널값을바꾸면_선택과처리중수와연결상태가들어가는지", () => {
+    // given
+    const bridged = terminal({
+      selection: [{ number: 131, title: "결제 연동 가이드" }],
+      processingCount: 2,
+      isOffline: true,
+    });
+
+    // when
+    const state = toLoggedInState(bridged);
+
+    // then
+    expect(state.selection).toEqual([{ number: 131, title: "결제 연동 가이드" }]);
+    expect(state.processingCount).toBe(2);
+    expect(state.isOffline).toBe(true);
   });
 
   it("자료수를아직못받았을때_터미널값을바꾸면_자료수가null로남는지", () => {
     // given
-    const itemCount = null;
+    const bridged = terminal({ itemCount: null });
 
     // when
-    const state = toLoggedInState(itemCount, [], "");
+    const state = toLoggedInState(bridged);
 
     // then
     expect(state.itemCount).toBeNull();
@@ -94,12 +138,16 @@ describe("브리지 값을 뷰 상태로 바꾸기", () => {
 
   it("계약에없는줄종류일때_터미널값을바꾸면_오류를던지는지", () => {
     // given
-    const rows = [{ kind: "saved", text: "x" }];
+    const bridged = terminal({ lines: [{ kind: "deleted" }] });
 
     // when
-    const convert = () => toLoggedInState(0, rows, "");
+    const convert = () => toLoggedInState(bridged);
 
     // then
-    expect(convert).toThrow("saved");
+    expect(convert).toThrow("deleted");
   });
 });
+
+function terminal(overrides: Partial<BridgedLoggedInState>): BridgedLoggedInState {
+  return { itemCount: 0, lines: [], input: "", selection: [], processingCount: 0, isOffline: false, ...overrides };
+}
