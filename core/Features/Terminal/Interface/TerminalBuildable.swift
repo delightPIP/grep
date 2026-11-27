@@ -20,8 +20,16 @@ public protocol TerminalDependency: Dependency {
 public protocol TerminalListener: AnyObject {
     /// 사용자가 `로그아웃`을 쳤다.
     func didRequestSignOut()
+    /// 사용자가 `로그아웃 모든기기` 확인을 끝냈다(ACC-002 규칙 4).
+    func didRequestSignOutEverywhere()
     /// 서버가 세션 만료로 답했거나 접근 토큰을 받지 못했다. `input`은 그때 입력줄에 있던 줄이다(ACC-001 규칙 7).
     func didExpire(input: String)
+}
+
+public extension TerminalListener {
+    func didRequestSignOutEverywhere() {
+        didRequestSignOut()
+    }
 }
 
 /// 부모(컨테이너) → 터미널. 계정에 딸린 값은 컨테이너가 받아 넘긴다.

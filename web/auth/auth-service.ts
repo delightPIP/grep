@@ -14,6 +14,8 @@ export interface AuthService {
   signIn(provider: AuthProvider): Promise<SignInResult>;
   /** 이 기기의 세션을 끝낸다. */
   signOut(): Promise<void>;
+  /** 계정의 모든 기기 세션을 끝낸다(ACC-002 규칙 4). */
+  signOutEverywhere?(): Promise<void>;
   /** 유효한 접근 토큰. 만료됐으면 조용히 갱신한다(ACC-001 규칙 6). 세션이 없거나 갱신에 실패하면 null. */
   accessToken(): Promise<string | null>;
 }

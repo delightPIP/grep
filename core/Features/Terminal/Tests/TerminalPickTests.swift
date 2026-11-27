@@ -182,4 +182,43 @@ struct TerminalPickTests {
         #expect(fixture.state.input == "고르기 25")
         #expect(fixture.listener.expiredInputs == ["고르기 25"])
     }
+
+    @Test func 두건이선택되어있을때_하나만빼면_unpicked와남은건수1을찍는지() async {
+        // given
+        await fixture.attach()
+        await fixture.pick([30, 25])
+
+        // when
+        await fixture.submit("고르기 빼기 30")
+
+        // then
+        #expect(fixture.state.selection == [Fixture.ref(25)])
+        #expect(fixture.state.lines.last == .unpicked(items: [Fixture.ref(30)], remaining: 1))
+    }
+
+    @Test func 마지막선택을뺄때_남은선택이0이되면_unpicked대신pickCleared를찍는지() async {
+        // given
+        await fixture.attach()
+        await fixture.pick([30])
+
+        // when
+        await fixture.submit("고르기 빼기 30")
+
+        // then
+        #expect(fixture.state.selection.isEmpty)
+        #expect(fixture.state.lines.last == .pickCleared(count: 1))
+    }
+
+    @Test func 선택이있을때_고르기비우기를치면_모든선택을지우고pickCleared를찍는지() async {
+        // given
+        await fixture.attach()
+        await fixture.pick([30, 25])
+
+        // when
+        await fixture.submit("고르기 비우기")
+
+        // then
+        #expect(fixture.state.selection.isEmpty)
+        #expect(fixture.state.lines.last == .pickCleared(count: 2))
+    }
 }

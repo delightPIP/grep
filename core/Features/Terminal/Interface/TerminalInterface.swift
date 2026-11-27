@@ -7,8 +7,8 @@ public struct TerminalViewState: Equatable, Sendable {
     public enum Line: Equatable, Sendable {
         /// 사용자가 친 명령 줄(`그렙 ~ $ <text>`).
         case prompt(String)
-        /// `✗ 없는 명령: <name>`
-        case unknownCommand(String)
+        /// `✗ 없는 명령: <name>` (#118 오타 제안이 있으면 `suggestion`에 고친 입력 전체)
+        case unknownCommand(String, suggestion: String? = nil)
         /// 빠진 인자(`✗ 검색어 없음  예: …` 등). 문구는 명령마다 뷰가 정책 원문으로 고른다.
         case missingArgument(CommandName)
         /// `찾기 #`처럼 `#` 뒤가 비었다. `✗ 태그 없음  예: 찾기 #결제`(ARC-002).
@@ -24,11 +24,11 @@ public struct TerminalViewState: Equatable, Sendable {
         /// `최근` 목록. 자료마다 두 줄(번호·제목·출처·저장 시각 / 흐린 요약, 태그 앞 3개).
         /// `hasMore`면 `→ 더 보기`. 처리 상태가 바뀌면 코어가 같은 줄의 자료 값을 바꾼다(ARC-005 규칙 10).
         /// 자료를 든 다른 줄(`saved`·`alreadySaved`·`searchResult`·`noResults`)도 같이 바꾼다.
-        case recentList(items: [ItemSummary], hasMore: Bool)
+        case recentList(items: [ItemSummary], hasMore: Bool, total: Int? = nil, period: Period? = nil)
         /// `찾기` 결과. 머리줄 `4건` 또는 `23건 중 10건`(total과 items 수).
-        case searchResult(query: SearchQuery, total: Int, items: [ItemSummary], hasMore: Bool)
+        case searchResult(query: SearchQuery, total: Int, items: [ItemSummary], hasMore: Bool, period: Period? = nil)
         /// `· 0건: "<검색어>"` 뒤에 `· 최근 저장 3건 (검색 결과 아님)` 머리줄과 그 자료들(commands 6절).
-        case noResults(query: SearchQuery, recent: [ItemSummary])
+        case noResults(query: SearchQuery, recent: [ItemSummary], period: Period? = nil)
         /// `✓ 선택 N건  <제목> · <제목>` 뒤에 `→ 넘기기 또는 묶음 <이름>`.
         case picked([ItemRef])
         /// `✗ 없는 번호: <번호>`(여러 개면 쉼표, ARC-001 규칙 10).
@@ -55,6 +55,23 @@ public struct TerminalViewState: Equatable, Sendable {
         case about(CommandName)
         /// `✓ 연결됨`(COM-010).
         case reconnected
+        // #93 정리(ARC-008)
+        case dropConfirm(total: Int)
+        case dropped([ItemRef])
+        case revived([ItemRef])
+        case binList(total: Int, items: [TrashEntry], hasMore: Bool)
+        case binEmptyConfirm(total: Int)
+        case binEmptied(count: Int)
+        // #93 고치기(ARC-002·004)
+        case revised(ItemSummary)
+        case tagsRemoved(item: ItemSummary, tags: [String])
+        // #93 샘플(ARC-010)
+        case samplesSaved(firstNumber: Int, lastNumber: Int, items: [ItemSummary])
+        // #108 고르기 빼기·비우기
+        case unpicked(items: [ItemRef], remaining: Int)
+        case pickCleared(count: Int)
+        // #111 로그아웃 모든기기(ACC-002)
+        case signOutEverywhereConfirm
     }
 
     /// 상태줄 `자료 N`. 서버 `GET /me`의 itemCount. 받기 전이면 nil.
@@ -68,6 +85,8 @@ public struct TerminalViewState: Equatable, Sendable {
     public var processingCount: Int
     /// 상태줄 `연결 끊김` 칸(COM-010).
     public var isOffline: Bool
+    /// #93 `고치기` 편집 중이면 그 자료. 없으면 nil.
+    public var revising: Revising?
 
     public init(
         itemCount: Int? = nil,
@@ -75,7 +94,8 @@ public struct TerminalViewState: Equatable, Sendable {
         input: String = "",
         selection: [ItemRef] = [],
         processingCount: Int = 0,
-        isOffline: Bool = false
+        isOffline: Bool = false,
+        revising: Revising? = nil
     ) {
         self.itemCount = itemCount
         self.lines = lines
@@ -83,6 +103,46 @@ public struct TerminalViewState: Equatable, Sendable {
         self.selection = selection
         self.processingCount = processingCount
         self.isOffline = isOffline
+        self.revising = revising
+    }
+}
+
+/// 휴지통 한 줄(api `TrashItem`). daysLeft는 `30일 남음`(ARC-008 규칙 10).
+public struct TrashEntry: Equatable, Sendable, Codable {
+    public let item: ItemSummary
+    public let trashedAt: String
+    public let daysLeft: Int
+
+    public init(item: ItemSummary, trashedAt: String, daysLeft: Int) {
+        self.item = item
+        self.trashedAt = trashedAt
+        self.daysLeft = daysLeft
+    }
+}
+
+/// 시점(F22). label은 친 낱말 그대로(`지난달`), from·to는 한국 시간 경계의 RFC 3339(반열린 구간).
+public struct Period: Equatable, Sendable, Codable {
+    public let label: String
+    public let from: String
+    public let to: String
+
+    public init(label: String, from: String, to: String) {
+        self.label = label
+        self.from = from
+        self.to = to
+    }
+}
+
+/// `고치기 <번호>` 편집 중인 자료(화면 W24).
+public struct Revising: Equatable, Sendable, Codable {
+    public let number: Int
+    public let title: String
+    public let summary: String
+
+    public init(number: Int, title: String, summary: String) {
+        self.number = number
+        self.title = title
+        self.summary = summary
     }
 }
 
@@ -162,6 +222,12 @@ public enum TerminalViewAction: Equatable, Sendable {
     case filesDropped([DroppedFile])
     /// 목록 맨 아래 `→ 더 보기`를 눌렀다.
     case moreRequested
+    /// 0건 첫 화면의 `→ 샘플 8건으로 해 보기`. 누르면 바로 저장한다(ARC-010 규칙 2).
+    case samplesRequested
+    /// `고치기` 편집 칸에서 Enter로 저장했다.
+    case reviseSubmitted(number: Int, title: String, summary: String)
+    /// `고치기` 편집 칸에서 Esc로 취소했다.
+    case reviseCancelled
 }
 
 @MainActor
@@ -204,6 +270,14 @@ public enum CommandName: Equatable, Sendable, CaseIterable {
     case about
     /// `로그아웃`(signout)
     case signOut
+    /// `고치기`(revise)
+    case revise
+    /// `버리기`(drop)
+    case drop
+    /// `되살리기`(revive)
+    case revive
+    /// `휴지통`(bin)
+    case bin
 }
 
 /// 저장 실패 이유.

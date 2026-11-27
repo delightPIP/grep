@@ -83,6 +83,7 @@ struct TerminalHandoffTests {
         await fixture.submit("넘기기")
         let result = Fixture.handoff([25], missingSummaryCount: 1)
         await fixture.respond(json: Fixture.handoffJSON(result))
+        await fixture.respond(status: 204, json: "")
 
         // when
         await fixture.fakeSleeper.advance(by: .seconds(2))
@@ -178,7 +179,7 @@ struct TerminalHandoffTests {
         await fixture.respond(json: Fixture.handoffJSON(result))
 
         // then
-        #expect(fixture.transport.requests.last == Fixture.handoffRequest([30, 25]))
+        #expect(fixture.transport.requests.filter { $0.path != "/events" }.last == Fixture.handoffRequest([30, 25]))
         #expect(fixture.fakeClipboard.copied == [result.text])
         #expect(fixture.state.lines.last == .handedOff(result))
         #expect(fixture.state.selection.isEmpty)

@@ -30,6 +30,7 @@ extension LoggedOutViewState.Notice {
         case .failed: "failed"
         case .expired: "expired"
         case .signedOut: "signedOut"
+        case .signedOutEverywhere: "signedOutEverywhere"
         }
     }
 
@@ -49,6 +50,10 @@ extension CommandName {
         case .guide: "guide"
         case .about: "about"
         case .signOut: "signOut"
+        case .revise: "revise"
+        case .drop: "drop"
+        case .revive: "revive"
+        case .bin: "bin"
         }
     }
 }

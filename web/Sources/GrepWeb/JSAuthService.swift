@@ -29,6 +29,14 @@ final class JSAuthService: AuthService {
         await JSPromiseValue.await(service.signOut!(), rejected: ()) { _ in }
     }
 
+    func signOutEverywhere() async {
+        if let global = service.signOutEverywhere.function {
+            await JSPromiseValue.await(global(), rejected: ()) { _ in }
+        } else {
+            await signOut()
+        }
+    }
+
     func accessToken() async -> String? {
         await JSPromiseValue.await(service.accessToken!(), rejected: nil) { $0.string }
     }

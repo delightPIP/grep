@@ -28,7 +28,15 @@ public protocol AuthService: AnyObject {
     func signIn(_ provider: AuthProvider) async -> SignInResult
     /// 이 기기의 세션을 끝낸다.
     func signOut() async
+    /// 계정의 모든 기기 세션을 끝낸다(ACC-002 규칙 4).
+    func signOutEverywhere() async
     /// 유효한 접근 토큰. 만료됐으면 갱신 토큰으로 조용히 새로 받는다(ACC-001 규칙 6).
     /// 세션이 없거나 갱신에 실패하면 nil이다. 코어는 이를 로그인 만료로 본다.
     func accessToken() async -> String?
+}
+
+public extension AuthService {
+    func signOutEverywhere() async {
+        await signOut()
+    }
 }

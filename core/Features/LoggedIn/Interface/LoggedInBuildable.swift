@@ -25,8 +25,16 @@ public struct PendingInput: Equatable, Sendable {
 public protocol LoggedInListener: AnyObject {
     /// 사용자가 `로그아웃`을 쳐서 이 기기의 세션을 끝냈다.
     func didSignOut()
+    /// 사용자가 `로그아웃 모든기기`로 모든 세션을 끝냈다(ACC-002 규칙 4).
+    func didSignOutEverywhere()
     /// 로그인이 만료됐다. 되살릴 줄이 없거나 계정을 알 수 없으면 nil.
     func didExpire(pendingInput: PendingInput?)
+}
+
+public extension LoggedInListener {
+    func didSignOutEverywhere() {
+        didSignOut()
+    }
 }
 
 @MainActor

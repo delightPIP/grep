@@ -57,7 +57,8 @@ public final class LoggedOutScreenHandle: Sendable {
             return ("failed", rawReason)
         case .expired:
             return ("expired", nil)
-        case .signedOut:
+        // shortcut: 모든 기기 로그아웃(#93 계약)은 Android 화면 이슈(#113)에서 따로 그린다. 그때까지 로그아웃됨으로 보인다
+        case .signedOut, .signedOutEverywhere:
             return ("signedOut", nil)
         }
     }
