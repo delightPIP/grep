@@ -29,6 +29,7 @@ export class LoggedInAdapter implements LoggedInViewBridge {
         onSubmit={(text) => handle.submitted(text)}
         onPaste={(text) => handle.pasted(text)}
         onFilesDrop={(files) => handle.filesDropped(this.#files.hold(files))}
+        onMoreRequested={() => handle.moreRequested()}
       />
     ));
   }

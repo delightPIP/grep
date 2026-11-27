@@ -11,6 +11,8 @@ public protocol LoggedInDependency: Dependency {
     var files: any FilePort { get }
     /// 터미널 기록을 이 기기에 남긴다(COM-009).
     var historyStore: any HistoryStore { get }
+    /// 처리 중 자료 폴링(ARC-005)과 다시 연결 확인(COM-010)의 주기를 기다린다.
+    var sleeper: any Sleeper { get }
 }
 
 /// 만료 때 입력줄에 치던 줄과, 그 줄을 친 계정(접근 토큰의 `sub`).

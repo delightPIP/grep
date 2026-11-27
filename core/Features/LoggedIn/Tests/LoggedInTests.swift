@@ -19,6 +19,7 @@ private final class Dependency: LoggedInDependency {
     let clipboard: any ClipboardPort = FakeClipboard()
     let files: any FilePort
     let historyStore: any HistoryStore = FakeHistoryStore()
+    let sleeper: any Sleeper = FakeSleeper()
     init(authService: any AuthService, httpTransport: any HTTPTransport, files: any FilePort) {
         self.authService = authService
         self.httpTransport = httpTransport
@@ -157,7 +158,10 @@ final class LoggedInTests {
 
     @Test(arguments: [HTTPTransportError.unreachable, .timedOut])
     func me를기다릴때_응답을받지못하면_자료수없이터미널을그대로두는지(error: HTTPTransportError) async {
-        // given
+        // given: 네트워크 오류일 때만 상태줄에 `연결 끊김`을 둔다(COM-010 규칙 3)
+        let expected = error == .unreachable
+            ? [LoggedInViewState(), LoggedInViewState(isOffline: true)]
+            : [LoggedInViewState()]
         await attach()
 
         // when
@@ -165,7 +169,7 @@ final class LoggedInTests {
         await runCurrent()
 
         // then
-        #expect(view.states == [LoggedInViewState()])
+        #expect(view.states == expected)
         #expect(listener.expiredInputs.isEmpty)
     }
 
@@ -238,10 +242,10 @@ final class LoggedInTests {
         await send(.submitted("찻기"))
 
         // when
-        await send(.submitted("최근"))
+        await send(.submitted("최긴"))
 
         // then
-        #expect(view.state?.lines == [.prompt("찻기"), .unknownCommand("찻기"), .prompt("최근"), .unknownCommand("최근")])
+        #expect(view.state?.lines == [.prompt("찻기"), .unknownCommand("찻기"), .prompt("최긴"), .unknownCommand("최긴")])
     }
 
     @Test func 터미널이떠있을때_빈줄에서엔터를치면_아무것도그리지않는지() async {
@@ -337,7 +341,7 @@ final class LoggedInTests {
         await runCurrent()
 
         // then
-        #expect(view.state == LoggedInViewState(itemCount: 35, lines: [.prompt(line), .saved(Self.linkItem)]))
+        #expect(view.state == LoggedInViewState(itemCount: 35, lines: [.prompt(line), .saved(Self.linkItem)], processingCount: 1))
     }
 
     @Test func 링크저장을기다릴때_서버가이미있음으로답하면_기존자료를보이고자료수를그대로두는지() async {
@@ -351,7 +355,7 @@ final class LoggedInTests {
         await runCurrent()
 
         // then
-        #expect(view.state == LoggedInViewState(itemCount: 34, lines: [.prompt(line), .alreadySaved(Self.linkItem)]))
+        #expect(view.state == LoggedInViewState(itemCount: 34, lines: [.prompt(line), .alreadySaved(Self.linkItem)], processingCount: 1))
     }
 
     @Test func 링크저장을기다릴때_서버가휴지통에있음으로답하면_휴지통줄을그리는지() async {
@@ -386,7 +390,10 @@ final class LoggedInTests {
         await runCurrent()
 
         // then
-        #expect(view.state == LoggedInViewState(itemCount: 34, lines: [.prompt(line), .saveFailed(reason, .inputKept)], input: line))
+        #expect(view.state == LoggedInViewState(
+            itemCount: 34, lines: [.prompt(line), .saveFailed(reason, .inputKept)], input: line,
+            isOffline: reason == .disconnected
+        ))
     }
 
     @Test func 링크저장을기다릴때_서버가세션만료로답하면_친줄과함께만료를알리는지() async {

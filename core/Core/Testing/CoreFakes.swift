@@ -153,3 +153,43 @@ public final class FakeHistoryStore: HistoryStore {
 
     public func clear() { record = nil }
 }
+
+/// 테스트가 시간을 앞당기는 `Sleeper`. `advance(by:)`로 지난 만큼만 깨운다.
+@MainActor
+public final class FakeSleeper: Sleeper {
+    private struct Waiter {
+        let id: Int
+        let deadline: Duration
+        let continuation: CheckedContinuation<Void, Never>
+    }
+
+    private var now: Duration = .zero
+    private var nextID = 0
+    private var waiters: [Waiter] = []
+
+    public init() {}
+
+    public func sleep(for duration: Duration) async {
+        let id = nextID
+        nextID += 1
+        let deadline = now + duration
+        await withTaskCancellationHandler {
+            await withCheckedContinuation { waiters.append(Waiter(id: id, deadline: deadline, continuation: $0)) }
+        } onCancel: {
+            Task { @MainActor in self.wake { $0.id == id } }
+        }
+    }
+
+    /// 시간을 `duration`만큼 앞당기고, 깨어난 Task가 다음 대기 지점까지 돌게 한다.
+    public func advance(by duration: Duration) async {
+        now += duration
+        wake { $0.deadline <= self.now }
+        await runCurrent()
+    }
+
+    private func wake(where isDue: (Waiter) -> Bool) {
+        let due = waiters.filter(isDue)
+        waiters.removeAll(where: isDue)
+        due.forEach { $0.continuation.resume() }
+    }
+}

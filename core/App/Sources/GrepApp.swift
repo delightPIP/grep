@@ -53,19 +53,22 @@ public struct PlatformServices {
     public let clipboard: any ClipboardPort
     public let files: any FilePort
     public let historyStore: any HistoryStore
+    public let sleeper: any Sleeper
 
     public init(
         authService: any AuthService,
         httpTransport: any HTTPTransport,
         clipboard: any ClipboardPort,
         files: any FilePort,
-        historyStore: any HistoryStore
+        historyStore: any HistoryStore,
+        sleeper: any Sleeper = TaskSleeper()
     ) {
         self.authService = authService
         self.httpTransport = httpTransport
         self.clipboard = clipboard
         self.files = files
         self.historyStore = historyStore
+        self.sleeper = sleeper
     }
 }
 
@@ -76,6 +79,7 @@ final class RootComponent: EmptyComponent, LoggedOutDependency, LoggedInDependen
     let clipboard: any ClipboardPort
     let files: any FilePort
     let historyStore: any HistoryStore
+    let sleeper: any Sleeper
 
     init(platform: PlatformServices) {
         authService = platform.authService
@@ -83,6 +87,7 @@ final class RootComponent: EmptyComponent, LoggedOutDependency, LoggedInDependen
         clipboard = platform.clipboard
         files = platform.files
         historyStore = platform.historyStore
+        sleeper = platform.sleeper
         super.init()
     }
 }

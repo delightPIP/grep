@@ -1,10 +1,11 @@
 import { act } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { LoggedInScreenHandle } from "../../support/swift";
+import type { BridgedLoggedInState } from "../../support/bridge-state";
 import type { DroppedFile } from "../../support/view-state";
 import { LoggedInAdapter } from "./adapter";
 
-function mountAdapter(held: DroppedFile[] = []) {
+function mountAdapter(held: DroppedFile[] = [], lines: BridgedLoggedInState["lines"] = []) {
   const handle = {
     inputChanged: vi.fn(),
     submitted: vi.fn(),
@@ -19,7 +20,7 @@ function mountAdapter(held: DroppedFile[] = []) {
   const adapter = new LoggedInAdapter({ hold });
   adapter.mount(host, handle);
   act(() =>
-    adapter.render({ itemCount: 34, lines: [], input: "", selection: [], processingCount: 0, isOffline: false }),
+    adapter.render({ itemCount: 34, lines, input: "", selection: [], processingCount: 0, isOffline: false }),
   );
   // 붙여 넣기·놓기는 순수 뷰가 받는다. 이벤트는 뷰가 그린 화면에 보낸다.
   const screen = host.querySelector("main")!;
@@ -37,6 +38,18 @@ function dragEvent(type: "dragover" | "drop", files: File[]): Event {
 }
 
 describe("터미널 화면 어댑터", () => {
+  it("더보기있는목록이있을때_더보기를누르면_moreRequested를보내는지", () => {
+    // given
+    const { screen, handle } = mountAdapter([], [{ kind: "recentList", items: [], hasMore: true }]);
+    const more = Array.from(screen.querySelectorAll("button")).find((button) => button.textContent?.includes("더 보기"));
+
+    // when
+    act(() => more?.click());
+
+    // then
+    expect(handle.moreRequested).toHaveBeenCalledTimes(1);
+  });
+
   it("화면이붙어있을때_글을붙여넣으면_그글을pasted로보내는지", () => {
     // given
     const { screen, handle } = mountAdapter();
