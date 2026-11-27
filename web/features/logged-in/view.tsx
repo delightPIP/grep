@@ -561,6 +561,16 @@ function OutputLine({ line, failed, onMoreRequested }: OutputLineProps) {
       return <CommandFailedLines command={line.command} reason={line.reason} retry={line.retry} />;
     case "reconnected":
       return <Line tone="ok">연결됨</Line>;
+    case "dropped":
+      // ARC-008 사용자 문구. 되살리기는 `<번호...>`를 받으므로 옮긴 번호를 모두 적는다.
+      return (
+        <Line tone="ok">
+          {`휴지통 ${line.items.length}건 (30일 뒤 삭제, 되살리기 ${line.items.map((ref) => ref.number).join(" ")})`}
+        </Line>
+      );
+    case "revived":
+      // ARC-008 사용자 문구.
+      return <Line tone="ok">{`되살림 ${line.items.length}건`}</Line>;
     default:
       // 나머지 줄 종류(#56 계약)는 각 실행 이슈(#58~#68)가 정책 원문으로 그린다.
       return null;

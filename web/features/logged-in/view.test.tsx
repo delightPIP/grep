@@ -1272,4 +1272,60 @@ describe("LoggedInView", () => {
       expect(shown).toEqual(["✓ 연결됨"]);
     });
   });
+
+  describe("버리기·되살리기 결과(#93, ARC-008)", () => {
+    it("1건을버렸을때_화면을그리면_휴지통건수와되살리기번호를보이는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [
+        { kind: "prompt", text: "버리기 131" },
+        { kind: "dropped", items: [{ number: 131, title: "결제 오류 정리" }] },
+      ];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown[1]).toBe("✓ 휴지통 1건 (30일 뒤 삭제, 되살리기 131)");
+    });
+
+    it("여러건을버렸을때_화면을그리면_되살리기에번호를모두보이는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [
+        { kind: "prompt", text: "버리기" },
+        {
+          kind: "dropped",
+          items: [
+            { number: 131, title: "결제 오류 정리" },
+            { number: 57, title: "환불 규정" },
+          ],
+        },
+      ];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown[1]).toBe("✓ 휴지통 2건 (30일 뒤 삭제, 되살리기 131 57)");
+    });
+
+    it("되살렸을때_화면을그리면_되살림건수를보이는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [
+        { kind: "prompt", text: "되살리기 131 57" },
+        {
+          kind: "revived",
+          items: [
+            { number: 131, title: "결제 오류 정리" },
+            { number: 57, title: "환불 규정" },
+          ],
+        },
+      ];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown[1]).toBe("✓ 되살림 2건");
+    });
+  });
 });
