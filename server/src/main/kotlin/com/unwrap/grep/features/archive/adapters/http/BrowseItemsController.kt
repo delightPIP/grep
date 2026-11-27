@@ -13,8 +13,8 @@ import java.time.Instant
 import java.time.OffsetDateTime
 import java.util.UUID
 
-/** openapi `ItemPage`. */
-data class ItemPageResponse(val items: List<ItemSummaryResponse>, val nextCursor: String?)
+/** openapi `ItemPage`. [total]은 기간이 있을 때만 숫자, 없으면 null로 싣는다. */
+data class ItemPageResponse(val items: List<ItemSummaryResponse>, val total: Long?, val nextCursor: String?)
 
 /** openapi `SearchPage`. */
 data class SearchPageResponse(val items: List<ItemSummaryResponse>, val total: Long, val nextCursor: String?)
@@ -39,7 +39,7 @@ class BrowseItemsController(private val browse: BrowseItemsService) {
 		@RequestParam(required = false) to: String?,
 	): ItemPageResponse {
 		val page = browse.recent(userId, beforeNumber(cursor), pageSizeOf(limit), savedRange(from, to))
-		return ItemPageResponse(page.items.map { ItemSummaryResponse.of(it) }, page.nextBeforeNumber?.toString())
+		return ItemPageResponse(page.items.map { ItemSummaryResponse.of(it) }, page.total, page.nextBeforeNumber?.toString())
 	}
 
 	/** 검색어는 띄어쓰기로 낱말을 나눈다. 태그는 `#` 없이 받고 소문자로 맞춘다(ARC-002 규칙 5). */

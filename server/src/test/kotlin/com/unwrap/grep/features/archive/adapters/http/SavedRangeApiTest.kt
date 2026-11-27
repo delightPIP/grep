@@ -36,7 +36,27 @@ class SavedRangeApiTest : ArchiveApiTestSupport() {
 		val result = listItems(token, *week)
 
 		// then
-		result.andExpect { jsonPath("$.items[*].number") { value(contains(2, 1)) } }
+		result.andExpect {
+			jsonPath("$.items[*].number") { value(contains(2, 1)) }
+			jsonPath("$.total") { value(2) }
+		}
+	}
+
+	@Test
+	fun `기간이한쪽보다많을때_최근을부르면_전체건수는기간전체를세고기간이없으면null인지`() {
+		// given
+		val token = newUserWithWeek()
+
+		// when
+		val ranged = listItems(token, "from" to "2026-11-02T00:00:00+09:00", "limit" to "1")
+		val plain = listItems(token)
+
+		// then
+		ranged.andExpect {
+			jsonPath("$.items[*].number") { value(contains(4)) }
+			jsonPath("$.total") { value(4) }
+		}
+		plain.andExpect { jsonPath("$.total") { hasJsonPath(); isEmpty() } }
 	}
 
 	@Test

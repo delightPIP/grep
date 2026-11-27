@@ -3,8 +3,8 @@ package com.unwrap.grep.features.archive.domain
 import org.springframework.stereotype.Service
 import java.util.UUID
 
-/** 자료 한 쪽. [nextBeforeNumber]가 null이면 다음 쪽이 없다. */
-data class ItemPage(val items: List<StoredItem>, val nextBeforeNumber: Long?)
+/** 자료 한 쪽. [nextBeforeNumber]가 null이면 다음 쪽이 없다. [total]은 기간이 있을 때만 그 기간 전체 건수. */
+data class ItemPage(val items: List<StoredItem>, val nextBeforeNumber: Long?, val total: Long? = null)
 
 /** 번호로 찾은 결과. [items]는 요청 순서, [missing]은 없거나 휴지통에 있는 번호(ARC-001 규칙 10). */
 data class ItemLookup(val items: List<StoredItem>, val missing: List<Long>)
@@ -17,7 +17,8 @@ class BrowseItemsService(private val items: ItemRepository, private val itemSear
 	fun recent(userId: UUID, beforeNumber: Long?, limit: Int, saved: SavedRange = SavedRange.ANY): ItemPage {
 		val rows = items.findActive(userId, beforeNumber, limit + 1, saved)
 		val page = rows.take(limit)
-		return ItemPage(page, if (rows.size > limit) page.last().number else null)
+		val total = if (saved == SavedRange.ANY) null else items.countActive(userId, saved)
+		return ItemPage(page, if (rows.size > limit) page.last().number else null, total)
 	}
 
 	/** 같은 번호를 두 번 써도 한 번으로 본다(ARC-001 값). */

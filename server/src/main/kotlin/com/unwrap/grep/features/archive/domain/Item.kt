@@ -94,8 +94,8 @@ interface ItemRepository {
 	/** 번호를 발급하고 자료와 처리 작업을 넣는다. [lockOwner]와 같은 트랜잭션에서 부른다. */
 	fun insert(item: NewItem): StoredItem
 
-	/** 휴지통 밖 자료 수. */
-	fun countActive(userId: UUID): Long
+	/** 휴지통 밖 자료 수. [saved]가 있으면 그 기간 안만. */
+	fun countActive(userId: UUID, saved: SavedRange = SavedRange.ANY): Long
 
 	/** 휴지통 밖 자료를 번호 내림차순으로 [limit]건. [beforeNumber]가 있으면 그보다 작은 번호만, [saved] 기간 안만. */
 	fun findActive(userId: UUID, beforeNumber: Long?, limit: Int, saved: SavedRange = SavedRange.ANY): List<StoredItem>

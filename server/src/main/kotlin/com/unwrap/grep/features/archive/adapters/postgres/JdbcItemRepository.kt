@@ -114,9 +114,18 @@ class JdbcItemRepository(private val jdbc: JdbcClient) :
 			.single()
 	}
 
-	override fun countActive(userId: UUID): Long =
-		jdbc.sql("SELECT count(*) FROM items WHERE user_id = :userId AND deleted_at IS NULL")
+	override fun countActive(userId: UUID, saved: SavedRange): Long =
+		jdbc.sql(
+			"""
+			SELECT count(*) FROM items
+			WHERE user_id = :userId AND deleted_at IS NULL
+			  AND (CAST(:from AS timestamptz) IS NULL OR created_at >= CAST(:from AS timestamptz))
+			  AND (CAST(:to AS timestamptz) IS NULL OR created_at < CAST(:to AS timestamptz))
+			""".trimIndent(),
+		)
 			.param("userId", userId)
+			.param("from", saved.from?.let { OffsetDateTime.ofInstant(it, ZoneOffset.UTC) })
+			.param("to", saved.to?.let { OffsetDateTime.ofInstant(it, ZoneOffset.UTC) })
 			.query(Long::class.java)
 			.single()
 
