@@ -41,13 +41,21 @@ interface ItemDetailRepository {
 	fun findActiveDetail(userId: UUID, number: Long): ItemDetailSource?
 }
 
-/** `열기 <번호>`(ARC-011). 자료를 고치지 않는다(규칙 11). 휴지통·없는·남의 번호는 `not_found`(규칙 3, COM-006). */
+/**
+ * `열기 <번호>`(ARC-011). 자료 내용은 고치지 않는다(규칙 11). 휴지통·없는·남의 번호는 `not_found`(규칙 3, COM-006).
+ * 가져온 자료를 처음 열면 처리 작업을 만든다(user-flow 10절).
+ */
 @Service
-class ItemDetailService(private val details: ItemDetailRepository, private val storage: ObjectStorage) {
+class ItemDetailService(
+	private val details: ItemDetailRepository,
+	private val items: ItemRepository,
+	private val storage: ObjectStorage,
+) {
 
 	fun detail(userId: UUID, number: Long): ItemDetail {
 		val source = details.findActiveDetail(userId, number)
 			?: throw ApiProblem(ApiErrorCode.NOT_FOUND, numbers = listOf(number))
+		items.startDeferredProcessing(userId, listOf(number))
 		val original = source.objectPath?.let { storage.presignGet(it, SIGNED_URL_LIFETIME) }
 		return ItemDetail(
 			item = source.item,

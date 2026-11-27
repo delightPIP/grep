@@ -86,13 +86,13 @@ class JdbcItemRepository(private val jdbc: JdbcClient) :
 				RETURNING last_item_number
 			), created AS (
 				INSERT INTO items (user_id, number, kind, url, normalized_url, text_body, object_path, file_name,
-				                   file_format, file_size, content_hash, title, source, idempotency_key)
+				                   file_format, file_size, content_hash, title, source, idempotency_key, processing_deferred)
 				SELECT :userId, last_item_number, :kind, :url, :normalizedUrl, :textBody, :objectPath, :fileName,
-				       :fileFormat, :fileSize, :contentHash, :title, :source, :idempotencyKey
+				       :fileFormat, :fileSize, :contentHash, :title, :source, :idempotencyKey, :deferred
 				FROM issued
 				RETURNING *
 			), queued AS (
-				INSERT INTO item_jobs (item_id) SELECT id FROM created
+				INSERT INTO item_jobs (item_id) SELECT id FROM created WHERE NOT created.processing_deferred
 			)
 			SELECT $SUMMARY_COLUMNS FROM created
 			""".trimIndent(),
@@ -110,8 +110,26 @@ class JdbcItemRepository(private val jdbc: JdbcClient) :
 			.param("title", item.title)
 			.param("source", item.source, Types.VARCHAR)
 			.param("idempotencyKey", item.idempotencyKey)
+			.param("deferred", item.processingDeferred)
 			.query(ITEM_ROW)
 			.single()
+	}
+
+	/** 미룸 표시를 지우는 문장과 작업을 넣는 문장을 하나로 묶어, 두 요청이 겹쳐도 작업은 하나다. */
+	override fun startDeferredProcessing(userId: UUID, numbers: Collection<Long>) {
+		jdbc.sql(
+			"""
+			WITH started AS (
+				UPDATE items SET processing_deferred = false
+				WHERE user_id = :userId AND number = ANY(:numbers) AND processing_deferred AND deleted_at IS NULL
+				RETURNING id
+			)
+			INSERT INTO item_jobs (item_id) SELECT id FROM started
+			""".trimIndent(),
+		)
+			.param("userId", userId)
+			.param("numbers", numbers.toLongArray())
+			.update()
 	}
 
 	override fun countActive(userId: UUID, saved: SavedRange): Long =
