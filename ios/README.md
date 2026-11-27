@@ -1,5 +1,29 @@
 # iOS 앱
 
-아직 없다. 웹 다음에 만든다(ADR-0010). 뷰는 SwiftUI, 뷰를 뺀 코드는 [`core/`](../core/Package.swift)를 쓴다(ADR-WEB-007, ADR-IOS-009).
+뷰는 SwiftUI, 뷰를 뺀 코드는 [`core/`](../core/Package.swift)를 쓴다(ADR-WEB-007, ADR-IOS-009).
 구조는 carti-RIBs-Swift `Samples/TodoModular/iOS`를 따른다.
 피처마다 UI·Adapter·Example 모듈로 나누고, 웹 이슈가 머지될 때마다 `feat/m<번호>-ios` 브랜치로 따라간다([ADR-0015](../docs/adr/ADR-0015-mobile-feature-modules-per-issue.md)).
+
+## 구조
+
+| 위치 | 내용 |
+| :--- | :--- |
+| `Platform/Sources` | `URLSessionHTTPTransport`·`WebAuthService`·`PasteboardClipboardPort`·`URLSessionFilePort`·`UserDefaultsHistoryStore` |
+| `Platform/Tests` | 플랫폼 포트 단위 테스트(`GrepPlatformTests`) |
+| `Features/<피처>/UI` | 순수 SwiftUI 뷰. 값과 콜백만 받는다 |
+| `Features/<피처>/Adapter` | 코어 `ViewContract` 구현과 팩토리 |
+| `Features/<피처>/Example` | 그 피처만 띄우는 Example 앱 |
+| `App/Sources` | `GrepAppRoot`와 어댑터·플랫폼 포트를 잇는 앱(`GrepIOSApp.swift`) |
+
+## 빌드와 테스트
+
+Xcode와 Tuist 4가 필요하다.
+
+```sh
+cd ios
+tuist generate --no-open
+tuist test --device "iPhone 17"
+```
+
+- 전체 앱 스킴: `Grep`
+- 피처 Example 스킴: `FeatureLoggedOutExample`
