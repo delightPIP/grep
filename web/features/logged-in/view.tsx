@@ -13,6 +13,7 @@ import {
   type ReactNode,
 } from "react";
 import type {
+  BundleEntry,
   CommandFailure,
   CommandName,
   HandoffResult,
@@ -454,8 +455,8 @@ function PickedLines({ items }: { items: ItemRef[] }) {
       <Plain>
         {"→ "}
         <CommandChip command="넘기기" />
-        {/* shortcut: `묶음`은 데모 범위 명령이 아니어서 칩 대신 글자로만 둔다. 묶음이 들어오면 칩으로. */}
-        {" 또는 묶음 <이름>"}
+        {" 또는 "}
+        <CommandChip command="묶음 ">묶음 &lt;이름&gt;</CommandChip>
       </Plain>
     </>
   );
@@ -603,6 +604,85 @@ function BinListLines({ total, items, hasMore, onMoreRequested }: BinListLinesPr
   );
 }
 
+/** 묶음 목록 한 줄 `<이름>  N건`. 이름을 누르면 `묶음 <이름>`이 찍힌다(commands 6절 출력 원칙). */
+function BundleRow({ bundle }: { bundle: BundleEntry }) {
+  return (
+    <div className="gt-line gt-row">
+      <CommandChip command={`묶음 ${bundle.name}`}>{bundle.name}</CommandChip>
+      <span className="gt-row-meta">{`${bundle.count}건`}</span>
+    </div>
+  );
+}
+
+/** ARC-003 규칙 3 묶음 목록. 순서는 서버가 최근에 바뀐 순으로 준다. 없으면 차례로 할 일을 줄을 나눠 안내한다. */
+function BundleListLines({ bundles }: { bundles: BundleEntry[] }) {
+  if (bundles.length === 0) {
+    return (
+      <>
+        <Line tone="info">묶음 0개</Line>
+        <Plain>
+          {"→ "}
+          <CommandChip command="고르기 ">고르기 &lt;번호&gt;</CommandChip>
+        </Plain>
+        <Plain>
+          {"→ "}
+          <CommandChip command="묶음 ">묶음 &lt;이름&gt;</CommandChip>
+        </Plain>
+      </>
+    );
+  }
+  return (
+    <>
+      <Plain>{`${bundles.length}개 묶음`}</Plain>
+      {bundles.map((bundle) => (
+        <BundleRow key={bundle.name} bundle={bundle} />
+      ))}
+    </>
+  );
+}
+
+/** ARC-003 넣기. count는 넣은 뒤 묶음 건수다. */
+function BundleAddedLines({ name, count, alreadyCount }: { name: string; count: number; alreadyCount: number }) {
+  const already = alreadyCount > 0 ? ` (이미 있음 ${alreadyCount}건)` : "";
+  return (
+    <>
+      <Line tone="ok">{`묶음 ${name}: ${count}건${already}`}</Line>
+      <Plain>
+        {"→ 다음부터: "}
+        <CommandChip command={`넘기기 ${name}`} />
+      </Plain>
+    </>
+  );
+}
+
+type BundleViewLinesProps = { name: string; total: number; items: ItemSummary[]; hasMore: boolean; onMoreRequested?: () => void };
+
+/** ARC-003 규칙 5 묶음 안 자료(번호 큰 순). 다음 쪽이 남으면 머리 숫자를 보인 행 수와 맞춘다(commands 6절 더 보기). */
+function BundleViewLines({ name, total, items, hasMore, onMoreRequested }: BundleViewLinesProps) {
+  return (
+    <>
+      <Plain>{`묶음 ${name}  ${searchHeader(total, items.length)}`}</Plain>
+      <ListLines items={items} hasMore={hasMore} onMoreRequested={onMoreRequested} />
+    </>
+  );
+}
+
+/** ARC-003 규칙 8 묶음 지우기 확인. */
+function BundleDeleteConfirmLines({ name, itemCount }: { name: string; itemCount: number }) {
+  return (
+    <>
+      <Line tone="warn">{`지우기? 묶음 ${name} (자료 ${itemCount}건은 남음)`}</Line>
+      <ConfirmAnswer word="지우기" />
+    </>
+  );
+}
+
+/** ARC-003 사용자 문구 이름 규칙 위반·금지 이름. */
+const BUNDLE_NAME_RULE = {
+  format: "묶음 이름: 띄어쓰기 없이 1~20자 (한글·영문·숫자·-·_)",
+  reserved: "묶음 이름: 숫자만 · #시작 · 빼기 · 지우기 불가",
+} as const;
+
 /** COM-008 값: 직접 복사 키. 터치 기기 문구는 AI 제안(PO 확인 전). */
 function copyKeyHint(): string {
   if (typeof window.matchMedia === "function" && window.matchMedia("(hover: none) and (pointer: coarse)").matches) {
@@ -631,6 +711,8 @@ function HandedOffLines({ result }: { result: HandoffResult }) {
   const [isExpanded, setExpanded] = useState(false);
   return (
     <>
+      {/* ARC-003 규칙 10. 시안 Bundles ④는 복사됨 앞에 둔다. */}
+      {(result.removedCount ?? 0) > 0 && <Line tone="warn">{`빠진 자료 ${result.removedCount}건 (삭제됨)`}</Line>}
       <Line tone="ok">{`복사됨  ${result.items.length}건 · ${charCountText(result.charCount)} (제목·출처·저장 시각·요약)`}</Line>
       <ItemRefRows items={result.items} />
       {result.missingSummaryCount > 0 && <Line tone="warn">{`요약 없음 ${result.missingSummaryCount}건`}</Line>}
@@ -865,6 +947,39 @@ function OutputLine({ line, failed, onMoreRequested }: OutputLineProps) {
     case "revived":
       // ARC-008 사용자 문구.
       return <Line tone="ok">{`되살림 ${line.items.length}건`}</Line>;
+    // #121 묶음(ARC-003 사용자 문구)
+    case "bundleList":
+      return <BundleListLines bundles={line.bundles} />;
+    case "bundleAdded":
+      return <BundleAddedLines name={line.name} count={line.count} alreadyCount={line.alreadyCount} />;
+    case "bundleView":
+      return (
+        <BundleViewLines
+          name={line.name}
+          total={line.total}
+          items={line.items}
+          hasMore={line.hasMore}
+          onMoreRequested={onMoreRequested}
+        />
+      );
+    case "bundleNotFound":
+      return (
+        <Line tone="error">
+          {`없는 묶음: ${line.name}  → `}
+          <CommandChip command="묶음" />
+        </Line>
+      );
+    case "bundleUnpicked":
+      return <Line tone="ok">{`뺌  묶음 ${line.name}: ${line.remaining}건 남음`}</Line>;
+    case "notInBundle":
+      // 없는 번호(notFound)와 같게 쉼표로 잇는다.
+      return <Line tone="error">{`묶음에 없음: ${line.numbers.join(", ")}`}</Line>;
+    case "bundleDeleteConfirm":
+      return <BundleDeleteConfirmLines name={line.name} itemCount={line.itemCount} />;
+    case "bundleDeleted":
+      return <Line tone="ok">{`삭제됨  묶음 ${line.name}`}</Line>;
+    case "bundleNameInvalid":
+      return <Line tone="error">{BUNDLE_NAME_RULE[line.reason]}</Line>;
     default:
       // 나머지 줄 종류(#56 계약)는 각 실행 이슈(#58~#68)가 정책 원문으로 그린다.
       return null;
