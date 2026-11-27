@@ -41,6 +41,9 @@ public struct TerminalView: View {
             topBar
             Divider().overlay(palette.line)
             logScrollArea
+            if !presentation.selection.isEmpty {
+                selectionBar
+            }
             commandBar
         }
         .background(palette.surface.ignoresSafeArea())
@@ -125,6 +128,29 @@ public struct TerminalView: View {
                 .font(.system(size: 14, design: .monospaced))
                 .foregroundStyle(dim ? palette.inkMuted : palette.ink)
                 .fixedSize(horizontal: false, vertical: true)
+        case .commandHint(let prefix, let command, let suffix):
+            HStack(alignment: .firstTextBaseline, spacing: 0) {
+                if !prefix.isEmpty {
+                    Text(prefix)
+                        .foregroundStyle(palette.inkMuted)
+                }
+                Button {
+                    onInputChange(command)
+                    isInputFocused = true
+                } label: {
+                    Text(command)
+                        .bold()
+                        .underline()
+                        .foregroundStyle(palette.command)
+                }
+                .buttonStyle(.plain)
+                if !suffix.isEmpty {
+                    Text(suffix)
+                        .foregroundStyle(palette.ink)
+                }
+            }
+            .font(.system(size: 14, design: .monospaced))
+            .frame(minHeight: 32, alignment: .leading)
         case .itemRow(let item):
             mobileItemRow(item)
         case .list(let header, let items, let hasMore):
@@ -153,6 +179,115 @@ public struct TerminalView: View {
                     .accessibilityIdentifier("moreButton")
                 }
             }
+        case .handedOff(let result):
+            TerminalHandoffBlockView(result: result, palette: palette)
+        case .handoffFailed(let reasonLabel, let preview, let isClipboardDenied):
+            VStack(alignment: .leading, spacing: 6) {
+                statusRow(tone: .error, boldPrefix: nil, body: "복사 안 됨: \(reasonLabel)  선택은 남겨 둠")
+                if isClipboardDenied, let preview {
+                    Text(preview)
+                        .font(.system(size: 13))
+                        .foregroundStyle(palette.ink)
+                        .textSelection(.enabled)
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(palette.surfaceRaised)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6)
+                                .stroke(palette.line, lineWidth: 1)
+                        )
+                }
+                HStack(spacing: 0) {
+                    Text(isClipboardDenied ? "→ 직접 복사: 길게 눌러 복사 · 다시: " : "→ ")
+                        .foregroundStyle(palette.inkMuted)
+                    Button {
+                        onSubmit("넘기기")
+                    } label: {
+                        Text("넘기기")
+                            .bold()
+                            .underline()
+                            .foregroundStyle(palette.command)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .font(.system(size: 14, design: .monospaced))
+                .frame(minHeight: 36, alignment: .leading)
+            }
+        case .handoffConfirm(let total, let choices):
+            VStack(alignment: .leading, spacing: 8) {
+                statusRow(tone: .warn, boldPrefix: nil, body: "\(total)건: 바로 복사 안 함 (5건 초과)")
+                VStack(spacing: 6) {
+                    ForEach(choices) { choice in
+                        Button {
+                            onSubmit(choice.command)
+                        } label: {
+                            HStack(spacing: 8) {
+                                Text(choice.command)
+                                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+                                    .foregroundStyle(palette.command)
+                                Text(choice.label)
+                                    .font(.system(size: 14, design: .monospaced))
+                                    .foregroundStyle(palette.ink)
+                                Spacer()
+                            }
+                            .padding(.horizontal, 12)
+                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                            .background(palette.surfaceRaised)
+                            .clipShape(RoundedRectangle(cornerRadius: 3))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 3)
+                                    .stroke(palette.line, lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("handoffChoice_\(choice.command)")
+                    }
+                }
+            }
+        case .guide(let rows):
+            VStack(alignment: .leading, spacing: 6) {
+                Text("저장: 링크·글 붙여 넣기, 파일 끌어다 놓기. 명령: 한글·영문 같음")
+                    .font(.system(size: 14, design: .monospaced))
+                    .foregroundStyle(palette.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(rows) { row in
+                        HStack(alignment: .firstTextBaseline, spacing: 10) {
+                            Text(row.name)
+                                .font(.system(size: 14, weight: .bold, design: .monospaced))
+                                .foregroundStyle(palette.command)
+                                .frame(width: 66, alignment: .leading)
+                            Text(row.english)
+                                .font(.system(size: 13, design: .monospaced))
+                                .foregroundStyle(palette.inkMuted)
+                                .frame(width: 68, alignment: .leading)
+                            Text(row.meaning)
+                                .font(.system(size: 14, design: .monospaced))
+                                .foregroundStyle(palette.ink)
+                        }
+                    }
+                }
+
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text("→ 예:")
+                        .foregroundStyle(palette.inkMuted)
+                    Button {
+                        onInputChange("찾기 결제 | 넘기기")
+                        isInputFocused = true
+                    } label: {
+                        Text("찾기 결제 | 넘기기")
+                            .bold()
+                            .underline()
+                            .foregroundStyle(palette.command)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .font(.system(size: 14, design: .monospaced))
+                .frame(minHeight: 32, alignment: .leading)
+            }
+            .accessibilityIdentifier("terminalGuideBlock")
         case .welcome:
             welcomeBlock
         }
@@ -200,53 +335,102 @@ public struct TerminalView: View {
     // MARK: - Mobile Result Row (MList.dc.html)
 
     private func mobileItemRow(_ item: TerminalItemRow) -> some View {
-        HStack(alignment: .top, spacing: 8) {
-            Text(item.isPicked ? "▸\(item.number)" : "\(item.number)")
-                .font(.system(size: 14, weight: .bold, design: .monospaced))
-                .foregroundStyle(item.isPicked ? palette.command : palette.inkMuted)
-                .frame(minWidth: 34, alignment: .trailing)
+        Button {
+            onSubmit("고르기 \(item.number)")
+        } label: {
+            HStack(alignment: .top, spacing: 8) {
+                Text(item.isPicked ? "▸\(item.number)" : "\(item.number)")
+                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+                    .foregroundStyle(item.isPicked ? palette.command : palette.inkMuted)
+                    .frame(minWidth: 34, alignment: .trailing)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(item.title)
-                    .font(.system(size: 14, design: .monospaced))
-                    .foregroundStyle(palette.ink)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(item.title)
+                        .font(.system(size: 14, design: .monospaced))
+                        .foregroundStyle(palette.ink)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+
+                    if !item.meta.isEmpty {
+                        Text(item.meta)
+                            .font(.system(size: 12, design: .monospaced))
+                            .foregroundStyle(palette.inkMuted)
+                            .lineLimit(1)
+                    }
+
+                    if item.summary != nil || item.matchLabel != nil || !item.tags.isEmpty {
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            if let summary = item.summary {
+                                Text(summary)
+                                    .foregroundStyle(item.summaryIsWarning ? palette.notice : palette.inkMuted)
+                            }
+                            if let matchLabel = item.matchLabel {
+                                Text("· \(matchLabel)")
+                                    .foregroundStyle(palette.inkMuted)
+                            }
+                            if !item.tags.isEmpty {
+                                Text(item.tags.map { "#\($0)" }.joined(separator: " "))
+                                    .foregroundStyle(palette.inkMuted)
+                            }
+                        }
+                        .font(.system(size: 12, design: .monospaced))
+                        .lineLimit(2)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.vertical, 8)
+            .padding(.horizontal, 6)
+            .frame(minHeight: 56, alignment: .center)
+            .background(item.isPicked ? palette.select : Color.clear)
+            .clipShape(RoundedRectangle(cornerRadius: 3))
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+    }
+
+    // MARK: - Selection Bar (MPickBar.dc.html / commands 6절 고르기)
+
+    private var selectionBar: some View {
+        let summary = presentation.selection.map { "\($0.number) \($0.title)" }.joined(separator: " · ")
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Text("선택 \(presentation.selection.count)")
+                    .font(.system(size: 13, weight: .bold, design: .monospaced))
+                    .foregroundStyle(palette.command)
+                Text(summary)
+                    .font(.system(size: 13, design: .monospaced))
+                    .foregroundStyle(palette.inkMuted)
                     .lineLimit(1)
                     .truncationMode(.tail)
-
-                if !item.meta.isEmpty {
-                    Text(item.meta)
-                        .font(.system(size: 12, design: .monospaced))
-                        .foregroundStyle(palette.inkMuted)
-                        .lineLimit(1)
-                }
-
-                if item.summary != nil || item.matchLabel != nil || !item.tags.isEmpty {
-                    HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        if let summary = item.summary {
-                            Text(summary)
-                                .foregroundStyle(item.summaryIsWarning ? palette.notice : palette.inkMuted)
-                        }
-                        if let matchLabel = item.matchLabel {
-                            Text("· \(matchLabel)")
-                                .foregroundStyle(palette.inkMuted)
-                        }
-                        if !item.tags.isEmpty {
-                            Text(item.tags.map { "#\($0)" }.joined(separator: " "))
-                                .foregroundStyle(palette.inkMuted)
-                        }
-                    }
-                    .font(.system(size: 12, design: .monospaced))
-                    .lineLimit(2)
-                }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+
+            HStack(spacing: 8) {
+                Button {
+                    onSubmit("넘기기")
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 14, weight: .bold))
+                        Text("넘기기 \(presentation.selection.count)건")
+                            .font(.system(size: 14, weight: .bold, design: .monospaced))
+                    }
+                    .foregroundStyle(palette.surface)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .background(palette.prompt)
+                    .clipShape(RoundedRectangle(cornerRadius: 3))
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("terminalPickBarHandoffButton")
+            }
         }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 6)
-        .frame(minHeight: 56, alignment: .center)
-        .background(item.isPicked ? palette.select : Color.clear)
-        .clipShape(RoundedRectangle(cornerRadius: 3))
-        .accessibilityElement(children: .combine)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(palette.surfaceRaised)
+        .overlay(alignment: .top) {
+            Rectangle().fill(palette.line).frame(height: 1)
+        }
+        .accessibilityIdentifier("terminalSelectionBar")
     }
 
     // MARK: - Welcome (MobileHome.dc.html)
@@ -565,6 +749,112 @@ public struct TerminalView: View {
         case .info: ("·", palette.command, palette.ink)
         case .warn: ("!", palette.notice, palette.notice)
         case .error: ("✗", palette.danger, palette.danger)
+        }
+    }
+}
+
+private struct TerminalHandoffBlockView: View {
+    let result: TerminalHandoffPresentation
+    let palette: TerminalPalette
+    @State private var isExpanded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text("✓")
+                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+                    .foregroundStyle(palette.prompt)
+                    .frame(width: 14, alignment: .leading)
+                Text("복사됨  \(result.items.count)건 · \(result.charCountText) (제목·출처·저장 시각·요약)")
+                    .font(.system(size: 14, design: .monospaced))
+                    .foregroundStyle(palette.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            ForEach(result.items) { item in
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text("\(item.number)")
+                        .font(.system(size: 14, weight: .bold, design: .monospaced))
+                        .foregroundStyle(palette.inkMuted)
+                        .frame(minWidth: 34, alignment: .trailing)
+                    Text(item.title)
+                        .font(.system(size: 14, design: .monospaced))
+                        .foregroundStyle(palette.ink)
+                        .lineLimit(1)
+                }
+            }
+
+            if result.missingSummaryCount > 0 {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text("!")
+                        .font(.system(size: 14, weight: .bold, design: .monospaced))
+                        .foregroundStyle(palette.notice)
+                        .frame(width: 14, alignment: .leading)
+                    Text("요약 없음 \(result.missingSummaryCount)건")
+                        .font(.system(size: 14, design: .monospaced))
+                        .foregroundStyle(palette.notice)
+                }
+            }
+
+            HStack(spacing: 12) {
+                Button {
+                    isExpanded.toggle()
+                } label: {
+                    HStack(spacing: 4) {
+                        Text("· 미리보기:")
+                            .foregroundStyle(palette.inkMuted)
+                        Text(isExpanded ? "접기" : "펼치기")
+                            .bold()
+                            .underline()
+                            .foregroundStyle(palette.command)
+                    }
+                    .font(.system(size: 14, design: .monospaced))
+                    .frame(minHeight: 44, alignment: .leading)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("handoffPreviewToggle")
+
+                ShareLink(item: result.text) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 13, weight: .bold))
+                        Text("다른 앱으로 공유")
+                            .font(.system(size: 14, weight: .bold, design: .monospaced))
+                    }
+                    .foregroundStyle(palette.surface)
+                    .padding(.horizontal, 12)
+                    .frame(minHeight: 36)
+                    .background(palette.prompt)
+                    .clipShape(RoundedRectangle(cornerRadius: 3))
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("handoffShareButton")
+            }
+
+            if isExpanded {
+                Text(result.text)
+                    .font(.system(size: 13))
+                    .foregroundStyle(palette.ink)
+                    .textSelection(.enabled)
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(palette.surfaceRaised)
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(palette.line, lineWidth: 1)
+                    )
+            }
+
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text("·")
+                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+                    .foregroundStyle(palette.command)
+                    .frame(width: 14, alignment: .leading)
+                Text("클립보드에 있음 → AI 도구 입력창에 붙여 넣기")
+                    .font(.system(size: 14, design: .monospaced))
+                    .foregroundStyle(palette.inkMuted)
+            }
         }
     }
 }

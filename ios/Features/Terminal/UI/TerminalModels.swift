@@ -9,6 +9,17 @@ public enum TerminalLineTone: Equatable, Sendable {
     case error
 }
 
+public struct TerminalItemRef: Equatable, Sendable, Identifiable {
+    public var id: Int { number }
+    public let number: Int
+    public let title: String
+
+    public init(number: Int, title: String) {
+        self.number = number
+        self.title = title
+    }
+}
+
 public struct TerminalItemRow: Equatable, Sendable, Identifiable {
     public let id: Int
     public let number: Int
@@ -42,12 +53,60 @@ public struct TerminalItemRow: Equatable, Sendable, Identifiable {
     }
 }
 
+public struct TerminalHandoffPresentation: Equatable, Sendable {
+    public let items: [TerminalItemRef]
+    public let charCountText: String
+    public let missingSummaryCount: Int
+    public let text: String
+
+    public init(
+        items: [TerminalItemRef],
+        charCountText: String,
+        missingSummaryCount: Int,
+        text: String
+    ) {
+        self.items = items
+        self.charCountText = charCountText
+        self.missingSummaryCount = missingSummaryCount
+        self.text = text
+    }
+}
+
+public struct TerminalChoiceItem: Equatable, Sendable, Identifiable {
+    public var id: String { command }
+    public let command: String
+    public let label: String
+
+    public init(command: String, label: String) {
+        self.command = command
+        self.label = label
+    }
+}
+
+public struct TerminalGuideRow: Equatable, Sendable, Identifiable {
+    public var id: String { name }
+    public let name: String
+    public let english: String
+    public let meaning: String
+
+    public init(name: String, english: String, meaning: String) {
+        self.name = name
+        self.english = english
+        self.meaning = meaning
+    }
+}
+
 public enum TerminalOutputBlockLine: Equatable, Sendable {
     case prompt(command: String, failed: Bool)
     case status(tone: TerminalLineTone, boldPrefix: String?, body: String)
     case plain(text: String, dim: Bool)
+    case commandHint(prefix: String, command: String, suffix: String)
     case itemRow(TerminalItemRow)
     case list(header: String?, items: [TerminalItemRow], hasMore: Bool)
+    case handedOff(TerminalHandoffPresentation)
+    case handoffFailed(reasonLabel: String, preview: String?, isClipboardDenied: Bool)
+    case handoffConfirm(total: Int, choices: [TerminalChoiceItem])
+    case guide(rows: [TerminalGuideRow])
     case welcome
 }
 
@@ -65,6 +124,7 @@ public struct TerminalPresentation: Equatable, Sendable {
     public let title: String
     public let statusText: String
     public let blocks: [TerminalOutputBlock]
+    public let selection: [TerminalItemRef]
     public let input: String
     public let isOffline: Bool
 
@@ -72,12 +132,14 @@ public struct TerminalPresentation: Equatable, Sendable {
         title: String = "처음",
         statusText: String = "자료 0 · 선택 0",
         blocks: [TerminalOutputBlock] = [],
+        selection: [TerminalItemRef] = [],
         input: String = "",
         isOffline: Bool = false
     ) {
         self.title = title
         self.statusText = statusText
         self.blocks = blocks
+        self.selection = selection
         self.input = input
         self.isOffline = isOffline
     }

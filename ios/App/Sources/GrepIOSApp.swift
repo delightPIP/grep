@@ -93,7 +93,7 @@ private struct LoggedInTabWrapper: View {
     var body: some View {
         LoggedInTabsView(
             model: model,
-            hidesTabBar: context.isKeyboardVisible.wrappedValue
+            hidesTabBar: context.isKeyboardVisible.wrappedValue || !context.pickedNumbers.isEmpty
         ) {
             terminalView
         }

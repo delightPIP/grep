@@ -15,6 +15,11 @@ enum TerminalDemoScenario: String, CaseIterable, Identifiable {
     case processing = "처리 중 (요약 생성 중)"
     case recentAndSearch = "최근·찾기 결과 (더 보기)"
     case noResults = "검색 0건 (최근 저장 안내)"
+    case picked = "고르기 완료 (선택 2건)"
+    case handedOff = "넘기기 완료 (미리보기 · 공유)"
+    case handoffConfirm = "넘기기 5건 초과 확인 (23건)"
+    case handoffDenied = "넘기기 실패 (클립보드 거부)"
+    case guide = "도움말 (명령 13줄)"
     case expired = "로그인 만료 이벤트"
 
     var id: String { rawValue }
@@ -188,6 +193,80 @@ final class TerminalExampleHarness: TerminalListener, TerminalDependency {
                         query: SearchQuery(text: "없는키워드", words: "없는키워드", tags: []),
                         recent: [readyItem, imageItem]
                     ),
+                ]
+            ))
+        case .picked:
+            let refs = [
+                ItemRef(number: 131, title: "결제위젯 연동 가이드"),
+                ItemRef(number: 118, title: "결제 실패 화면 모음.png"),
+            ]
+            currentScreen?.render(TerminalViewState(
+                itemCount: 131,
+                lines: [
+                    .prompt("찾기 결제"),
+                    .searchResult(
+                        query: SearchQuery(text: "결제", words: "결제", tags: []),
+                        total: 3,
+                        items: [readyItem, imageItem, blockedItem],
+                        hasMore: false
+                    ),
+                    .prompt("고르기 131 118"),
+                    .picked(refs),
+                ],
+                selection: refs
+            ))
+        case .handedOff:
+            let refs = [
+                ItemRef(number: 131, title: "결제위젯 연동 가이드"),
+                ItemRef(number: 64, title: "결제 UX 스레드 모음"),
+            ]
+            let previewText = """
+            [그렙 넘기기 · 2건]
+
+            1. 결제위젯 연동 가이드 (tosspayments · 2026-11-26 14:03)
+            요약: 웹·모바일 결제위젯 SDK 설치와 승인 흐름 정리
+
+            2. 결제 UX 스레드 모음 (threads.net · 2026-11-20 10:10)
+            요약: 없음 (본문 못 가져옴)
+            """
+            currentScreen?.render(TerminalViewState(
+                itemCount: 131,
+                lines: [
+                    .prompt("넘기기"),
+                    .handedOff(HandoffResult(
+                        items: refs,
+                        charCount: 1240,
+                        missingSummaryCount: 1,
+                        text: previewText
+                    )),
+                ]
+            ))
+        case .handoffConfirm:
+            currentScreen?.render(TerminalViewState(
+                itemCount: 131,
+                lines: [
+                    .prompt("찾기 디자인 | 넘기기"),
+                    .handoffConfirm(total: 23),
+                ]
+            ))
+        case .handoffDenied:
+            currentScreen?.render(TerminalViewState(
+                itemCount: 131,
+                lines: [
+                    .prompt("넘기기"),
+                    .handoffFailed(
+                        reason: .clipboardDenied,
+                        preview: "1. 결제위젯 연동 가이드 (tosspayments)\n요약: 웹·모바일 결제위젯 SDK 설치와 승인 흐름 정리"
+                    ),
+                ],
+                selection: [ItemRef(number: 131, title: "결제위젯 연동 가이드")]
+            ))
+        case .guide:
+            currentScreen?.render(TerminalViewState(
+                itemCount: 131,
+                lines: [
+                    .prompt("도움말"),
+                    .guide,
                 ]
             ))
         case .expired:

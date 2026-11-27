@@ -9,6 +9,24 @@ public enum TerminalStateMapper {
     private static let listTagLimit = 3
     private static let textTitleLimit = 24
     private static let bytesPerMB = 1024.0 * 1024.0
+    private static let handoffDirectLimit = 5
+    private static let handoffFirstLimit = 10
+
+    private static let guideRows: [TerminalGuideRow] = [
+        TerminalGuideRow(name: "담기", english: "keep", meaning: "자료 저장"),
+        TerminalGuideRow(name: "최근", english: "recent", meaning: "최근 자료 목록"),
+        TerminalGuideRow(name: "찾기", english: "seek", meaning: "검색"),
+        TerminalGuideRow(name: "고르기", english: "pick", meaning: "번호로 선택"),
+        TerminalGuideRow(name: "넘기기", english: "handoff", meaning: "AI 도구용 글 복사"),
+        TerminalGuideRow(name: "묶음", english: "pack", meaning: "선택에 이름 붙이기"),
+        TerminalGuideRow(name: "고치기", english: "revise", meaning: "제목·요약 수정"),
+        TerminalGuideRow(name: "버리기", english: "drop", meaning: "삭제"),
+        TerminalGuideRow(name: "가져오기", english: "bring", meaning: "북마크 파일 가져오기"),
+        TerminalGuideRow(name: "연결", english: "plug", meaning: "AI 도구 연결"),
+        TerminalGuideRow(name: "로그아웃", english: "signout", meaning: "로그아웃"),
+        TerminalGuideRow(name: "도움말", english: "guide", meaning: "명령 목록"),
+        TerminalGuideRow(name: "설명", english: "about", meaning: "명령 설명"),
+    ]
 
     public static func map(_ state: TerminalViewState) -> TerminalPresentation {
         let pickedNumbers = Set(state.selection.map(\.number))
@@ -21,6 +39,7 @@ public enum TerminalStateMapper {
                 isOffline: state.isOffline
             ),
             blocks: mapBlocks(lines: state.lines, pickedNumbers: pickedNumbers),
+            selection: state.selection.map { TerminalItemRef(number: $0.number, title: $0.title) },
             input: state.input,
             isOffline: state.isOffline
         )
@@ -104,6 +123,8 @@ public enum TerminalStateMapper {
                 return [.status(tone: .error, boldPrefix: nil, body: "저장할 것 없음  예: 담기 https://…")]
             case .seek:
                 return [.status(tone: .error, boldPrefix: nil, body: "검색어 없음  예: 찾기 결제")]
+            case .pick:
+                return [.status(tone: .error, boldPrefix: nil, body: "번호 없음  예: 고르기 131")]
             default:
                 return []
             }
@@ -122,7 +143,7 @@ public enum TerminalStateMapper {
             return [
                 .status(tone: .warn, boldPrefix: nil, body: "이미 저장됨 → \(item.number)번 (새로 만들지 않음)"),
                 .itemRow(mapRow(item, isPicked: pickedNumbers.contains(item.number))),
-                .plain(text: "→ 고르기 \(item.number)", dim: false),
+                .commandHint(prefix: "→ ", command: "고르기 \(item.number)", suffix: ""),
             ]
         case .inTrash(let number):
             return [.status(tone: .warn, boldPrefix: nil, body: "휴지통에 있음 → \(number)번. 되살리기 \(number)")]
@@ -130,7 +151,7 @@ public enum TerminalStateMapper {
             let headline = "저장 안 됨: \(failureText(reason))\(recoverySuffix(reason, recovery))"
             var result: [TerminalOutputBlockLine] = [.status(tone: .error, boldPrefix: nil, body: headline)]
             if case .retry(let command) = recovery {
-                result.append(.plain(text: "→ 다시: \(command)", dim: false))
+                result.append(.commandHint(prefix: "→ 다시: ", command: command, suffix: ""))
             }
             return result
         case .recentList(let items, let hasMore):
@@ -159,18 +180,53 @@ public enum TerminalStateMapper {
                 ))
             }
             return result
+        case .picked(let items):
+            let titleList = items.map(\.title).joined(separator: " · ")
+            return [
+                .status(tone: .ok, boldPrefix: nil, body: "선택 \(items.count)건  \(titleList)"),
+                .commandHint(prefix: "→ ", command: "넘기기", suffix: " 또는 묶음 <이름>"),
+            ]
+        case .notFound(let numbers):
+            let list = numbers.map(String.init).joined(separator: ", ")
+            return [.status(tone: .error, boldPrefix: nil, body: "없는 번호: \(list)")]
+        case .invalidNumber(let input):
+            return [.status(tone: .error, boldPrefix: nil, body: "잘못된 번호: \(input)  예: 고르기 131 140")]
+        case .handedOff(let result):
+            return [.handedOff(TerminalHandoffPresentation(
+                items: result.items.map { TerminalItemRef(number: $0.number, title: $0.title) },
+                charCountText: formatCharCount(result.charCount),
+                missingSummaryCount: result.missingSummaryCount,
+                text: result.text
+            ))]
+        case .handoffFailed(let reason, let preview):
+            return [.handoffFailed(
+                reasonLabel: commandFailureLabel(reason),
+                preview: preview,
+                isClipboardDenied: reason == .clipboardDenied
+            )]
+        case .handoffConfirm(let total):
+            var choices: [TerminalChoiceItem] = []
+            if total > handoffFirstLimit {
+                choices.append(TerminalChoiceItem(command: "앞\(handoffFirstLimit)", label: "앞 \(handoffFirstLimit)건만"))
+            }
+            choices.append(TerminalChoiceItem(command: "전부", label: "\(total)건 전부"))
+            choices.append(TerminalChoiceItem(command: "취소", label: "그 외 입력"))
+            return [.handoffConfirm(total: total, choices: choices)]
+        case .cancelled:
+            return [.status(tone: .info, boldPrefix: nil, body: "취소됨")]
         case .commandFailed(let command, let reason, let retry):
             return [
                 .status(tone: .error, boldPrefix: nil, body: "\(commandLabel(command)) 안 됨: \(commandFailureLabel(reason))"),
-                .plain(text: "→ 다시: \(retry)", dim: false),
+                .commandHint(prefix: "→ 다시: ", command: retry, suffix: ""),
             ]
         case .welcome:
             return [.welcome]
+        case .guide:
+            return [.guide(rows: guideRows)]
+        case .about(let command):
+            return [.status(tone: .info, boldPrefix: "\(commandLabel(command))", body: "  \(aboutDescription(command))")]
         case .reconnected:
             return [.status(tone: .ok, boldPrefix: nil, body: "연결됨")]
-        case .picked, .notFound, .invalidNumber, .handedOff, .handoffFailed, .handoffConfirm, .cancelled, .guide, .about:
-            // 후속 이슈(#62~#67)에서 정책 원문으로 추가한다.
-            return []
         }
     }
 
@@ -251,6 +307,14 @@ public enum TerminalStateMapper {
             : String(format: "%.1fMB", rounded)
     }
 
+    private static func formatCharCount(_ count: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.locale = Locale(identifier: "ko_KR")
+        let formatted = formatter.string(from: NSNumber(value: count)) ?? String(count)
+        return "\(formatted)자"
+    }
+
     private static func commandLabel(_ command: CommandName) -> String {
         switch command {
         case .keep: "담기"
@@ -261,6 +325,19 @@ public enum TerminalStateMapper {
         case .guide: "도움말"
         case .about: "설명"
         case .signOut: "로그아웃"
+        }
+    }
+
+    private static func aboutDescription(_ command: CommandName) -> String {
+        switch command {
+        case .keep: "링크·글 저장  예: 담기 https://…"
+        case .recent: "최근 자료 목록  예: 최근"
+        case .seek: "검색어·#태그 검색  예: 찾기 결제 #sdk"
+        case .pick: "번호로 자료 선택  예: 고르기 131 140"
+        case .handoff: "선택한 자료를 AI 도구용 글로 복사  예: 넘기기"
+        case .guide: "전체 명령 목록  예: 도움말"
+        case .about: "명령 사용법 안내  예: 설명 찾기"
+        case .signOut: "이 기기의 세션 종료  예: 로그아웃"
         }
     }
 
