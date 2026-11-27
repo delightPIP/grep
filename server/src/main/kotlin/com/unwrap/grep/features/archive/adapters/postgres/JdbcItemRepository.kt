@@ -13,12 +13,12 @@ import java.sql.Types
 import java.time.OffsetDateTime
 import java.util.UUID
 
-private const val SUMMARY_COLUMNS = """
+internal const val SUMMARY_COLUMNS = """
 	number, kind, title, source, status, blocked_reason, list_summary, user_summary, partial_note, tags,
 	created_at, deleted_at
 """
 
-private val ITEM_ROW = RowMapper { rs, _ ->
+internal val ITEM_ROW = RowMapper { rs, _ ->
 	@Suppress("UNCHECKED_CAST")
 	val tags = (rs.getArray("tags").array as Array<String>).toList()
 	StoredItem(

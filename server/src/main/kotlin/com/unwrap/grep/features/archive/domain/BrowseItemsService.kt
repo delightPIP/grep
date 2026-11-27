@@ -9,9 +9,9 @@ data class ItemPage(val items: List<StoredItem>, val nextBeforeNumber: Long?)
 /** 번호로 찾은 결과. [items]는 요청 순서, [missing]은 없거나 휴지통에 있는 번호(ARC-001 규칙 10). */
 data class ItemLookup(val items: List<StoredItem>, val missing: List<Long>)
 
-/** 최근 목록과 번호 조회. 휴지통 자료는 빼고(ARC-008), 내 자료만 본다(COM-006). */
+/** 최근 목록, 번호 조회, 찾기. 휴지통 자료는 빼고(ARC-008), 내 자료만 본다(COM-006). */
 @Service
-class BrowseItemsService(private val items: ItemRepository) {
+class BrowseItemsService(private val items: ItemRepository, private val itemSearch: ItemSearch) {
 
 	/** 한 건 더 읽어 다음 쪽이 있는지 안다. */
 	fun recent(userId: UUID, beforeNumber: Long?, limit: Int): ItemPage {
@@ -27,6 +27,17 @@ class BrowseItemsService(private val items: ItemRepository) {
 		return ItemLookup(
 			items = unique.mapNotNull { found[it] },
 			missing = unique.filterNot { it in found },
+		)
+	}
+
+	/** 최근 저장 순(commands 3절). 한 건 더 읽어 다음 쪽이 있는지 안다. */
+	fun search(userId: UUID, query: SearchQuery, beforeNumber: Long?, limit: Int): SearchPage {
+		val rows = itemSearch.find(userId, query, beforeNumber, limit + 1)
+		val page = rows.take(limit)
+		return SearchPage(
+			hits = page,
+			total = itemSearch.count(userId, query),
+			nextBeforeNumber = if (rows.size > limit) page.last().item.number else null,
 		)
 	}
 }
