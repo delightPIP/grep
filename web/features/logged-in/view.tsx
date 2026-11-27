@@ -45,6 +45,11 @@ export type LoggedInViewProps = LoggedInState & {
    */
   onReviseSubmit?: (number: number, title: string, summary: string) => void;
   onReviseCancel?: () => void;
+  /**
+   * 0건 첫 화면의 `→ 샘플 8건으로 해 보기`를 눌렀다(core `samplesRequested`). 누르면 바로 저장한다(ARC-010 규칙 2).
+   * shortcut: 선택 속성. 어댑터가 `handle.samplesRequested`로 이으면(M 갈래) 필수로 바꾼다.
+   */
+  onSamplesRequest?: () => void;
 };
 
 const HELP_HINT = { key: "?", label: "도움말" };
@@ -95,7 +100,8 @@ const PICK_EXAMPLE = "고르기 131 140";
  * 출력 안의 명령 칩·자료 번호가 쓰는 것(commands 6절 출력 원칙).
  * insert: 누르면 그 명령을 입력줄에 찍기만 한다(엔터로 실행). selected: 목록 행 `▸` 표시용 고른 번호.
  */
-type TerminalChips = { insert: (command: string) => void; selected: ReadonlySet<number> };
+/** requestSamples: 화면 칩 `샘플 8건으로 해 보기`. 명령 칩과 달리 입력줄을 거치지 않는다. */
+type TerminalChips = { insert: (command: string) => void; selected: ReadonlySet<number>; requestSamples?: () => void };
 const ChipContext = createContext<TerminalChips>({ insert: () => {}, selected: new Set() });
 
 /** 명령 칩. 누르면 입력줄에 찍힌다. 화면 칩(`더 보기`·`펼치기`)과 달리 바로 실행하지 않는다. */
@@ -533,13 +539,41 @@ function TerminalIntro({ itemCount }: { itemCount: number | null }) {
 }
 
 /** commands 6절 첫 화면(자료 0건). 명령 13줄 표는 보이지 않는다. */
+/** ARC-010 규칙 2: 누르면 바로 저장. 두 번 눌러도 한 번만 저장하는 것(규칙 7)은 코어·서버가 지킨다. */
+function SamplesChip() {
+  const { requestSamples } = useContext(ChipContext);
+  return (
+    <button type="button" className="gt-chip" onClick={requestSamples}>
+      샘플 8건으로 해 보기
+    </button>
+  );
+}
+
+/** ARC-010 규칙 4: 받은 번호 범위와 치우는 법을 한 줄씩, 이어서 `최근`과 같은 목록. */
+function SamplesSavedLines({ firstNumber, lastNumber, items }: { firstNumber: number; lastNumber: number; items: ItemSummary[] }) {
+  const range = `${firstNumber}-${lastNumber}`;
+  return (
+    <>
+      <Line tone="ok">{`샘플 ${lastNumber - firstNumber + 1}건 저장 (${range}번)`}</Line>
+      <Line tone="info">
+        {"치우려면: "}
+        <CommandChip command={`버리기 ${range}`} />
+      </Line>
+      <ListLines items={items} hasMore={false} />
+    </>
+  );
+}
+
 function WelcomeLines() {
   return (
     <>
       <TerminalHead />
       <Line tone="info">자료 0건</Line>
-      {/* shortcut: 샘플 저장(ARC-010)은 서버·명령이 없어 칩 대신 글자로만 둔다. 샘플 저장이 들어오면 칩으로. */}
-      <Plain>→ 샘플 8건으로 해 보기 또는 아래에 링크 붙여 넣기</Plain>
+      <Plain>
+        {"→ "}
+        <SamplesChip />
+        {" 또는 아래에 링크 붙여 넣기"}
+      </Plain>
       <Line tone="info">
         {"명령 전체: "}
         <CommandChip command="도움말" />
@@ -669,6 +703,8 @@ function OutputLine({ line, failed, onMoreRequested }: OutputLineProps) {
     case "binEmptied":
       // ARC-008 사용자 문구.
       return <Line tone="ok">{`비움  ${line.count}건 영구 삭제`}</Line>;
+    case "samplesSaved":
+      return <SamplesSavedLines firstNumber={line.firstNumber} lastNumber={line.lastNumber} items={line.items} />;
     case "revised":
       return <RevisedLines item={line.item} />;
     case "tagsRemoved":
@@ -811,6 +847,7 @@ export function LoggedInView({
   revising,
   onReviseSubmit,
   onReviseCancel,
+  onSamplesRequest,
 }: LoggedInViewProps) {
   const [isDragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -828,6 +865,7 @@ export function LoggedInView({
       inputRef.current?.focus();
     },
     selected: new Set(selection.map((ref) => ref.number)),
+    requestSamples: onSamplesRequest,
   };
 
   function handlePaste(event: ClipboardEvent) {

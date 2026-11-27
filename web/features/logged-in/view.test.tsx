@@ -13,6 +13,7 @@ function renderView(state: Partial<LoggedInState> = {}) {
   const onMoreRequested = vi.fn();
   const onReviseSubmit = vi.fn();
   const onReviseCancel = vi.fn();
+  const onSamplesRequest = vi.fn();
   const { container } = render(
     <LoggedInView
       itemCount={null}
@@ -29,6 +30,7 @@ function renderView(state: Partial<LoggedInState> = {}) {
       onMoreRequested={onMoreRequested}
       onReviseSubmit={onReviseSubmit}
       onReviseCancel={onReviseCancel}
+      onSamplesRequest={onSamplesRequest}
     />,
   );
   return {
@@ -39,6 +41,7 @@ function renderView(state: Partial<LoggedInState> = {}) {
     onMoreRequested,
     onReviseSubmit,
     onReviseCancel,
+    onSamplesRequest,
     container,
     input: screen.getByRole("textbox", { name: "명령 입력" }) as HTMLInputElement,
   };
@@ -1562,6 +1565,47 @@ describe("LoggedInView", () => {
 
       // then
       expect(shown[1]).toBe("✓ 태그 지움 #할인 (25번)");
+    });
+  });
+
+  describe("샘플 8건(#102, ARC-010)", () => {
+    it("첫화면일때_샘플칩을누르면_입력줄을거치지않고바로샘플을요청하는지", () => {
+      // given
+      const { onSamplesRequest, onInputChange } = renderView({ lines: [{ kind: "welcome" }] });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "샘플 8건으로 해 보기" }));
+
+      // then
+      expect(onSamplesRequest).toHaveBeenCalledTimes(1);
+      expect(onInputChange).not.toHaveBeenCalled();
+    });
+
+    it("샘플을받았을때_화면을그리면_받은범위와치우는명령과목록을보이는지", () => {
+      // given
+      const items = [item({ number: 15, title: "샘플 둘", source: null }), item({ number: 8, title: "샘플 하나", source: null })];
+      const lines: LoggedInState["lines"] = [{ kind: "samplesSaved", firstNumber: 8, lastNumber: 15, items }];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown.slice(0, 2)).toEqual(["✓ 샘플 8건 저장 (8-15번)", "· 치우려면: 버리기 8-15"]);
+      expect(shown[2]).toMatch(/^15 샘플 둘 /);
+    });
+
+    it("샘플을받았을때_치우는명령칩을누르면_입력줄에버리기범위를찍기만하는지", () => {
+      // given
+      const { onInputChange, onSubmit } = renderView({
+        lines: [{ kind: "samplesSaved", firstNumber: 1, lastNumber: 8, items: [] }],
+      });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "버리기 1-8" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("버리기 1-8");
+      expect(onSubmit).not.toHaveBeenCalled();
     });
   });
 });
