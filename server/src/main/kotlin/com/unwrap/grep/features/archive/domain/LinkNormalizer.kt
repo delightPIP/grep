@@ -1,5 +1,6 @@
 package com.unwrap.grep.features.archive.domain
 
+import com.unwrap.grep.shared.kernel.IdnUrls
 import java.net.URI
 import java.net.URISyntaxException
 
@@ -9,7 +10,7 @@ data class NormalizedLink(val value: String, val host: String)
 /**
  * COM-001 값 표대로 링크 주소를 정규화한다. http·https가 아니거나 호스트가 없으면 null(클라이언트가 글로 보낸다).
  * 값 표에 없는 부분(포트, 경로 대소문자, 퍼센트 인코딩)은 건드리지 않는다. 사용자 정보(`user@`)는 버린다.
- * shortcut: java.net.URI는 한글 도메인(IDN) 호스트를 읽지 못해 null을 준다. 한글 도메인 링크가 실제로 들어오면 IDN 변환을 붙인다.
+ * 한글 도메인은 정규화 주소에서 퍼니코드(`xn--`)로 맞춰, 한글로 붙이든 퍼니코드로 붙이든 같은 링크로 본다. 출처 호스트는 한글로 보인다.
  */
 object LinkNormalizer {
 	private val TRACKING_PARAMS = setOf("fbclid", "gclid", "igsh", "si", "ref_src")
@@ -18,7 +19,7 @@ object LinkNormalizer {
 
 	fun normalize(raw: String): NormalizedLink? {
 		val uri = try {
-			URI(raw.trim())
+			URI(IdnUrls.toAsciiHost(raw.trim()))
 		} catch (_: URISyntaxException) {
 			return null
 		}
@@ -51,7 +52,7 @@ object LinkNormalizer {
 			if (query.isNotEmpty()) append('?').append(query)
 			if (fragment != null) append('#').append(fragment)
 		}
-		return NormalizedLink(value, host)
+		return NormalizedLink(value, IdnUrls.toUnicodeHost(host))
 	}
 
 	/**

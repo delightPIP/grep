@@ -26,6 +26,7 @@ class HttpLinkFetcherTest {
 			when (host) {
 				"localhost" -> listOf(loopback)
 				"internal.test" -> listOf(privateAddress)
+				"xn--bj0bj06e.test" -> listOf(loopback)
 				"rebind.test" -> listOf(if (rebindLookups.getAndIncrement() == 0) loopback else privateAddress)
 				else -> InetAddress.getAllByName(host).toList()
 			}
@@ -133,5 +134,17 @@ class HttpLinkFetcherTest {
 		result as FetchResult.Fetched
 		assertEquals("<title>안녕</title><p>본문</p>", String(result.bytes, Charsets.UTF_8))
 		assertEquals(1, rebindLookups.get())
+	}
+
+	@Test
+	fun `한글도메인링크일때_가져오면_퍼니코드로풀어서가져오는지`() {
+		// given
+		val target = "http://한글.test:${server.address.port}/page"
+
+		// when
+		val result = fetcher.fetch(target)
+
+		// then
+		assertTrue(result is FetchResult.Fetched, result.toString())
 	}
 }

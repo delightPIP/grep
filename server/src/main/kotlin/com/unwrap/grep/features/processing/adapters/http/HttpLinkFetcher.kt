@@ -3,6 +3,7 @@ package com.unwrap.grep.features.processing.adapters.http
 import com.unwrap.grep.features.processing.domain.AddressGuard
 import com.unwrap.grep.features.processing.domain.FetchResult
 import com.unwrap.grep.features.processing.domain.LinkFetcher
+import com.unwrap.grep.shared.kernel.IdnUrls
 import org.apache.hc.client5.http.DnsResolver
 import org.apache.hc.client5.http.classic.methods.HttpGet
 import org.apache.hc.client5.http.config.ConnectionConfig
@@ -17,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
 import java.io.IOException
 import java.io.InterruptedIOException
+import java.net.IDN
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.URI
@@ -119,16 +121,21 @@ class HttpLinkFetcher internal constructor(
 		return Checked.Allowed(addresses)
 	}
 
-	/** 검사한 주소만 돌려준다. 검사하지 않은 이름은 풀지 않는다. */
+	/**
+	 * 검사한 주소만 돌려준다. 검사하지 않은 이름은 풀지 않는다.
+	 * HttpClient가 퍼니코드 호스트를 한글로 되돌려 물을 수 있어 열쇠는 퍼니코드 소문자로 맞춘다.
+	 */
 	private class PinnedDns : DnsResolver {
 		private val addresses = mutableMapOf<String, Array<InetAddress>>()
 
 		fun pin(host: String, checked: List<InetAddress>) {
-			addresses[host.lowercase()] = checked.toTypedArray()
+			addresses[key(host)] = checked.toTypedArray()
 		}
 
 		override fun resolve(host: String): Array<InetAddress> =
-			addresses[host.lowercase()]?.clone() ?: throw UnknownHostException("not checked: $host")
+			addresses[key(host)]?.clone() ?: throw UnknownHostException("not checked: $host")
+
+		private fun key(host: String): String = IDN.toASCII(host).lowercase()
 
 		override fun resolve(host: String, port: Int): List<InetSocketAddress> =
 			resolve(host).map { InetSocketAddress(it, port) }
@@ -162,14 +169,15 @@ class HttpLinkFetcher internal constructor(
 		setHeader("Accept", "text/html,application/xhtml+xml,text/plain;q=0.9,application/pdf;q=0.8,*/*;q=0.1")
 	}
 
+	/** 한글 도메인은 퍼니코드 호스트로 바꿔 읽는다. 리디렉션 Location도 같다. */
 	private fun parse(url: String): URI? = try {
-		URI(url.trim())
+		URI(IdnUrls.toAsciiHost(url.trim()))
 	} catch (e: URISyntaxException) {
 		null
 	}
 
 	private fun resolveRedirect(base: URI, location: String): URI? = try {
-		base.resolve(URI(location.trim()))
+		base.resolve(URI(IdnUrls.toAsciiHost(location.trim())))
 	} catch (e: URISyntaxException) {
 		null
 	} catch (e: IllegalArgumentException) {
