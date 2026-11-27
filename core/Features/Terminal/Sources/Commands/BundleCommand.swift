@@ -50,7 +50,7 @@ enum BundleCommand {
         case .numbers(let numbers): return .remove(name: name, numbers: numbers)
         case .invalidNumber(let token): return .invalidNumber(token)
         case .missingArgument: return .missingNumbers
-        case .unpick, .clear: return .invalidNumber(numberTokens.first ?? "")
+        case .unpick, .clear, .missingUnpickNumbers: return .invalidNumber(numberTokens.first ?? "")
         }
     }
 

@@ -217,7 +217,7 @@ private struct StoredLine: Codable {
         case bundleList, bundleAdded, bundleView, bundleNotFound, bundleUnpicked, notInBundle
         case bundleDeleteConfirm, bundleDeleted, bundleNameInvalid, itemDetail, oneNumberOnly
         case searchSaved, savedSearchList, savedSearchPeriod, savedSearchTooLong, savedSearchDeleteConfirm
-        case savedSearchDeleted, savedSearchNotFound, importPrompt, importProgress, importFinished
+        case savedSearchDeleted, savedSearchNotFound, importPrompt, importProgress, importFinished, folderHint
         case connectionList, disconnectConfirm, disconnected, connectionNotFound, connectionEnded
     }
 
@@ -263,9 +263,10 @@ private struct StoredLine: Codable {
             kind = .unknownCommand
             text = name
             self.suggestion = suggestion
-        case .missingArgument(let command):
+        case .missingArgument(let command, let sub):
             kind = .missingArgument
             self.command = command.storedName
+            reason = sub?.rawValue
         case .missingTag: kind = .missingTag
         case .saved(let item):
             kind = .saved
@@ -435,8 +436,7 @@ private struct StoredLine: Codable {
         case .savedSearchNotFound(let query):
             kind = .savedSearchNotFound
             text = query
-        case .folderHint:
-            return nil
+        case .folderHint: kind = .folderHint
         case .connectionList(let mcpUrl, let connections):
             kind = .connectionList
             text = mcpUrl
@@ -475,7 +475,8 @@ private struct StoredLine: Codable {
         switch kind {
         case .prompt: return text.map { .prompt($0) }
         case .unknownCommand: return text.map { .unknownCommand($0, suggestion: suggestion) }
-        case .missingArgument: return commandName.map { .missingArgument($0) }
+        case .missingArgument:
+            return commandName.map { .missingArgument($0, sub: reason.flatMap(MissingArgumentSub.init(rawValue:))) }
         case .missingTag: return .missingTag
         case .saved: return items?.first.map { .saved($0) }
         case .alreadySaved: return items?.first.map { .alreadySaved($0) }
@@ -574,6 +575,7 @@ private struct StoredLine: Codable {
         case .savedSearchDeleted: return text.map { .savedSearchDeleted(query: $0) }
         case .savedSearchNotFound: return text.map { .savedSearchNotFound(query: $0) }
         case .importPrompt: return .importPrompt
+        case .folderHint: return .folderHint
         case .connectionList:
             guard let text, let connections else { return nil }
             return .connectionList(mcpUrl: text, connections: connections)

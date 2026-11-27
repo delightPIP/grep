@@ -10,7 +10,8 @@ public struct TerminalViewState: Equatable, Sendable {
         /// `✗ 없는 명령: <name>` (#118 오타 제안이 있으면 `suggestion`에 고친 입력 전체)
         case unknownCommand(String, suggestion: String? = nil)
         /// 빠진 인자(`✗ 검색어 없음  예: …` 등). 문구는 명령마다 뷰가 정책 원문으로 고른다.
-        case missingArgument(CommandName)
+        /// `sub`는 하위 명령(`고르기 빼기`면 `.unpick`, 예시 `예: 고르기 빼기 131`, #154).
+        case missingArgument(CommandName, sub: MissingArgumentSub? = nil)
         /// `찾기 #`처럼 `#` 뒤가 비었다. `✗ 태그 없음  예: 찾기 #결제`(ARC-002).
         case missingTag
         /// `✓ 저장됨  <제목> (<출처>)` 뒤에 `· 요약 생성 중`(ARC-005). 글이면 `✓ 저장됨 (글)  <제목>`.

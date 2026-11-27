@@ -10,7 +10,7 @@ extension TerminalInteractor {
         switch PickCommand.parse(argument) {
         case .numbers(let numbers) where numbers.count == 1:
             openDetail(numbers[0], typed: typed)
-        case .numbers, .unpick, .clear:
+        case .numbers, .unpick, .clear, .missingUnpickNumbers:
             update(viewState.appending(lines: [.prompt(typed), .oneNumberOnly(.peek)]).with(input: ""))
         case .missingArgument:
             update(viewState.appending(lines: [.prompt(typed), .missingArgument(.peek)]).with(input: ""))

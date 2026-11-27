@@ -29,7 +29,7 @@ extension TerminalInteractor {
         switch PickCommand.parse(tokens.dropFirst().joined(separator: " ")) {
         case .numbers(let numbers) where numbers.count == 1:
             askDisconnect(numbers[0], typed: typed)
-        case .numbers, .unpick, .clear:
+        case .numbers, .unpick, .clear, .missingUnpickNumbers:
             update(viewState.appending(lines: [.prompt(typed), .oneNumberOnly(.plug)]).with(input: ""))
         case .missingArgument:
             update(viewState.appending(lines: [.prompt(typed), .missingArgument(.plug)]).with(input: ""))

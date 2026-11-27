@@ -131,7 +131,7 @@ private struct LineDTO: Encodable {
             self.kind = "unknownCommand"
             self.text = name
             self.suggestion = suggestion
-        case .missingArgument(let cmd):
+        case .missingArgument(let cmd, _):
             self.kind = "missingArgument"
             self.command = Self.encodeCommand(cmd)
         case .missingTag:

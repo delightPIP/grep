@@ -84,6 +84,12 @@ public struct ConnectionEntry: Equatable, Sendable, Codable {
     }
 }
 
+/// 빠진 인자 줄의 하위 명령(계약 2, #154). 값은 view-state.ts와 같다.
+public enum MissingArgumentSub: String, Equatable, Sendable, Codable {
+    /// `고르기 빼기`
+    case unpick
+}
+
 /// `✗ 묶음 이름: …` 이유(ARC-003).
 public enum BundleNameProblem: String, Equatable, Sendable, Codable {
     /// `✗ 묶음 이름: 띄어쓰기 없이 1~20자 …`

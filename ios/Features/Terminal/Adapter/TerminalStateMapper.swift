@@ -156,7 +156,7 @@ public enum TerminalStateMapper {
             return [.prompt(command: text, failed: failed)]
         case .unknownCommand(let name, _):
             return [.status(tone: .error, boldPrefix: "없는 명령:", body: " \(name)")]
-        case .missingArgument(let command):
+        case .missingArgument(let command, _):
             switch command {
             case .keep:
                 return [.status(tone: .error, boldPrefix: nil, body: "저장할 것 없음  예: 담기 https://…")]

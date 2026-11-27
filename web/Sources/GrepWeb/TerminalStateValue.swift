@@ -36,7 +36,8 @@ extension TerminalViewState.Line {
         case .prompt(let text): line("prompt", ["text": text])
         case .unknownCommand(let name, let suggestion):
             line("unknownCommand", ["name": name, "suggestion": suggestion])
-        case .missingArgument(let command): line("missingArgument", ["command": command.bridgeName])
+        case .missingArgument(let command, let sub):
+            line("missingArgument", ["command": command.bridgeName, "sub": sub?.rawValue])
         case .missingTag: line("missingTag")
         case .saved(let item): line("saved", ["item": item.bridgeValue])
         case .alreadySaved(let item): line("alreadySaved", ["item": item.bridgeValue])

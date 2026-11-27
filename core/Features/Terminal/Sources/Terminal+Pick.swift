@@ -8,6 +8,8 @@ extension TerminalInteractor {
         switch parsed {
         case .missingArgument:
             update(viewState.appending(lines: [.prompt(typed), .missingArgument(.pick)]).with(input: ""))
+        case .missingUnpickNumbers:
+            update(viewState.appending(lines: [.prompt(typed), .missingArgument(.pick, sub: .unpick)]).with(input: ""))
         case .invalidNumber(let input):
             update(viewState.appending(lines: [.prompt(typed), .invalidNumber(input)]).with(input: ""))
         case .numbers(let numbers):

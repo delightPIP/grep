@@ -250,6 +250,10 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             }
         }
         cancelPendingConfirmations()
+        if FolderHint.matches(text) {
+            update(viewState.appending(lines: [.prompt(text), .folderHint]).with(input: ""))
+            return
+        }
         guard let command = InputCommand(text) else { return }
         switch command.name {
         case .signOut where command.argument.isEmpty:
