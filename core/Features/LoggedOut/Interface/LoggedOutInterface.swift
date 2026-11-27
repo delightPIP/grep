@@ -13,6 +13,8 @@ public struct LoggedOutViewState: Equatable, Sendable {
         case expired
         /// `✓ 로그아웃됨`
         case signedOut
+        /// `✓ 모든 기기 로그아웃됨`(ACC-002)
+        case signedOutEverywhere
     }
 
     public var notice: Notice?

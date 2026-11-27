@@ -96,7 +96,7 @@ public enum TerminalStateMapper {
         switch line {
         case .prompt(let text):
             return [.prompt(command: text, failed: failed)]
-        case .unknownCommand(let name):
+        case .unknownCommand(let name, _):
             return [.status(tone: .error, boldPrefix: "없는 명령:", body: " \(name)")]
         case .missingArgument(let command):
             switch command {
@@ -133,20 +133,20 @@ public enum TerminalStateMapper {
                 result.append(.plain(text: "→ 다시: \(command)", dim: false))
             }
             return result
-        case .recentList(let items, let hasMore):
+        case .recentList(let items, let hasMore, _, _):
             return [.list(
                 header: nil,
                 items: items.map { mapRow($0, isPicked: pickedNumbers.contains($0.number)) },
                 hasMore: hasMore
             )]
-        case .searchResult(_, let total, let items, let hasMore):
+        case .searchResult(_, let total, let items, let hasMore, _):
             let header = items.count < total ? "\(total)건 중 \(items.count)건" : "\(total)건"
             return [.list(
                 header: header,
                 items: items.map { mapRow($0, isPicked: pickedNumbers.contains($0.number)) },
                 hasMore: hasMore
             )]
-        case .noResults(let query, let recent):
+        case .noResults(let query, let recent, _):
             var result: [TerminalOutputBlockLine] = [
                 .status(tone: .info, boldPrefix: nil, body: #"0건: "\#(query.text)""#),
             ]
@@ -168,8 +168,10 @@ public enum TerminalStateMapper {
             return [.welcome]
         case .reconnected:
             return [.status(tone: .ok, boldPrefix: nil, body: "연결됨")]
-        case .picked, .notFound, .invalidNumber, .handedOff, .handoffFailed, .handoffConfirm, .cancelled, .guide, .about:
-            // 후속 이슈(#62~#67)에서 정책 원문으로 추가한다.
+        case .picked, .notFound, .invalidNumber, .handedOff, .handoffFailed, .handoffConfirm, .cancelled, .guide, .about,
+             .dropConfirm, .dropped, .revived, .binList, .binEmptyConfirm, .binEmptied,
+             .revised, .tagsRemoved, .samplesSaved, .unpicked, .pickCleared, .signOutEverywhereConfirm:
+            // 후속 이슈에서 정책 원문으로 추가한다.
             return []
         }
     }
@@ -261,6 +263,10 @@ public enum TerminalStateMapper {
         case .guide: "도움말"
         case .about: "설명"
         case .signOut: "로그아웃"
+        case .revise: "고치기"
+        case .drop: "버리기"
+        case .revive: "되살리기"
+        case .bin: "휴지통"
         }
     }
 

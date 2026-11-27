@@ -23,6 +23,7 @@ function toNotice(kind: string | null, failureReason: string | null): LoggedOutN
     case "cancelled":
     case "expired":
     case "signedOut":
+    case "signedOutEverywhere":
       return { kind };
     case "failed":
       return { kind, reason: toFailureReason(failureReason) };

@@ -45,4 +45,16 @@ import JavaScriptKit
     @JS func moreRequested() {
         MainActor.assumeIsolated { send(.moreRequested) }
     }
+
+    @JS func samplesRequested() {
+        MainActor.assumeIsolated { send(.samplesRequested) }
+    }
+
+    @JS func reviseSubmitted(number: Int, title: String, summary: String) {
+        MainActor.assumeIsolated { send(.reviseSubmitted(number: number, title: title, summary: summary)) }
+    }
+
+    @JS func reviseCancelled() {
+        MainActor.assumeIsolated { send(.reviseCancelled) }
+    }
 }

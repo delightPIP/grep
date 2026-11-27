@@ -63,7 +63,7 @@ private struct LoggedOutContent: View {
             return .failed(reason: mapFailureReason(reason))
         case .expired:
             return .expired
-        case .signedOut:
+        case .signedOut, .signedOutEverywhere:
             return .signedOut
         }
     }

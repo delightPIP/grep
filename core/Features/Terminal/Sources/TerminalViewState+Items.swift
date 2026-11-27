@@ -24,10 +24,12 @@ extension TerminalViewState {
         guard lines.indices.contains(index) else { return self }
         var next = self
         switch lines[index] {
-        case .recentList(let items, _):
-            next.lines[index] = .recentList(items: items + added, hasMore: hasMore)
-        case .searchResult(let query, let total, let items, _):
-            next.lines[index] = .searchResult(query: query, total: total, items: items + added, hasMore: hasMore)
+        case .recentList(let items, _, let total, let period):
+            next.lines[index] = .recentList(items: items + added, hasMore: hasMore, total: total, period: period)
+        case .searchResult(let query, let total, let items, _, let period):
+            next.lines[index] = .searchResult(
+                query: query, total: total, items: items + added, hasMore: hasMore, period: period
+            )
         default:
             return self
         }
@@ -43,9 +45,9 @@ extension TerminalViewState {
 extension TerminalViewState.Line {
     fileprivate var items: [ItemSummary] {
         switch self {
-        case .saved(let item), .alreadySaved(let item): [item]
-        case .recentList(let items, _), .searchResult(_, _, let items, _): items
-        case .noResults(_, let recent): recent
+        case .saved(let item), .alreadySaved(let item), .revised(let item), .tagsRemoved(let item, _): [item]
+        case .recentList(let items, _, _, _), .searchResult(_, _, let items, _, _), .samplesSaved(_, _, let items): items
+        case .noResults(_, let recent, _): recent
         default: []
         }
     }
@@ -54,10 +56,15 @@ extension TerminalViewState.Line {
         switch self {
         case .saved(let item): .saved(transform(item))
         case .alreadySaved(let item): .alreadySaved(transform(item))
-        case .recentList(let items, let hasMore): .recentList(items: items.map(transform), hasMore: hasMore)
-        case .searchResult(let query, let total, let items, let hasMore):
-            .searchResult(query: query, total: total, items: items.map(transform), hasMore: hasMore)
-        case .noResults(let query, let recent): .noResults(query: query, recent: recent.map(transform))
+        case .recentList(let items, let hasMore, let total, let period):
+            .recentList(items: items.map(transform), hasMore: hasMore, total: total, period: period)
+        case .searchResult(let query, let total, let items, let hasMore, let period):
+            .searchResult(query: query, total: total, items: items.map(transform), hasMore: hasMore, period: period)
+        case .noResults(let query, let recent, let period): .noResults(query: query, recent: recent.map(transform), period: period)
+        case .revised(let item): .revised(transform(item))
+        case .tagsRemoved(let item, let tags): .tagsRemoved(item: transform(item), tags: tags)
+        case .samplesSaved(let first, let last, let items):
+            .samplesSaved(firstNumber: first, lastNumber: last, items: items.map(transform))
         default: self
         }
     }

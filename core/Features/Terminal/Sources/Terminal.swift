@@ -133,6 +133,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
         case .pasted(let text): paste(text)
         case .filesDropped(let dropped): drop(dropped)
         case .moreRequested: loadMore()
+        case .samplesRequested, .reviseSubmitted, .reviseCancelled: break
         }
     }
 

@@ -195,10 +195,13 @@ private struct StoredLine: Codable {
         case prompt, unknownCommand, missingArgument, missingTag, saved, alreadySaved, inTrash, saveFailed
         case recentList, searchResult, noResults, picked, notFound, invalidNumber, handedOff, handoffFailed
         case commandFailed, handoffConfirm, cancelled, welcome, guide, about, reconnected
+        case dropConfirm, dropped, revived, binList, binEmptyConfirm, binEmptied
+        case revised, tagsRemoved, samplesSaved, unpicked, pickCleared, signOutEverywhereConfirm
     }
 
     let kind: Kind
     var text: String?
+    var suggestion: String?
     var command: String?
     var reason: String?
     var number: Int?
@@ -207,6 +210,12 @@ private struct StoredLine: Codable {
     var hasMore: Bool?
     var items: [ItemSummary]?
     var refs: [StoredRef]?
+    var trashEntries: [TrashEntry]?
+    var period: Period?
+    var tags: [String]?
+    var firstNumber: Int?
+    var lastNumber: Int?
+    var count: Int?
     var query: StoredQuery?
     var handoff: StoredHandoff?
     var saveFailure: StoredSaveFailure?
@@ -217,9 +226,10 @@ private struct StoredLine: Codable {
         case .prompt(let text):
             kind = .prompt
             self.text = text
-        case .unknownCommand(let name):
+        case .unknownCommand(let name, let suggestion):
             kind = .unknownCommand
             text = name
+            self.suggestion = suggestion
         case .missingArgument(let command):
             kind = .missingArgument
             self.command = command.storedName
@@ -237,20 +247,24 @@ private struct StoredLine: Codable {
             kind = .saveFailed
             saveFailure = StoredSaveFailure(failure)
             self.recovery = StoredRecovery(recovery)
-        case .recentList(let items, let hasMore):
+        case .recentList(let items, let hasMore, let total, let period):
             kind = .recentList
             self.items = items
             self.hasMore = hasMore
-        case .searchResult(let query, let total, let items, let hasMore):
+            self.total = total
+            self.period = period
+        case .searchResult(let query, let total, let items, let hasMore, let period):
             kind = .searchResult
             self.query = StoredQuery(query)
             self.total = total
             self.items = items
             self.hasMore = hasMore
-        case .noResults(let query, let recent):
+            self.period = period
+        case .noResults(let query, let recent, let period):
             kind = .noResults
             self.query = StoredQuery(query)
             items = recent
+            self.period = period
         case .picked(let refs):
             kind = .picked
             self.refs = refs.map(StoredRef.init)
@@ -282,6 +296,47 @@ private struct StoredLine: Codable {
             kind = .about
             self.command = command.storedName
         case .reconnected: kind = .reconnected
+        case .dropConfirm(let total):
+            kind = .dropConfirm
+            self.total = total
+        case .dropped(let refs):
+            kind = .dropped
+            self.refs = refs.map(StoredRef.init)
+        case .revived(let refs):
+            kind = .revived
+            self.refs = refs.map(StoredRef.init)
+        case .binList(let total, let entries, let hasMore):
+            kind = .binList
+            self.total = total
+            self.trashEntries = entries
+            self.hasMore = hasMore
+        case .binEmptyConfirm(let total):
+            kind = .binEmptyConfirm
+            self.total = total
+        case .binEmptied(let count):
+            kind = .binEmptied
+            self.count = count
+        case .revised(let item):
+            kind = .revised
+            self.items = [item]
+        case .tagsRemoved(let item, let tags):
+            kind = .tagsRemoved
+            self.items = [item]
+            self.tags = tags
+        case .samplesSaved(let firstNumber, let lastNumber, let items):
+            kind = .samplesSaved
+            self.firstNumber = firstNumber
+            self.lastNumber = lastNumber
+            self.items = items
+        case .unpicked(let refs, let remaining):
+            kind = .unpicked
+            self.refs = refs.map(StoredRef.init)
+            self.count = remaining
+        case .pickCleared(let count):
+            kind = .pickCleared
+            self.count = count
+        case .signOutEverywhereConfirm:
+            kind = .signOutEverywhereConfirm
         }
     }
 
@@ -291,7 +346,7 @@ private struct StoredLine: Codable {
         let failure = reason.flatMap(CommandFailure.init(storedName:))
         switch kind {
         case .prompt: return text.map { .prompt($0) }
-        case .unknownCommand: return text.map { .unknownCommand($0) }
+        case .unknownCommand: return text.map { .unknownCommand($0, suggestion: suggestion) }
         case .missingArgument: return commandName.map { .missingArgument($0) }
         case .missingTag: return .missingTag
         case .saved: return items?.first.map { .saved($0) }
@@ -302,13 +357,13 @@ private struct StoredLine: Codable {
             return .saveFailed(failure, recovery)
         case .recentList:
             guard let items, let hasMore else { return nil }
-            return .recentList(items: items, hasMore: hasMore)
+            return .recentList(items: items, hasMore: hasMore, total: total, period: period)
         case .searchResult:
             guard let query, let total, let items, let hasMore else { return nil }
-            return .searchResult(query: query.query, total: total, items: items, hasMore: hasMore)
+            return .searchResult(query: query.query, total: total, items: items, hasMore: hasMore, period: period)
         case .noResults:
             guard let query, let items else { return nil }
-            return .noResults(query: query.query, recent: items)
+            return .noResults(query: query.query, recent: items, period: period)
         case .picked: return refs.map { .picked($0.map(\.ref)) }
         case .notFound: return numbers.map { .notFound(numbers: $0) }
         case .invalidNumber: return text.map { .invalidNumber($0) }
@@ -323,6 +378,26 @@ private struct StoredLine: Codable {
         case .guide: return .guide
         case .about: return commandName.map { .about($0) }
         case .reconnected: return .reconnected
+        case .dropConfirm: return total.map { .dropConfirm(total: $0) }
+        case .dropped: return refs.map { .dropped($0.map(\.ref)) }
+        case .revived: return refs.map { .revived($0.map(\.ref)) }
+        case .binList:
+            guard let total, let trashEntries, let hasMore else { return nil }
+            return .binList(total: total, items: trashEntries, hasMore: hasMore)
+        case .binEmptyConfirm: return total.map { .binEmptyConfirm(total: $0) }
+        case .binEmptied: return count.map { .binEmptied(count: $0) }
+        case .revised: return items?.first.map { .revised($0) }
+        case .tagsRemoved:
+            guard let item = items?.first, let tags else { return nil }
+            return .tagsRemoved(item: item, tags: tags)
+        case .samplesSaved:
+            guard let firstNumber, let lastNumber, let items else { return nil }
+            return .samplesSaved(firstNumber: firstNumber, lastNumber: lastNumber, items: items)
+        case .unpicked:
+            guard let refs, let count else { return nil }
+            return .unpicked(items: refs.map(\.ref), remaining: count)
+        case .pickCleared: return count.map { .pickCleared(count: $0) }
+        case .signOutEverywhereConfirm: return .signOutEverywhereConfirm
         }
     }
 }
@@ -338,6 +413,10 @@ extension CommandName {
         case .guide: "guide"
         case .about: "about"
         case .signOut: "signOut"
+        case .revise: "revise"
+        case .drop: "drop"
+        case .revive: "revive"
+        case .bin: "bin"
         }
     }
 
