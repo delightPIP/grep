@@ -1,6 +1,9 @@
 package com.unwrap.grep.features.archive.adapters.postgres
 
 import com.unwrap.grep.features.archive.api.ItemCounter
+import com.unwrap.grep.features.archive.domain.FileFormat
+import com.unwrap.grep.features.archive.domain.HandoffSource
+import com.unwrap.grep.features.archive.domain.HandoffSourceRepository
 import com.unwrap.grep.features.archive.domain.ItemKind
 import com.unwrap.grep.features.archive.domain.ItemRepository
 import com.unwrap.grep.features.archive.domain.ItemStatus
@@ -39,7 +42,7 @@ internal val ITEM_ROW = RowMapper { rs, _ ->
 
 /** items·item_jobs(V2). 모든 쿼리는 user_id로 거른다(COM-006). */
 @Repository
-class JdbcItemRepository(private val jdbc: JdbcClient) : ItemRepository, ItemCounter {
+class JdbcItemRepository(private val jdbc: JdbcClient) : ItemRepository, ItemCounter, HandoffSourceRepository {
 
 	override fun lockOwner(userId: UUID) {
 		jdbc.sql("SELECT id FROM users WHERE id = :userId FOR UPDATE")
@@ -136,4 +139,35 @@ class JdbcItemRepository(private val jdbc: JdbcClient) : ItemRepository, ItemCou
 			.param("numbers", numbers.toLongArray())
 			.query(ITEM_ROW)
 			.list()
+
+	override fun findActiveForHandoff(userId: UUID, numbers: Collection<Long>): List<HandoffSource> =
+		jdbc.sql(
+			"""
+			SELECT number, kind, title, url, file_format, status, blocked_reason, handoff_summary, user_summary,
+			       partial_note, created_at
+			FROM items WHERE user_id = :userId AND deleted_at IS NULL AND number = ANY(:numbers)
+			""".trimIndent(),
+		)
+			.param("userId", userId)
+			.param("numbers", numbers.toLongArray())
+			.query(HANDOFF_ROW)
+			.list()
+
+	private companion object {
+		val HANDOFF_ROW = RowMapper { rs, _ ->
+			HandoffSource(
+				number = rs.getLong("number"),
+				kind = ItemKind.entries.first { it.value == rs.getString("kind") },
+				title = rs.getString("title"),
+				url = rs.getString("url"),
+				fileFormat = rs.getString("file_format")?.let { value -> FileFormat.entries.first { it.value == value } },
+				status = ItemStatus.of(rs.getString("status")),
+				blockedReason = rs.getString("blocked_reason"),
+				handoffSummary = rs.getString("handoff_summary"),
+				userSummary = rs.getString("user_summary"),
+				partialNote = rs.getString("partial_note"),
+				savedAt = rs.getObject("created_at", OffsetDateTime::class.java).toInstant(),
+			)
+		}
+	}
 }
