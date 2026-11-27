@@ -54,6 +54,23 @@ object LinkNormalizer {
 		return NormalizedLink(value, host)
 	}
 
+	/**
+	 * 사람이 열 주소(handoff-format 2절 출처). [normalize]와 달리 추적용 꼬리표만 빼고 나머지는 그대로 둔다.
+	 * 남은 매개변수가 없으면 `?`도 뺀다.
+	 */
+	fun withoutTracking(raw: String): String {
+		val trimmed = raw.trim()
+		val hashAt = trimmed.indexOf('#')
+		val beforeFragment = if (hashAt < 0) trimmed else trimmed.substring(0, hashAt)
+		val fragment = if (hashAt < 0) "" else trimmed.substring(hashAt)
+		val queryAt = beforeFragment.indexOf('?')
+		if (queryAt < 0) return trimmed
+		val kept = beforeFragment.substring(queryAt + 1).split('&')
+			.filter { it.isNotEmpty() && !isTracking(it.substringBefore('=')) }
+		val query = if (kept.isEmpty()) "" else "?" + kept.joinToString("&")
+		return beforeFragment.substring(0, queryAt) + query + fragment
+	}
+
 	private fun isTracking(name: String): Boolean {
 		val lower = name.lowercase()
 		return lower.startsWith(TRACKING_PREFIX) || lower in TRACKING_PARAMS
