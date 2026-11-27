@@ -108,4 +108,92 @@ struct TerminalHandoffTests {
         #expect(fixture.listener.expiredInputs == ["넘기기"])
         #expect(fixture.fakeClipboard.copied.isEmpty)
     }
+
+    // MARK: 넘기기 실패(#65)
+
+    @Test(arguments: [
+        (HTTPTransportError.unreachable, CommandFailure.disconnected),
+        (.timedOut, .timedOut),
+    ])
+    func 넘길글을기다릴때_서버에닿지못하면_실패줄을찍고선택을남기는지(
+        error: HTTPTransportError, reason: CommandFailure
+    ) async {
+        // given
+        await fixture.attach()
+        await fixture.pick([30, 25])
+        await fixture.submit("넘기기")
+
+        // when
+        await fixture.fail(error)
+
+        // then
+        #expect(fixture.state.lines.suffix(2) == [.prompt("넘기기"), .handoffFailed(reason: reason, preview: nil)])
+        #expect(fixture.state.selection == [Fixture.ref(30), Fixture.ref(25)])
+        #expect(fixture.state.input == "")
+        #expect(fixture.fakeClipboard.copied.isEmpty)
+    }
+
+    @Test(arguments: [(500, #"{"code":"internal"}"#), (400, #"{"code":"invalid_request"}"#), (200, "{}"), (404, "{}")])
+    func 넘길글을기다릴때_서버가오류나모르는글로답하면_서버오류로찍고복사하지않는지(status: Int, json: String) async {
+        // given
+        await fixture.attach()
+        await fixture.pick([25])
+        await fixture.submit("넘기기")
+
+        // when
+        await fixture.respond(status: status, json: json)
+
+        // then
+        #expect(fixture.state.lines.last == .handoffFailed(reason: .serverError, preview: nil))
+        #expect(fixture.state.selection == [Fixture.ref(25)])
+        #expect(fixture.fakeClipboard.copied.isEmpty)
+    }
+
+    @Test func 클립보드가막혀있을때_넘길글이오면_거부줄에글전체를실어직접복사하게하는지() async {
+        // given
+        await fixture.attach()
+        await fixture.pick([30, 25])
+        fixture.fakeClipboard.result = .denied
+        await fixture.submit("넘기기")
+        let result = Fixture.handoff([30, 25])
+
+        // when
+        await fixture.respond(json: Fixture.handoffJSON(result))
+
+        // then
+        #expect(fixture.state.lines.last == .handoffFailed(reason: .clipboardDenied, preview: result.text))
+        #expect(fixture.state.selection == [Fixture.ref(30), Fixture.ref(25)])
+    }
+
+    @Test func 넘기기가실패한뒤일때_넘기기를다시치면_같은선택으로다시요청해복사하는지() async {
+        // given
+        await fixture.attach()
+        await fixture.pick([30, 25])
+        await fixture.submit("넘기기")
+        await fixture.fail(.unreachable)
+        let result = Fixture.handoff([30, 25])
+
+        // when
+        await fixture.submit("넘기기")
+        await fixture.respond(json: Fixture.handoffJSON(result))
+
+        // then
+        #expect(fixture.transport.requests.last == Fixture.handoffRequest([30, 25]))
+        #expect(fixture.fakeClipboard.copied == [result.text])
+        #expect(fixture.state.lines.last == .handedOff(result))
+    }
+
+    @Test func 고른자료가그새지워졌을때_넘기기를치면_없는번호줄을찍고복사하지않는지() async {
+        // given
+        await fixture.attach()
+        await fixture.pick([30, 25])
+        await fixture.submit("넘기기")
+
+        // when
+        await fixture.respond(status: 404, json: #"{"code":"not_found","numbers":[25]}"#)
+
+        // then
+        #expect(fixture.state.lines.last == .notFound(numbers: [25]))
+        #expect(fixture.fakeClipboard.copied.isEmpty)
+    }
 }
