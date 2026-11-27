@@ -8,7 +8,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * POST /samples(saveSamples). 테스트 샘플은 src/test/resources/samples(링크 5·글 2·파일 1).
+ * POST /samples(saveSamples). 실제 샘플 db/seed/samples/samples.json(데모 시드 S04·S11·S26·S23·S25·S28·S30 + 사용법 G1)을 쓴다.
  * 근거: ARC-010 규칙 2·3·5·7, ARC-001 규칙 6, COM-005.
  */
 class SamplesApiTest : ArchiveApiTestSupport() {
@@ -43,12 +43,14 @@ class SamplesApiTest : ArchiveApiTestSupport() {
 		}
 		listItems(token).andExpect {
 			jsonPath("$.items[*].number") { value(contains(8, 7, 6, 5, 4, 3, 2, 1)) }
-			jsonPath("$.items[7].title") { value("테스트 샘플 링크 1") }
+			jsonPath("$.items[7].title") { value("솔밭커피 브랜드 말투 가이드.docx") }
 			jsonPath("$.items[0].title") { value("그렙 사용법") }
 			jsonPath("$.items[0].status") { value("ready") }
 		}
 		assertEquals(0, jobCount(token))
-		assertTrue(storage.exists(objectPaths(token).single()))
+		val paths = objectPaths(token)
+		assertEquals(5, paths.size)
+		assertTrue(paths.all(storage::exists))
 	}
 
 	@Test
@@ -89,9 +91,9 @@ class SamplesApiTest : ArchiveApiTestSupport() {
 
 	@Test
 	fun `하나라도실패하면_아무것도저장하지않는지`() {
-		// given: 다섯째 샘플과 같은 링크가 휴지통에 있으면 같은 자료 판정 색인에 걸려 그 행을 넣지 못한다
+		// given: 일곱째 샘플(S30)과 같은 링크가 휴지통에 있으면 같은 자료 판정 색인에 걸려 그 행을 넣지 못한다
 		val token = newUser()
-		saveLink(token, "https://sample.test/item/4").andExpect { status { isCreated() } }
+		saveLink(token, "https://carti1108.github.io/grep-seed-demo/s30.html").andExpect { status { isCreated() } }
 		moveToTrash(token, 1)
 		val pathsBefore = storage.paths()
 

@@ -10,11 +10,12 @@ import org.springframework.transaction.support.TransactionTemplate
 import java.time.Clock
 import java.util.UUID
 
-/** 샘플 내용. [entries]는 저장 순서, [read]는 seed.json 기준 상대 경로의 바이트를 준다. */
-class SampleSet(val entries: List<SeedEntry>, val read: (String) -> ByteArray)
+/** 샘플 한 건. [read]는 그 항목의 파일 경로(textFile·file)를 바이트로 준다. */
+class Sample(val entry: SeedEntry, val read: (String) -> ByteArray)
 
 fun interface SampleCatalog {
-	fun load(): SampleSet
+	/** 저장 순서대로. */
+	fun load(): List<Sample>
 }
 
 interface SampleRangeRepository {
@@ -51,9 +52,10 @@ class SampleService(
 		transaction.execute { ranges.lockReceivedRange(userId) }?.let { return SampleOutcome.AlreadyReceived(it) }
 
 		val samples = catalog.load()
-		check(samples.entries.size == SAMPLE_COUNT) { "samples must be $SAMPLE_COUNT, got ${samples.entries.size}" }
+		check(samples.size == SAMPLE_COUNT) { "samples must be $SAMPLE_COUNT, got ${samples.size}" }
+		// 저장 시각은 누른 시각이다(seed.json의 savedDaysAgo는 쓰지 않는다).
 		val savedAt = clock.instant()
-		val prepared = samples.entries.map { PremadeItems.prepare(userId, it, savedAt, samples.read) }
+		val prepared = samples.map { PremadeItems.prepare(userId, it.entry, savedAt, it.read) }
 		val uploads = prepared.mapNotNull { it.upload }
 		PremadeItems.putAll(storage, uploads)
 		val outcome = try {

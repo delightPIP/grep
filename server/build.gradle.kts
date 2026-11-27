@@ -66,9 +66,10 @@ tasks.processResources {
 	from("../db/migrations") {
 		into("db/migration")
 	}
-	// #102 샘플 8건(ARC-010). 원본은 db/seed/samples(seed.json과 본문·파일). POST /samples가 jar 안에서 읽는다.
-	from("../db/seed/samples") {
-		into("samples")
+	// #102 샘플 8건(ARC-010). db/seed/samples/samples.json이 db/seed/demo의 자료를 가리키므로 둘 다 넣는다(835KB). POST /samples가 jar 안에서 읽는다.
+	from("../db/seed") {
+		include("samples/**", "demo/**")
+		into("seed")
 	}
 }
 
