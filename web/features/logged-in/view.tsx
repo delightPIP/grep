@@ -419,11 +419,33 @@ function HandedOffLines({ result }: { result: HandoffResult }) {
   );
 }
 
+/** 터미널 출력 맨 위의 두더지 머리. 로그인 화면과 같은 한 문장·표어다. */
+function TerminalHead() {
+  return <Banner lead="저장해 둔 링크·캡처·PDF를 찾아 AI 도구에 붙여 넣을 글로 복사" tagline="담기 → 찾기 → 넘기기" />;
+}
+
+/**
+ * 자료가 있는 계정의 터미널 맨 위(시안 web-07). 머리 아래에 `· 자료 N건`과 `· 명령 전체: 도움말`을 둔다.
+ * 건수는 지금 값이다. 받기 전이면 건수 줄을 뺀다.
+ */
+function TerminalIntro({ itemCount }: { itemCount: number | null }) {
+  return (
+    <div className="gt-head">
+      <TerminalHead />
+      {itemCount !== null && <Line tone="info">자료 {itemCount.toLocaleString("ko-KR")}건</Line>}
+      <Line tone="info">
+        {"명령 전체: "}
+        <CommandChip command="도움말" />
+      </Line>
+    </div>
+  );
+}
+
 /** commands 6절 첫 화면(자료 0건). 명령 13줄 표는 보이지 않는다. */
 function WelcomeLines() {
   return (
     <>
-      <Banner lead="저장해 둔 링크·캡처·PDF를 찾아 AI 도구에 붙여 넣을 글로 복사" tagline="담기 → 찾기 → 넘기기" />
+      <TerminalHead />
       <Line tone="info">자료 0건</Line>
       {/* shortcut: 샘플 저장(ARC-010)은 서버·명령이 없어 칩 대신 글자로만 둔다. 샘플 저장이 들어오면 칩으로. */}
       <Plain>→ 샘플 8건으로 해 보기 또는 아래에 링크 붙여 넣기</Plain>
@@ -648,6 +670,8 @@ export function LoggedInView({
         status={<StatusBar items={statusItems(itemCount, selection.length, processingCount, isOffline)} hint={HELP_HINT} />}
       >
         <ChipContext.Provider value={chips}>
+          {/* 첫 화면 줄은 머리를 스스로 그린다. 그 줄이 없으면(자료가 있는 계정) 출력 맨 위에 머리와 자료 건수를 둔다. 출력과 함께 말려 올라간다. */}
+          {lines[0]?.kind !== "welcome" && <TerminalIntro itemCount={itemCount} />}
           {toBlocks(lines).map((block, index) => (
             <Block key={index} lines={block} onMoreRequested={onMoreRequested} />
           ))}

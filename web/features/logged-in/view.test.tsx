@@ -43,8 +43,16 @@ function shownLine(element: Element): string {
   return Array.from(element.children, (child) => child.textContent).join(" ");
 }
 
+/** 명령 출력 줄. 터미널 머리(두더지와 그 아래 안내)는 명령의 출력이 아니라 뺀다. */
 function outputLines(container: HTMLElement): Element[] {
-  return Array.from(container.querySelectorAll("[role=log] .gt-prompt, [role=log] .gt-line"));
+  return Array.from(container.querySelectorAll("[role=log] .gt-prompt, [role=log] .gt-line")).filter(
+    (line) => line.closest(".gt-head") === null,
+  );
+}
+
+function headLines(state: Partial<LoggedInState>): string[] {
+  const { container } = renderView(state);
+  return Array.from(container.querySelectorAll(".gt-head .gt-line"), shownLine);
 }
 
 function shownOutput(lines: LoggedInState["lines"]): string[] {
@@ -1087,6 +1095,55 @@ describe("LoggedInView", () => {
       const banner = container.querySelector(".gt-banner")!.textContent;
       expect(banner).toContain("저장해 둔 링크·캡처·PDF를 찾아 AI 도구에 붙여 넣을 글로 복사");
       expect(banner).toContain("담기 → 찾기 → 넘기기");
+    });
+
+    it("첫화면줄없이자료가있을때_터미널을그리면_출력맨위에두더지머리를보이는지", () => {
+      // given
+      // when
+      const { container } = renderView({ itemCount: 4, lines: [{ kind: "prompt", text: "최근" }] });
+
+      // then
+      const banners = container.querySelectorAll(".gt-banner");
+      expect(banners).toHaveLength(1);
+      expect(banners[0].textContent).toContain("담기 → 찾기 → 넘기기");
+      expect(container.querySelector(".gt-mascot")).not.toBeNull();
+      expect(container.textContent).not.toContain("자료 0건");
+    });
+
+    it("첫화면줄없이자료가있을때_터미널을그리면_머리아래에자료건수와명령전체안내를보이는지", () => {
+      // given
+      // when
+      const shown = headLines({ itemCount: 1234 });
+
+      // then
+      expect(shown).toEqual(["· 자료 1,234건", "· 명령 전체: 도움말"]);
+    });
+
+    it("자료수를아직받지못했을때_터미널을그리면_건수줄없이명령전체안내만보이는지", () => {
+      // given
+      // when
+      const shown = headLines({ itemCount: null });
+
+      // then
+      expect(shown).toEqual(["· 명령 전체: 도움말"]);
+    });
+
+    it("찍힌줄이없을때_터미널을그리면_두더지머리만보이는지", () => {
+      // given
+      // when
+      const { container } = renderView({ itemCount: 4, lines: [] });
+
+      // then
+      expect(container.querySelectorAll(".gt-banner")).toHaveLength(1);
+    });
+
+    it("첫화면줄이있을때_터미널을그리면_두더지머리를두번그리지않는지", () => {
+      // given
+      // when
+      const { container } = renderView({ itemCount: 0, lines: [{ kind: "welcome" }, { kind: "prompt", text: "도움말" }] });
+
+      // then
+      expect(container.querySelectorAll(".gt-banner")).toHaveLength(1);
     });
 
     it("자료가0건일때_첫화면을그리면_자료0건과샘플안내와명령전체안내를보이고13줄표는없는지", () => {
