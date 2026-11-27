@@ -25,6 +25,7 @@ data class SearchPageResponse(
 	val total: Long,
 	val nextCursor: String?,
 	val isSavedSearch: Boolean,
+	val related: List<ItemSummaryResponse>,
 )
 
 /** openapi `ItemLookup`. */
@@ -73,6 +74,7 @@ class BrowseItemsController(private val browse: BrowseItemsService, private val 
 			total = page.total,
 			nextCursor = page.nextBeforeNumber?.toString(),
 			isSavedSearch = savedSearches.isSaved(userId, words, tags),
+			related = page.related.map { ItemSummaryResponse.of(it) },
 		)
 	}
 

@@ -1,5 +1,6 @@
 package com.unwrap.grep.features.processing.adapters.scheduling
 
+import com.unwrap.grep.features.processing.domain.EmbeddingWorker
 import com.unwrap.grep.features.processing.domain.ProcessingWorker
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Configuration
@@ -13,11 +14,17 @@ import org.springframework.stereotype.Component
  */
 @Component
 @ConditionalOnProperty("grep.processing.enabled", havingValue = "true", matchIfMissing = true)
-class ProcessingScheduler(private val worker: ProcessingWorker) {
+class ProcessingScheduler(private val worker: ProcessingWorker, private val embeddings: EmbeddingWorker) {
 
 	@Scheduled(fixedDelayString = "\${grep.processing.poll-delay:PT2S}")
 	fun poll() {
 		repeat(BATCH) { if (!worker.runOnce()) return }
+	}
+
+	/** 임베딩은 요약 뒤에 따로 돈다(ADR-BCK-016 결정 4). 요약 워커와 같은 스케줄러 스레드에서 한 건씩 차례로 부른다. */
+	@Scheduled(fixedDelayString = "\${grep.processing.embedding-poll-delay:PT5S}")
+	fun embed() {
+		repeat(BATCH) { if (!embeddings.runOnce()) return }
 	}
 
 	private companion object {

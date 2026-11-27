@@ -987,7 +987,7 @@ components:
           description: 다음 쪽이 없으면 null
     SearchPage:
       type: object
-      required: [items, total, nextCursor, isSavedSearch]
+      required: [items, total, nextCursor, isSavedSearch, related]
       properties:
         items:
           type: array
@@ -1002,6 +1002,15 @@ components:
         isSavedSearch:
           type: boolean
           description: 같은 검색어(`q` 낱말 차례와 `tag`, ARC-012 규칙 2 공백 정리)를 찾아뒀으면 true. 시점(`from`·`to`)은 비교하지 않는다. true면 `찾아두기 <검색어>` 칩을 두지 않는다(ARC-012 규칙 9)
+        related:
+          type: array
+          maxItems: 3
+          description: |
+            뜻이 가까운 자료(F15, ADR-BCK-016). `total`이 0일 때만 채우고 그 밖에는 빈 배열이다. 가까운 순 최대 3건.
+            휴지통 자료와 남의 자료는 빼고(COM-006), 기간(`from`·`to`)이 있으면 그 안에서만 찾는다. 임베딩이 아직 없는 자료는 빠진다.
+            검색어 임베딩을 받지 못하면 빈 배열이다
+          items:
+            $ref: "#/components/schemas/ItemSummary"
     ItemLookup:
       type: object
       required: [items, missing]
