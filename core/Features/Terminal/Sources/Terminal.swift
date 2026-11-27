@@ -43,10 +43,11 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     private static let healthInterval: Duration = .seconds(5)
 
     /// `더 보기`가 이어 붙일 목록 줄과 다음 쪽을 받는 값.
-    private struct ListPage: Equatable {
+    struct ListPage: Equatable {
         enum Source: Equatable {
             case recent(limit: Int)
             case search(SearchQuery)
+            case bin
         }
 
         let lineIndex: Int
@@ -59,6 +60,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             switch source {
             case .recent: .recent
             case .search: .seek
+            case .bin: .bin
             }
         }
     }
@@ -79,6 +81,10 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     private var loadingPage: ListPage?
     /// 답을 기다리는 `찾기 … | 넘기기` 확인. 다음 입력 한 번이 답이다(COM-007 규칙 1).
     var pendingHandoff: PendingHandoff?
+    /// 답을 기다리는 `버리기` 2건 이상 확인(ARC-008 규칙 1, COM-007).
+    var pendingDrop: PendingDrop?
+    /// 답을 기다리는 `휴지통 비우기` 확인(ARC-008 규칙 6, COM-007).
+    var pendingBinEmpty: PendingBinEmpty?
     /// 사용자가 넣은 입력(엔터·붙여 넣기·파일 놓기)의 차례. 늦게 온 응답이 그 뒤의 입력을 답으로 삼지 않게 한다.
     private(set) var inputSequence = 0
     /// `로그아웃`으로 기록을 지웠다. 늦게 끝난 되살리기가 다시 남기지 않게 한다.
@@ -180,7 +186,17 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             confirmHandoff(pending, choice: choice, typed: text)
             return
         }
-        cancelPendingHandoff()
+        if let pending = pendingDrop, pending.matches(text) {
+            pendingDrop = nil
+            confirmDrop(pending, typed: text)
+            return
+        }
+        if let pending = pendingBinEmpty, pending.matches(text) {
+            pendingBinEmpty = nil
+            confirmBinEmpty(typed: text)
+            return
+        }
+        cancelPendingConfirmations()
         guard let command = InputCommand(text) else { return }
         switch command.name {
         case .signOut where command.argument.isEmpty:
@@ -202,6 +218,8 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             dropItems(command.argument, typed: text)
         case .revive:
             reviveItems(command.argument, typed: text)
+        case .bin:
+            handleBin(command.argument, typed: text)
         case .guide:
             update(viewState.appending(lines: [.prompt(text), .guide]).with(input: ""))
         case .about:
@@ -263,7 +281,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
         let content = text.trimmingWhitespace()
         guard !content.isEmpty else { return }
         inputSequence += 1
-        cancelPendingHandoff()
+        cancelPendingConfirmations()
         keep(KeepCommand.request(for: content), typed: "담기 \(content)")
     }
 
@@ -273,7 +291,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     private func drop(_ dropped: [DroppedFile]) {
         guard !dropped.isEmpty else { return }
         inputSequence += 1
-        cancelPendingHandoff()
+        cancelPendingConfirmations()
         update(viewState.appending(lines: [.prompt((["담기"] + dropped.map(\.name)).joined(separator: " "))]))
         startTask { [weak self] in
             guard let self else { return }
@@ -393,8 +411,18 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
         }
     }
 
+    func cancelPendingConfirmations() {
+        let hadPending = pendingHandoff != nil || pendingDrop != nil || pendingBinEmpty != nil
+        pendingHandoff = nil
+        pendingDrop = nil
+        pendingBinEmpty = nil
+        if hadPending {
+            update(viewState.appending(lines: [.cancelled]).with(input: ""))
+        }
+    }
+
     /// 목록 줄을 찍는다. `→ 더 보기`는 마지막 목록에만 둔다. 앞 목록의 것은 뺀다.
-    private func showList(_ line: TerminalViewState.Line, nextCursor: String?, source: ListPage.Source, typed: String) {
+    func showList(_ line: TerminalViewState.Line, nextCursor: String?, source: ListPage.Source, typed: String) {
         let closed = listPage.map { viewState.closingList(at: $0.lineIndex) } ?? viewState
         update(closed.appending(lines: [line]))
         listPage = nextCursor.map {
@@ -413,6 +441,28 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             guard !Task.isCancelled else { return }
             guard let token else {
                 expire()
+                return
+            }
+            if case .bin = page.source {
+                let outcome = await TrashAPI.list(
+                    limit: Self.binPageSize, cursor: page.cursor, transport: httpTransport, accessToken: token
+                )
+                guard !Task.isCancelled, listPage == page else { return }
+                switch outcome {
+                case .page(_, let items, let nextCursor):
+                    listPage = nextCursor.map {
+                        ListPage(lineIndex: page.lineIndex, cursor: $0, source: page.source, typed: page.typed)
+                    }
+                    update(viewState.extendingBinList(at: page.lineIndex, with: items, hasMore: nextCursor != nil))
+                case .failed(let reason):
+                    update(viewState.appending(lines: [
+                        .commandFailed(command: .bin, reason: reason, retry: page.typed),
+                    ]))
+                case .sessionExpired:
+                    expire()
+                case .cancelled:
+                    break
+                }
                 return
             }
             let outcome = await nextPage(of: page, accessToken: token)
@@ -453,6 +503,8 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             case .failed(let reason): return .failed(reason)
             case .cancelled: return .cancelled
             }
+        case .bin:
+            return .cancelled
         }
     }
 

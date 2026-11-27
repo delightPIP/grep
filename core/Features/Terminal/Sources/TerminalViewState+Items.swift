@@ -36,9 +36,21 @@ extension TerminalViewState {
         return next
     }
 
+    /// `index`의 휴지통 목록 줄에 다음 쪽을 이어 붙인다.
+    func extendingBinList(at index: Int, with added: [TrashEntry], hasMore: Bool) -> TerminalViewState {
+        guard lines.indices.contains(index),
+              case .binList(let total, let items, _) = lines[index] else { return self }
+        var next = self
+        next.lines[index] = .binList(total: total, items: items + added, hasMore: hasMore)
+        return next
+    }
+
     /// `index`의 목록 줄에서 `→ 더 보기`를 뺀다.
     func closingList(at index: Int) -> TerminalViewState {
-        extendingList(at: index, with: [], hasMore: false)
+        if lines.indices.contains(index), case .binList = lines[index] {
+            return extendingBinList(at: index, with: [], hasMore: false)
+        }
+        return extendingList(at: index, with: [], hasMore: false)
     }
 }
 

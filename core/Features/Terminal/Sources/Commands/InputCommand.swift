@@ -37,6 +37,7 @@ struct InputCommand: Equatable {
         "로그아웃": .signOut, "signout": .signOut,
         "버리기": .drop, "drop": .drop,
         "되살리기": .revive, "revive": .revive,
+        "휴지통": .bin, "bin": .bin,
     ]
 }
 

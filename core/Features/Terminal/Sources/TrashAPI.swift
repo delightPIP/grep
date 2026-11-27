@@ -1,7 +1,12 @@
+#if canImport(FoundationEssentials)
+import FoundationEssentials
+#else
+import Foundation
+#endif
 import FeatureTerminalInterface
 import GrepCore
 
-/// 휴지통 API(api/openapi.yaml `trashItems`·`restoreItems`). 응답 해석까지만 한다.
+/// 휴지통 API(api/openapi.yaml `trashItems`·`restoreItems`·`listTrash`·`emptyTrash`). 응답 해석까지만 한다.
 enum TrashAPI {
     enum MoveOutcome: Equatable {
         case moved([ItemRef])
@@ -11,10 +16,25 @@ enum TrashAPI {
         case cancelled
     }
 
+    enum ListOutcome: Equatable {
+        case page(total: Int, items: [TrashEntry], nextCursor: String?)
+        case sessionExpired
+        case failed(CommandFailure)
+        case cancelled
+    }
+
+    enum EmptyOutcome: Equatable {
+        case emptied(count: Int)
+        case sessionExpired
+        case failed(CommandFailure)
+        case cancelled
+    }
+
     private static let trashPath = "/items/trash"
     private static let restorePath = "/items/restore"
     private static let notFoundStatus = 404
     private static let successStatuses = 200..<300
+    private static let unreservedBytes = Set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~".utf8)
 
     private struct NumbersBody: Encodable {
         let numbers: [Int]
@@ -33,6 +53,16 @@ enum TrashAPI {
         let numbers: [Int]
     }
 
+    private struct TrashPageBody: Decodable {
+        let items: [TrashEntry]
+        let total: Int
+        let nextCursor: String?
+    }
+
+    private struct CountBody: Decodable {
+        let count: Int
+    }
+
     @MainActor
     static func trash(numbers: [Int], transport: any HTTPTransport, accessToken: String) async -> MoveOutcome {
         await move(path: trashPath, numbers: numbers, transport: transport, accessToken: accessToken)
@@ -41,6 +71,62 @@ enum TrashAPI {
     @MainActor
     static func restore(numbers: [Int], transport: any HTTPTransport, accessToken: String) async -> MoveOutcome {
         await move(path: restorePath, numbers: numbers, transport: transport, accessToken: accessToken)
+    }
+
+    @MainActor
+    static func list(
+        limit: Int,
+        cursor: String?,
+        transport: any HTTPTransport,
+        accessToken: String
+    ) async -> ListOutcome {
+        let query = "limit=\(limit)" + (cursor.map { "&cursor=\(percentEncoded($0))" } ?? "")
+        let request = HTTPRequest(
+            method: .get,
+            path: "\(trashPath)?\(query)",
+            headers: ["Authorization": "Bearer \(accessToken)"]
+        )
+        let response: HTTPResponse
+        do {
+            response = try await transport.send(request)
+        } catch {
+            switch error {
+            case .cancelled: return .cancelled
+            case .unreachable: return .failed(.disconnected)
+            case .timedOut: return .failed(.timedOut)
+            }
+        }
+        if ItemsAPI.isSessionExpired(response) { return .sessionExpired }
+        guard successStatuses.contains(response.status),
+              let body = ItemsAPI.decode(TrashPageBody.self, from: response.body) else {
+            return .failed(.serverError)
+        }
+        return .page(total: body.total, items: body.items, nextCursor: body.nextCursor)
+    }
+
+    @MainActor
+    static func empty(transport: any HTTPTransport, accessToken: String) async -> EmptyOutcome {
+        let request = HTTPRequest(
+            method: .delete,
+            path: trashPath,
+            headers: ["Authorization": "Bearer \(accessToken)"]
+        )
+        let response: HTTPResponse
+        do {
+            response = try await transport.send(request)
+        } catch {
+            switch error {
+            case .cancelled: return .cancelled
+            case .unreachable: return .failed(.disconnected)
+            case .timedOut: return .failed(.timedOut)
+            }
+        }
+        if ItemsAPI.isSessionExpired(response) { return .sessionExpired }
+        guard successStatuses.contains(response.status),
+              let body = ItemsAPI.decode(CountBody.self, from: response.body) else {
+            return .failed(.serverError)
+        }
+        return .emptied(count: body.count)
     }
 
     @MainActor
@@ -69,5 +155,13 @@ enum TrashAPI {
             return .failed(.serverError)
         }
         return .moved(body.items.map { ItemRef(number: $0.number, title: $0.title) })
+    }
+
+    private static func percentEncoded(_ value: String) -> String {
+        value.utf8.map { byte in
+            unreservedBytes.contains(byte)
+                ? String(UnicodeScalar(byte))
+                : "%" + (byte < 16 ? "0" : "") + String(byte, radix: 16, uppercase: true)
+        }.joined()
     }
 }
