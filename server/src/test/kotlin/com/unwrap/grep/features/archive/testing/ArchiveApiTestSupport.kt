@@ -78,6 +78,21 @@ abstract class ArchiveApiTestSupport {
 
 	fun getMe(token: String) = mockMvc.get("/me") { header("Authorization", "Bearer $token") }
 
+	fun listItems(token: String, vararg params: Pair<String, String>) = mockMvc.get("/items") {
+		header("Authorization", "Bearer $token")
+		params.forEach { (name, value) -> param(name, value) }
+	}
+
+	fun getStatuses(token: String, numbers: String?) = mockMvc.get("/items/status") {
+		header("Authorization", "Bearer $token")
+		if (numbers != null) param("numbers", numbers)
+	}
+
+	/** 링크 [count]건을 저장한다. 번호는 1부터 차례로 붙는다. */
+	fun saveLinks(token: String, count: Int) = (1..count).forEach {
+		saveLink(token, "https://example.com/item/$it").andExpect { status { isCreated() } }
+	}
+
 	fun moveToTrash(token: String, number: Long) {
 		val userId = userIdOf(token)
 		jdbc.sql("UPDATE items SET deleted_at = now() WHERE user_id = :userId AND number = :number")
