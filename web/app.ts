@@ -4,7 +4,7 @@ import { LoggedOutAdapter } from "./features/logged-out/adapter";
 import { createBrowserAuthService } from "./auth/supabase-auth";
 import { browserClipboard } from "./support/browser-clipboard";
 import { BrowserFilePort } from "./support/browser-file-port";
-import { emptyHistoryStore } from "./support/empty-history-store";
+import { localHistoryStore } from "./support/local-history-store";
 import { init } from "./support/swift";
 
 const { exports } = await init();
@@ -15,6 +15,6 @@ exports.startGrepApp(
   createBrowserAuthService(),
   browserClipboard,
   files,
-  emptyHistoryStore,
+  localHistoryStore,
   import.meta.env.VITE_API_BASE_URL,
 );

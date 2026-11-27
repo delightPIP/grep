@@ -23,6 +23,7 @@ public final class TerminalBuilder: Builder<any TerminalDependency>, TerminalBui
             httpTransport: dependency.httpTransport,
             clipboard: dependency.clipboard,
             files: dependency.files,
+            historyStore: dependency.historyStore,
             sleeper: dependency.sleeper,
             listener: listener
         )
@@ -65,6 +66,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     let httpTransport: ObservedTransport
     let clipboard: any ClipboardPort
     private let files: any FilePort
+    let historyStore: any HistoryStore
     private let sleeper: any Sleeper
     private weak var listener: (any TerminalListener)?
     private(set) var viewState = TerminalViewState()
@@ -77,6 +79,12 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     private var loadingPage: ListPage?
     /// 답을 기다리는 `찾기 … | 넘기기` 확인. 다음 입력 한 번이 답이다(COM-007 규칙 1).
     var pendingHandoff: PendingHandoff?
+    /// 기록을 남길 계정(접근 토큰의 `sub`). 알기 전과 로그아웃 뒤에는 nil이라 남기지 않는다(COM-009).
+    var historySubject: String?
+    /// 남긴 기록을 읽었는지. 읽기 전에는 첫 화면을 정하지 않는다.
+    var isHistoryLoaded = false
+    /// 마지막으로 남긴 줄과 그 JSON.
+    var encodedLines: (lines: [TerminalViewState.Line], json: String)?
     private var isPolling = false
     private var isCheckingHealth = false
     /// 폴링에서 없는 번호(휴지통·삭제)로 온 자료. 더 묻지 않는다.
@@ -88,6 +96,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
         httpTransport: any HTTPTransport,
         clipboard: any ClipboardPort,
         files: any FilePort,
+        historyStore: any HistoryStore,
         sleeper: any Sleeper,
         listener: any TerminalListener
     ) {
@@ -95,6 +104,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
         self.httpTransport = ObservedTransport(base: httpTransport)
         self.clipboard = clipboard
         self.files = files
+        self.historyStore = historyStore
         self.sleeper = sleeper
         self.listener = listener
         super.init(presenter: presenter)
@@ -104,6 +114,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
         presenter.listener = self
         httpTransport.onReachabilityObserved = { [weak self] in self?.observeReachability($0) }
         presenter.render(viewState)
+        restoreHistory()
     }
 
     override func willResignActive() {
@@ -125,10 +136,9 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
 
     var input: String { viewState.input }
 
-    /// 찍힌 줄이 없고 자료가 0건이면 첫 화면을 보인다. 1건 이상이면 상태줄과 입력줄만 둔다(COM-009 규칙 5).
     func showItemCount(_ itemCount: Int) {
-        let counted = viewState.with(itemCount: itemCount)
-        update(itemCount == 0 && counted.lines.isEmpty ? counted.appending(lines: [.welcome]) : counted)
+        update(viewState.with(itemCount: itemCount))
+        showWelcomeIfNeeded()
     }
 
     /// 서버가 세션 만료로 답했거나 토큰을 받지 못했다. 치던 줄을 들려 부모에게 알린다(ACC-001 규칙 7).
@@ -168,6 +178,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
         guard let command = InputCommand(text) else { return }
         switch command.name {
         case .signOut where command.argument.isEmpty:
+            forgetHistory()
             listener?.didRequestSignOut()
         case .keep where command.argument.isEmpty:
             update(viewState.appending(lines: [.prompt(text), .missingArgument(.keep)]).with(input: ""))
@@ -583,6 +594,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
         guard counted != viewState else { return }
         viewState = counted
         presenter.render(counted)
+        saveHistory()
         startPollingIfNeeded()
     }
 }
