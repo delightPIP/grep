@@ -33,6 +33,22 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
 .gt-error .gt-line-sym, .gt-error .gt-line-text b { color: var(--danger); }
 .gt-hint { color: var(--ink-muted); }
 
+/* List row: 첫 줄 번호·제목·출처·저장 시각, 둘째 줄 요약·꼬리표와 태그(commands 6절). 좁은 화면에서는 출처·시각이 제목 아래로 내려간다. */
+.gt-row { display: grid; grid-template-columns: 5ch minmax(0, 1fr); column-gap: 1ch; white-space: pre-wrap; }
+.gt-row-num { color: var(--command); }
+.gt-row-meta { grid-column: 2; color: var(--ink-muted); }
+@media (min-width: 561px) {
+  .gt-row { grid-template-columns: 5ch minmax(0, 1fr) auto auto; }
+  .gt-row-meta { grid-column: auto; }
+}
+.gt-row-sub { display: flex; gap: 1ch; padding-left: 6ch; white-space: pre-wrap; }
+.gt-row-sub.gt-warn { color: var(--notice); }
+.gt-row-tags { color: var(--ink-muted); }
+
+/* Screen chip: 명령이 아닌 화면 칩(`더 보기`)은 누르면 바로 동작한다(commands 6절). */
+.gt-chip { padding: 0; font: inherit; color: var(--command); background: none; border: 0; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.gt-chip:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
 /* Input */
 .gt-input { display: flex; gap: 1ch; align-items: baseline; }
 .gt-input-field { flex: 1; min-width: 0; font: inherit; color: var(--ink); background: transparent; border: 0; padding: 0; caret-color: var(--cursor); outline: none; }
