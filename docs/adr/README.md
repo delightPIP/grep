@@ -43,3 +43,4 @@
 | [ADR-WEB-012](web/ADR-WEB-012-popup-login-broadcast-channel.md) | 웹 로그인은 팝업으로 하고, 결과는 콜백 페이지가 BroadcastChannel로 넘긴다 | 대체됨 (→ ADR-WEB-013) | 2026-11-26 |
 | [ADR-WEB-013](web/ADR-WEB-013-login-popup-close-as-cancel.md) | 웹 로그인 창 닫힘은 그렙 창이 포커스를 되찾는 것으로 알고, 바로 취소로 처리한다 | 채택 | 2026-11-26 |
 | [ADR-BCK-014](backend/ADR-BCK-014-gemini-flash-free-tier.md) | 발표까지 요약·태그·글자 읽기 LLM은 Gemini Flash 무료 등급으로 한다 | 채택 | 2026-11-27 |
+| [ADR-0015](ADR-0015-mobile-feature-modules-per-issue.md) | iOS·Android 앱은 공유 코어의 피처마다 UI·Adapter·Example 모듈로 만들고, 웹 이슈가 끝날 때마다 짧은 브랜치로 따라간다 | 채택 | 2026-11-27 |
