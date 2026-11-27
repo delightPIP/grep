@@ -9,11 +9,18 @@ enum CommandSuggester {
         "keep", "recent", "seek", "pick", "handoff", "guide", "about", "signout", "drop", "revive", "bin", "revise",
     ]
     private static let excludedWords: Set<String> = ["login", "logout"]
+    /// `고르기` 없이 친 하위 명령(#154). `빼기 6`이면 `고르기 빼기 6`을 제안한다.
+    private static let pickSubcommands: [String: String] = [
+        "빼기": "고르기 빼기", "비우기": "고르기 비우기", "remove": "pick remove", "clear": "pick clear",
+    ]
 
     /// 오타에 가까운 명령이 있으면 인자를 이어 붙인 전체 입력 문자열을 돌려준다(예: `"찾기 결제"`).
     static func suggest(word: String, argument: String) -> String? {
         let lower = word.lowercased()
         guard !lower.isEmpty, !excludedWords.contains(lower) else { return nil }
+        if let pick = pickSubcommands[lower] {
+            return argument.isEmpty ? pick : "\(pick) \(argument)"
+        }
 
         let matched: String?
         if word.unicodeScalars.allSatisfy({ $0.isASCII }) {
