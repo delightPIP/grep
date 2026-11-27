@@ -97,7 +97,8 @@ class JdbcProcessingQueue(
 		(storage.read(objectPath, maxBytes) as? StoredObject.Content)?.bytes
 
 	/**
-	 * 링크 제목은 아직 주소 그대로일 때만 가져온 제목으로 바꾼다(직접 고친 제목은 두기).
+	 * 링크 제목은 아직 주소 그대로이고 직접 고치지 않았을 때만 가져온 제목으로 바꾼다(V3 user_title).
+	 * 직접 고친 요약(user_summary)은 쓰지 않고, 사용자가 지운 태그(V3 removed_tags)는 다시 붙이지 않는다(ARC-002 규칙 2).
 	 * search_text는 제목·출처·요약·태그·본문 일부를 다시 모은다(V2 주석).
 	 */
 	private fun writeItem(jobId: Long, outcome: ProcessingOutcome): Boolean {
@@ -112,18 +113,23 @@ class JdbcProcessingQueue(
 			UPDATE items i SET
 				status = :status,
 				blocked_reason = :blockedReason,
-				title = CASE WHEN i.kind = 'link' AND i.title = i.url AND CAST(:fetchedTitle AS text) IS NOT NULL
+				title = CASE WHEN i.kind = 'link' AND i.user_title IS NULL AND i.title = i.url AND CAST(:fetchedTitle AS text) IS NOT NULL
 				             THEN :fetchedTitle ELSE i.title END,
 				list_summary = :listSummary,
 				handoff_summary = :handoffSummary,
 				partial_note = :partialNote,
-				tags = CAST(:tags AS text[]),
+				tags = ARRAY(
+					SELECT t FROM unnest(CAST(:tags AS text[])) WITH ORDINALITY AS u(t, o)
+					WHERE lower(t) <> ALL(i.removed_tags) ORDER BY o
+				),
 				summary_model = :model,
 				summary_prompt_version = :promptVersion,
 				search_text = concat_ws(' ',
-					CASE WHEN i.kind = 'link' AND i.title = i.url AND CAST(:fetchedTitle AS text) IS NOT NULL
+					CASE WHEN i.kind = 'link' AND i.user_title IS NULL AND i.title = i.url AND CAST(:fetchedTitle AS text) IS NOT NULL
 					     THEN :fetchedTitle ELSE i.title END,
-					i.source, i.user_summary, :listSummary, :handoffSummary, array_to_string(CAST(:tags AS text[]), ' '), :searchBody),
+					i.source, i.user_summary, :listSummary, :handoffSummary, array_to_string(ARRAY(
+						SELECT t FROM unnest(CAST(:tags AS text[])) AS u(t) WHERE lower(t) <> ALL(i.removed_tags)
+					), ' '), :searchBody),
 				updated_at = now()
 			FROM item_jobs j
 			WHERE j.id = :jobId AND i.id = j.item_id AND i.deleted_at IS NULL

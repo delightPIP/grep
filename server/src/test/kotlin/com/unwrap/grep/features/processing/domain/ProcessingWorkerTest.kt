@@ -6,6 +6,8 @@ import com.unwrap.grep.features.processing.testing.FakeProcessingConfiguration
 import com.unwrap.grep.features.processing.testing.FakeSummarizer
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.Import
+import org.springframework.http.MediaType
+import org.springframework.test.web.servlet.patch
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -236,5 +238,52 @@ class ProcessingWorkerTest : ArchiveApiTestSupport() {
 		// then
 		assertEquals(ProcessingWorker.MAX_LLM_CHARS, summarizer.calls.single().text?.length)
 		assertEquals("본문 일부만 가져옴", row(token)["partial_note"])
+	}
+
+	private fun revise(token: String, body: String) = mockMvc.patch("/items/1") {
+		header("Authorization", "Bearer $token")
+		contentType = MediaType.APPLICATION_JSON
+		content = body
+	}.andExpect { status { isOk() } }
+
+	private fun userColumns(token: String): Map<String, Any?> =
+		jdbc.sql("SELECT user_title, user_summary FROM items WHERE user_id = :userId AND number = 1")
+			.param("userId", userIdOf(token)).query().singleRow()
+
+	@Test
+	fun `직접고친요약이있을때_워커가다시처리하면_덮어쓰지않는지`() {
+		// given
+		val token = newUser()
+		saveLink(token, "https://example.com/revised").andExpect { status { isCreated() } }
+		revise(token, """{"title":"내 제목","summary":"내가 쓴 요약"}""")
+
+		// when
+		worker.runOnce()
+
+		// then
+		val item = row(token)
+		assertEquals("ready", item["status"])
+		assertEquals("내 제목", item["title"])
+		assertEquals("한 줄 요약", item["list_summary"])
+		assertEquals(mapOf("user_title" to "내 제목", "user_summary" to "내가 쓴 요약"), userColumns(token))
+		assertTrue((item["search_text"] as String).contains("내가 쓴 요약"))
+		listItems(token).andExpect {
+			jsonPath("$.items[0].listSummary") { value("내가 쓴 요약") }
+			jsonPath("$.items[0].summarySource") { value("user") }
+		}
+	}
+
+	@Test
+	fun `태그를지웠을때_다시처리해도_다시붙지않는지`() {
+		// given
+		val token = newUser()
+		saveLink(token, "https://example.com/tags").andExpect { status { isCreated() } }
+		revise(token, """{"removeTags":["결제"]}""")
+
+		// when
+		worker.runOnce()
+
+		// then
+		assertEquals("위젯", row(token)["tags"])
 	}
 }

@@ -637,12 +637,16 @@ components:
           format: date-time
     ItemPage:
       type: object
-      required: [items, nextCursor]
+      required: [items, total, nextCursor]
       properties:
         items:
           type: array
           items:
             $ref: "#/components/schemas/ItemSummary"
+        total:
+          type: [integer, "null"]
+          minimum: 0
+          description: 기간(`from`·`to`)이 있을 때 그 기간 휴지통 밖 자료의 전체 건수, 없으면 null
         nextCursor:
           type: [string, "null"]
           description: 다음 쪽이 없으면 null

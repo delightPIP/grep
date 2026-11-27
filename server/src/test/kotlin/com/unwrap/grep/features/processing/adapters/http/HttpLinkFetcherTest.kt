@@ -1,9 +1,11 @@
 package com.unwrap.grep.features.processing.adapters.http
 
 import com.sun.net.httpserver.HttpServer
+import com.unwrap.grep.features.processing.domain.AddressGuard
 import com.unwrap.grep.features.processing.domain.FetchResult
 import java.net.InetAddress
 import java.net.InetSocketAddress
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -11,19 +13,26 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * ARC-006 링크 가져오기. 로컬 서버(localhost)를 이름 풀이에서 공인 주소로 보이게 해 HTTP 동작을 본다.
- * `internal.test`는 사설 주소로 풀린다.
+ * ARC-006 링크 가져오기. 로컬 서버의 IPv4 루프백(127.0.0.1)만 공인 주소로 쳐서 HTTP 동작을 본다.
+ * `internal.test`는 사설 주소로, `rebind.test`는 처음에만 루프백이고 그 뒤로는 사설 주소로 풀린다.
  */
 class HttpLinkFetcherTest {
 	private lateinit var server: HttpServer
-	private val publicAddress = InetAddress.getByName("93.184.216.34")
-	private val fetcher = HttpLinkFetcher { host ->
-		when (host) {
-			"localhost" -> listOf(publicAddress)
-			"internal.test" -> listOf(InetAddress.getByName("10.0.0.5"))
-			else -> InetAddress.getAllByName(host).toList()
-		}
-	}
+	private val loopback = InetAddress.getByName("127.0.0.1")
+	private val privateAddress = InetAddress.getByName("10.0.0.5")
+	private val rebindLookups = AtomicInteger()
+	private val fetcher = HttpLinkFetcher(
+		resolve = { host ->
+			when (host) {
+				"localhost" -> listOf(loopback)
+				"internal.test" -> listOf(privateAddress)
+				"xn--bj0bj06e.test" -> listOf(loopback)
+				"rebind.test" -> listOf(if (rebindLookups.getAndIncrement() == 0) loopback else privateAddress)
+				else -> InetAddress.getAllByName(host).toList()
+			}
+		},
+		isPublic = { it == loopback || AddressGuard.isPublic(it) },
+	)
 
 	private fun url(path: String) = "http://localhost:${server.address.port}$path"
 
@@ -70,7 +79,7 @@ class HttpLinkFetcherTest {
 	@Test
 	fun `사설주소로리디렉션되거나처음부터사설주소일때_가져오면_요청없이열지않는주소인지`() {
 		// given
-		val targets = listOf(url("/to-internal"), "http://127.0.0.1:${server.address.port}/page", "http://internal.test/", "https://a:b@localhost/")
+		val targets = listOf(url("/to-internal"), "http://[::1]:${server.address.port}/page", "http://internal.test/", "https://a:b@localhost/")
 
 		// when
 		val results = targets.map(fetcher::fetch)
@@ -111,5 +120,31 @@ class HttpLinkFetcherTest {
 		result as FetchResult.Fetched
 		assertEquals(HttpLinkFetcher.MAX_BYTES, result.bytes.size)
 		assertTrue(result.truncated)
+	}
+
+	@Test
+	fun `검사뒤주소가사설IP로바뀌어도_연결하지않는지`() {
+		// given: 검사 때는 공인(루프백), 그 뒤 이름 풀이는 사설 주소를 준다
+		val target = "http://rebind.test:${server.address.port}/page"
+
+		// when
+		val result = fetcher.fetch(target)
+
+		// then: 검사한 주소로 연결해 가져오고, 이름은 다시 풀지 않는다
+		result as FetchResult.Fetched
+		assertEquals("<title>안녕</title><p>본문</p>", String(result.bytes, Charsets.UTF_8))
+		assertEquals(1, rebindLookups.get())
+	}
+
+	@Test
+	fun `한글도메인링크일때_가져오면_퍼니코드로풀어서가져오는지`() {
+		// given
+		val target = "http://한글.test:${server.address.port}/page"
+
+		// when
+		val result = fetcher.fetch(target)
+
+		// then
+		assertTrue(result is FetchResult.Fetched, result.toString())
 	}
 }

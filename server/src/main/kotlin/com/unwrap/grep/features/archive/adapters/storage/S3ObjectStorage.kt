@@ -67,17 +67,30 @@ class S3ObjectStorage(
 		client.putObject({ it.bucket(bucket).key(objectPath).contentType(contentType) }, RequestBody.fromBytes(bytes))
 	}
 
-	/** shortcut: 20MB까지 메모리로 읽는다. 상한을 크게 올리면 스트림으로 해시·판별하도록 바꾼다. */
+	/**
+	 * 한 번의 GET으로 스트림을 열어 [maxBytes] + 1바이트까지만 읽는다(#117). 크기 확인과 읽기 사이에 객체가 바뀌어도 메모리는 상한을 넘지 않는다.
+	 * 상한을 넘으면 남은 본문을 받지 않고 연결을 끊는다.
+	 */
 	override fun read(objectPath: String, maxBytes: Long): StoredObject? {
-		val size = try {
-			client.headObject { it.bucket(bucket).key(objectPath) }.contentLength()
+		val stream = try {
+			client.getObject { it.bucket(bucket).key(objectPath) }
 		} catch (e: S3Exception) {
 			if (e is NoSuchKeyException || e.statusCode() == NOT_FOUND) return null
 			throw e
 		}
-		if (size > maxBytes) return StoredObject.TooLarge(size)
-		val bytes = client.getObjectAsBytes { it.bucket(bucket).key(objectPath) }.asByteArray()
-		return StoredObject.Content(bytes)
+		stream.use {
+			val declared = it.response().contentLength() ?: -1L
+			if (declared > maxBytes) {
+				it.abort()
+				return StoredObject.TooLarge(declared)
+			}
+			val bytes = it.readNBytes(Math.toIntExact(maxBytes) + 1)
+			if (bytes.size > maxBytes) {
+				it.abort()
+				return StoredObject.TooLarge(maxOf(declared, bytes.size.toLong()))
+			}
+			return StoredObject.Content(bytes)
+		}
 	}
 
 	override fun delete(objectPath: String) {

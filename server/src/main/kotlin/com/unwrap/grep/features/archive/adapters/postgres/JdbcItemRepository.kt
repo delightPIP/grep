@@ -1,6 +1,7 @@
 package com.unwrap.grep.features.archive.adapters.postgres
 
 import com.unwrap.grep.features.archive.api.ItemCounter
+import com.unwrap.grep.features.archive.api.ItemSavedTimes
 import com.unwrap.grep.features.archive.domain.FileFormat
 import com.unwrap.grep.features.archive.domain.HandoffSource
 import com.unwrap.grep.features.archive.domain.HandoffSourceRepository
@@ -8,12 +9,15 @@ import com.unwrap.grep.features.archive.domain.ItemKind
 import com.unwrap.grep.features.archive.domain.ItemRepository
 import com.unwrap.grep.features.archive.domain.ItemStatus
 import com.unwrap.grep.features.archive.domain.NewItem
+import com.unwrap.grep.features.archive.domain.SavedRange
 import com.unwrap.grep.features.archive.domain.StoredItem
 import org.springframework.jdbc.core.RowMapper
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Repository
 import java.sql.Types
+import java.time.Instant
 import java.time.OffsetDateTime
+import java.time.ZoneOffset
 import java.util.UUID
 
 internal const val SUMMARY_COLUMNS = """
@@ -42,7 +46,8 @@ internal val ITEM_ROW = RowMapper { rs, _ ->
 
 /** items·item_jobs(V2). 모든 쿼리는 user_id로 거른다(COM-006). */
 @Repository
-class JdbcItemRepository(private val jdbc: JdbcClient) : ItemRepository, ItemCounter, HandoffSourceRepository {
+class JdbcItemRepository(private val jdbc: JdbcClient) :
+	ItemRepository, ItemCounter, ItemSavedTimes, HandoffSourceRepository {
 
 	override fun lockOwner(userId: UUID) {
 		jdbc.sql("SELECT id FROM users WHERE id = :userId FOR UPDATE")
@@ -109,25 +114,45 @@ class JdbcItemRepository(private val jdbc: JdbcClient) : ItemRepository, ItemCou
 			.single()
 	}
 
-	override fun countActive(userId: UUID): Long =
-		jdbc.sql("SELECT count(*) FROM items WHERE user_id = :userId AND deleted_at IS NULL")
+	override fun countActive(userId: UUID, saved: SavedRange): Long =
+		jdbc.sql(
+			"""
+			SELECT count(*) FROM items
+			WHERE user_id = :userId AND deleted_at IS NULL
+			  AND (CAST(:from AS timestamptz) IS NULL OR created_at >= CAST(:from AS timestamptz))
+			  AND (CAST(:to AS timestamptz) IS NULL OR created_at < CAST(:to AS timestamptz))
+			""".trimIndent(),
+		)
 			.param("userId", userId)
+			.param("from", saved.from?.let { OffsetDateTime.ofInstant(it, ZoneOffset.UTC) })
+			.param("to", saved.to?.let { OffsetDateTime.ofInstant(it, ZoneOffset.UTC) })
 			.query(Long::class.java)
 			.single()
 
 	override fun countActiveItems(userId: UUID): Long = countActive(userId)
 
-	override fun findActive(userId: UUID, beforeNumber: Long?, limit: Int): List<StoredItem> =
+	override fun savedTimes(userId: UUID, numbers: Collection<Long>): List<Instant> =
+		jdbc.sql("SELECT created_at FROM items WHERE user_id = :userId AND deleted_at IS NULL AND number = ANY(:numbers)")
+			.param("userId", userId)
+			.param("numbers", numbers.toLongArray())
+			.query { rs, _ -> rs.getObject("created_at", OffsetDateTime::class.java).toInstant() }
+			.list()
+
+	override fun findActive(userId: UUID, beforeNumber: Long?, limit: Int, saved: SavedRange): List<StoredItem> =
 		jdbc.sql(
 			"""
 			SELECT $SUMMARY_COLUMNS FROM items
 			WHERE user_id = :userId AND deleted_at IS NULL AND (CAST(:before AS bigint) IS NULL OR number < :before)
+			  AND (CAST(:from AS timestamptz) IS NULL OR created_at >= CAST(:from AS timestamptz))
+			  AND (CAST(:to AS timestamptz) IS NULL OR created_at < CAST(:to AS timestamptz))
 			ORDER BY number DESC
 			LIMIT :limit
 			""".trimIndent(),
 		)
 			.param("userId", userId)
 			.param("before", beforeNumber, Types.BIGINT)
+			.param("from", saved.from?.let { OffsetDateTime.ofInstant(it, ZoneOffset.UTC) })
+			.param("to", saved.to?.let { OffsetDateTime.ofInstant(it, ZoneOffset.UTC) })
 			.param("limit", limit)
 			.query(ITEM_ROW)
 			.list()

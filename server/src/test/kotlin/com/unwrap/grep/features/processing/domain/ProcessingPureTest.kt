@@ -67,4 +67,24 @@ class ProcessingPureTest {
 		assertEquals("머리말\n첫 문단 <강조>\n둘째 문단 계", page.text)
 		assertFalse("alert" in page.text)
 	}
+
+	@Test
+	fun `메뉴와바닥글이있고본문영역이있을때_꺼내면_본문영역글만남기는지`() {
+		// given
+		val html = """
+			<html><head><title>  기사
+			제목 </title></head><body>
+			<header><a href="/">홈</a></header><nav><ul><li>메뉴 하나</li><li>메뉴 둘</li></ul></nav>
+			<div class="ad">광고 문구</div>
+			<article><h2>소제목</h2><p>본문 첫 줄<br>본문 둘째 줄</p></article>
+			<footer>회사 주소</footer></body></html>
+		""".trimIndent()
+
+		// when
+		val page = HtmlText.parse(html)
+
+		// then
+		assertEquals("기사 제목", page.title)
+		assertEquals("소제목\n본문 첫 줄\n본문 둘째 줄", page.text)
+	}
 }

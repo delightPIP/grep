@@ -1,9 +1,12 @@
 package com.unwrap.grep.features.processing.adapters.gemini
 
+import com.unwrap.grep.features.processing.domain.SummaryImage
 import com.unwrap.grep.features.processing.domain.SummaryInput
 import com.unwrap.grep.features.processing.domain.SummaryResult
 import com.unwrap.grep.features.processing.domain.Tags
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable
+import java.nio.file.Files
+import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertTrue
 
@@ -35,5 +38,21 @@ class GeminiSummarizerLiveTest {
 		assertTrue(result.listSummary.isNotBlank() && result.handoffSummary.isNotBlank())
 		assertTrue("해킹됨" !in result.handoffSummary)
 		assertTrue(Tags.normalize(result.tags).isNotEmpty())
+	}
+
+	@Test
+	fun `HEIC사진일때_실제Gemini에그대로보내면_요약을받는지`() {
+		// given: 데모 시드 S07(지어낸 촬영 컷, COM-002 규칙 3). 변환 없이 image/heic로 보낸다(#117, COM-004 규칙 5)
+		val model = System.getenv("GEMINI_MODEL")?.takeIf { it.isNotBlank() } ?: "gemini-3.5-flash"
+		val summarizer = GeminiSummarizer(System.getenv("GEMINI_API_KEY"), model, "https://generativelanguage.googleapis.com")
+		val heic = Files.readAllBytes(Path.of("../db/seed/demo/files/S07_텀블러 촬영 컷.heic"))
+
+		// when
+		val result = summarizer.summarize(SummaryInput("텀블러 촬영 컷.heic", "heic", null, SummaryImage(heic, "image/heic")))
+
+		// then
+		println("live heic result($model): $result")
+		assertTrue(result is SummaryResult.Summary, "got $result")
+		assertTrue(result.listSummary.isNotBlank())
 	}
 }

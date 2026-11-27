@@ -16,7 +16,8 @@ data class SeedEntry(
 	val kind: String,
 	val format: String,
 	val title: String,
-	val savedDaysAgo: Long,
+	/** 샘플(ARC-010)은 지금 저장하므로 쓰지 않는다. */
+	val savedDaysAgo: Long = 0,
 	val status: String,
 	val blockedReason: String? = null,
 	val url: String? = null,

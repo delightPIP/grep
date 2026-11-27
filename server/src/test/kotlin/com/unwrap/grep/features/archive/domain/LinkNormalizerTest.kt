@@ -136,4 +136,20 @@ class LinkNormalizerTest {
 		// then
 		results.forEach { assertNull(it) }
 	}
+
+	@Test
+	fun `한글도메인일때_정규화하면_퍼니코드로맞추고출처는한글로주는지`() {
+		// given
+		val korean = "https://WWW.한글.com/소개?utm_source=x"
+		val punycode = "https://xn--bj0bj06e.com/소개"
+
+		// when
+		val fromKorean = LinkNormalizer.normalize(korean)
+		val fromPunycode = LinkNormalizer.normalize(punycode)
+
+		// then
+		assertEquals("https://xn--bj0bj06e.com/소개", fromKorean?.value)
+		assertEquals(fromKorean?.value, fromPunycode?.value)
+		assertEquals("한글.com", fromKorean?.host)
+	}
 }
