@@ -16,7 +16,6 @@ enum CommandSuggester {
 
     /// 오타에 가까운 명령이 있으면 인자를 이어 붙인 전체 입력 문자열을 돌려준다(예: `"찾기 결제"`).
     static func suggest(word: String, argument: String) -> String? {
-        if let pickSuggestion = pickSubcommand(word: word, argument: argument) { return pickSuggestion }
         let lower = word.lowercased()
         guard !lower.isEmpty, !excludedWords.contains(lower) else { return nil }
         if let pick = pickSubcommands[lower] {
@@ -31,15 +30,6 @@ enum CommandSuggester {
         }
         guard let matched else { return nil }
         return argument.isEmpty ? matched : "\(matched) \(argument)"
-    }
-
-    /// `고르기`를 빼먹은 하위 명령(#154): `빼기 6` → `고르기 빼기 6`, `비우기` → `고르기 비우기`.
-    private static func pickSubcommand(word: String, argument: String) -> String? {
-        switch word {
-        case "빼기" where !argument.isEmpty: "고르기 빼기 \(argument)"
-        case "비우기" where argument.isEmpty: "고르기 비우기"
-        default: nil
-        }
     }
 
     private static func bestKoreanMatch(for word: String) -> String? {
