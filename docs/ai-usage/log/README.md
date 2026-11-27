@@ -95,5 +95,6 @@
 | 091 | 2026-11-27 | [#77 코어 Terminal 피처 분리(M)](091-issue-77-terminal-feature-split.md) |
 | 092 | 2026-11-27 | [#61 찾기 서버 API(W1)](092-issue-61-server-search.md) |
 | 093 | 2026-11-27 | [#61 찾기 결과 뷰(W2)](093-issue-61-search-view.md) |
+| 094 | 2026-11-27 | [#61 찾기 클라이언트와 세 갈래 병합(M)](094-issue-61-seek-client.md) |
 
 새 항목 파일을 만들 때 이 표에 한 줄을 추가한다. 파일명은 `NNN-<영문-슬러그>.md`이고 NNN은 다음 번호다.
