@@ -1609,7 +1609,21 @@ describe("LoggedInView", () => {
     });
   });
 
-  describe("고르기 비우기(#108, commands 6절)", () => {
+  describe("고르기 빼기·비우기(#108, commands 6절)", () => {
+    it("선택에서뺐을때_화면을그리면_그때남은선택건수를보이는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [
+        { kind: "prompt", text: "고르기 빼기 140" },
+        { kind: "unpicked", items: [{ number: 140, title: "환불 규정" }], remaining: 2 },
+      ];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown.slice(1)).toEqual(["✓ 뺌  선택 2건 남음"]);
+    });
+
     it("선택을모두풀었을때_화면을그리면_선택비움한줄을보이는지", () => {
       // given
       const lines: LoggedInState["lines"] = [{ kind: "prompt", text: "고르기 비우기" }, { kind: "pickCleared", count: 3 }];

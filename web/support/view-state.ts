@@ -155,7 +155,8 @@ export type TerminalLine =
   // #93 샘플(ARC-010 규칙 4): 받은 범위와 치우는 법, 이어서 `최근`과 같은 목록
   | { kind: "samplesSaved"; firstNumber: number; lastNumber: number; items: ItemSummary[] }
   // #108 고르기 빼기·비우기
-  | { kind: "unpicked"; items: ItemRef[] }
+  /** remaining: 뺀 뒤 남은 선택 수(1 이상). 0이 되면 unpicked 대신 pickCleared가 온다(#108, 통합 승인) */
+  | { kind: "unpicked"; items: ItemRef[]; remaining: number }
   | { kind: "pickCleared"; count: number }
   // #111 로그아웃 모든기기(ACC-002 규칙 4): 확인 뒤 Supabase 전역 로그아웃. 다른 기기는 접근 토큰 만료 때(최대 1시간)
   | { kind: "signOutEverywhereConfirm" };

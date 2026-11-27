@@ -703,6 +703,9 @@ function OutputLine({ line, failed, onMoreRequested }: OutputLineProps) {
     case "binEmptied":
       // ARC-008 사용자 문구.
       return <Line tone="ok">{`비움  ${line.count}건 영구 삭제`}</Line>;
+    case "unpicked":
+      // commands 6절 선택 빼기. 남은 수는 그 시점 값을 줄이 들고 온다(지난 줄이 나중 선택에 따라 바뀌지 않게).
+      return <Line tone="ok">{`뺌  선택 ${line.remaining}건 남음`}</Line>;
     case "pickCleared":
       // commands 6절 선택 빼기 "모두 풀면 `✓ 선택 비움`". 건수는 문구에 없다.
       return <Line tone="ok">선택 비움</Line>;
