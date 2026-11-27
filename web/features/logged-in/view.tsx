@@ -1,6 +1,16 @@
 // 터미널 화면. 순수 뷰: 받은 상태만 그리고, 입력은 onInputChange·onSubmit·onPaste·onFilesDrop으로만 알린다.
 // 배치는 시안 Main·Errors·Logout ③ 아트보드, 출력 비우기(로그아웃·다른 계정 로그인, COM-009)는 코어가 lines로 내려준다.
-import { createContext, useContext, useEffect, useRef, useState, type ClipboardEvent, type DragEvent, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ClipboardEvent,
+  type DragEvent,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import type {
   CommandFailure,
   CommandName,
@@ -8,6 +18,7 @@ import type {
   ItemRef,
   ItemSummary,
   LoggedInState,
+  Revising,
   SaveFailure,
   SaveRecovery,
   SearchQuery,
@@ -28,6 +39,12 @@ export type LoggedInViewProps = LoggedInState & {
    * shortcut: 선택 속성. 어댑터가 `handle.moreRequested`로 이으면(#60 클라이언트 갈래) 필수로 바꾼다.
    */
   onMoreRequested?: () => void;
+  /**
+   * `고치기` 편집 칸에서 Enter(core `reviseSubmitted`), Esc(core `reviseCancelled`).
+   * shortcut: 선택 속성. 어댑터가 `handle.reviseSubmitted`·`handle.reviseCancelled`로 이으면(M 갈래) 필수로 바꾼다.
+   */
+  onReviseSubmit?: (number: number, title: string, summary: string) => void;
+  onReviseCancel?: () => void;
 };
 
 const HELP_HINT = { key: "?", label: "도움말" };
@@ -652,6 +669,11 @@ function OutputLine({ line, failed, onMoreRequested }: OutputLineProps) {
     case "binEmptied":
       // ARC-008 사용자 문구.
       return <Line tone="ok">{`비움  ${line.count}건 영구 삭제`}</Line>;
+    case "revised":
+      return <RevisedLines item={line.item} />;
+    case "tagsRemoved":
+      // 시안 Edit ③(문구 제안). 지운 태그는 다시 붙지 않는다(ARC-002 규칙 2).
+      return <Line tone="ok">{`태그 지움 ${line.tags.map((tag) => `#${tag}`).join(" ")} (${line.item.number}번)`}</Line>;
     case "revived":
       // ARC-008 사용자 문구.
       return <Line tone="ok">{`되살림 ${line.items.length}건`}</Line>;
@@ -669,6 +691,80 @@ function Block({ lines, onMoreRequested }: { lines: TerminalLine[]; onMoreReques
         <OutputLine key={index} line={line} failed={failed} onMoreRequested={onMoreRequested} />
       ))}
     </div>
+  );
+}
+
+type ReviseFormProps = {
+  revising: Revising;
+  onSubmit?: (number: number, title: string, summary: string) => void;
+  onCancel?: () => void;
+};
+
+/**
+ * `고치기` 편집(commands 3절 고치기, 화면 W24). 모달 없이 출력 안에 제목·`요약 (직접 고침)` 두 칸을 열고 첫 칸에 초점.
+ * Enter 저장, Esc 취소, Tab은 브라우저 기본대로 다음 칸. 고친 값은 저장 전까지 이 칸만 들고 있다.
+ */
+function ReviseForm({ revising, onSubmit, onCancel }: ReviseFormProps) {
+  const [title, setTitle] = useState(revising.title);
+  const [summary, setSummary] = useState(revising.summary);
+  const titleRef = useRef<HTMLInputElement>(null);
+  // 입력줄의 autoFocus가 뒤에 그려져 초점을 가져가므로, 그린 뒤 제목 칸으로 옮긴다.
+  useEffect(() => titleRef.current?.focus(), []);
+
+  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      onCancel?.();
+      return;
+    }
+    // 한글 조합을 끝내는 엔터는 저장이 아니다.
+    if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+    event.preventDefault();
+    onSubmit?.(revising.number, title, summary);
+  }
+
+  return (
+    <div className="gt-block gt-revise">
+      <Line tone="info">{`고치기 ${revising.number}  ${revising.title}`}</Line>
+      <label className="gt-field">
+        <span className="gt-hint">제목</span>
+        <input
+          ref={titleRef}
+          className="gt-field-input"
+          type="text"
+          autoComplete="off"
+          spellCheck={false}
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+          onKeyDown={handleKeyDown}
+        />
+      </label>
+      <label className="gt-field">
+        <span className="gt-hint">요약 (직접 고침)</span>
+        <input
+          className="gt-field-input"
+          type="text"
+          autoComplete="off"
+          spellCheck={false}
+          value={summary}
+          onChange={(event) => setSummary(event.target.value)}
+          onKeyDown={handleKeyDown}
+        />
+      </label>
+      <Line tone="info">Enter: 저장 · Esc: 취소 · Tab: 다음 칸</Line>
+    </div>
+  );
+}
+
+/** 고친 뒤. 직접 고친 요약에는 ARC-004 규칙 1 이름표를 붙인다(시안 Edit ②). */
+function RevisedLines({ item }: { item: ItemSummary }) {
+  return (
+    <>
+      <Line tone="ok">{`고침 ${item.number}번  ${item.title}`}</Line>
+      {item.summarySource === "user" && item.listSummary !== null && (
+        <Plain dim>{`요약 (직접 고침)  ${item.listSummary}`}</Plain>
+      )}
+    </>
   );
 }
 
@@ -712,9 +808,19 @@ export function LoggedInView({
   onPaste,
   onFilesDrop,
   onMoreRequested,
+  revising,
+  onReviseSubmit,
+  onReviseCancel,
 }: LoggedInViewProps) {
   const [isDragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const isRevising = Boolean(revising);
+  const wasRevising = useRef(isRevising);
+  // 고치기 칸이 닫히면(저장·취소) 초점이 갈 곳이 없어지므로 입력줄로 돌려놓는다. 닫힐 때만 옮긴다(미리보기 선택 등을 빼앗지 않게).
+  useEffect(() => {
+    if (wasRevising.current && !isRevising) inputRef.current?.focus();
+    wasRevising.current = isRevising;
+  }, [isRevising]);
   // 명령 칩·번호는 입력줄에 찍기만 한다(commands 6절, 2026-11-26 PO 결정). 눌린 버튼에 초점이 남으면 엔터가 버튼을 다시 누르므로 입력줄로 돌려보낸다.
   const chips: TerminalChips = {
     insert: (command) => {
@@ -773,6 +879,9 @@ export function LoggedInView({
           {toBlocks(lines).map((block, index) => (
             <Block key={index} lines={block} onMoreRequested={onMoreRequested} />
           ))}
+          {revising && (
+            <ReviseForm key={revising.number} revising={revising} onSubmit={onReviseSubmit} onCancel={onReviseCancel} />
+          )}
         </ChipContext.Provider>
         <SelectionLine selection={selection} />
         <DockInput
