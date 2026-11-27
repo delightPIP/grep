@@ -80,6 +80,11 @@ final class LoggedInInteractor: Interactor, TerminalListener {
         isSigningOut = true
         startTask { [weak self] in
             guard let self else { return }
+            // 토큰이 있으면 AI 도구 연결부터 끊는다. 끊지 못해도 이 기기는 로그아웃한다(ACC-002 규칙 4·5).
+            if let token = await authService.accessToken() {
+                await ConnectionNoticesAPI.revokeAll(transport: httpTransport, accessToken: token)
+            }
+            guard !Task.isCancelled else { return }
             await authService.signOutEverywhere()
             guard !Task.isCancelled else { return }
             listener?.didSignOutEverywhere()
@@ -88,6 +93,13 @@ final class LoggedInInteractor: Interactor, TerminalListener {
 
     func didExpire(input: String) {
         expire(input: input)
+    }
+
+    /// 모르는 사이 끊긴 AI 도구 연결을 그렙을 열 때 한 번 알린다(ACC-002 규칙 11).
+    private func announceConnectionNotices(accessToken: String) async {
+        let notices = await ConnectionNoticesAPI.take(transport: httpTransport, accessToken: accessToken)
+        guard !Task.isCancelled else { return }
+        terminal?.showConnectionNotices(notices)
     }
 
     private func loadMe() {
@@ -104,7 +116,9 @@ final class LoggedInInteractor: Interactor, TerminalListener {
             let outcome = await MeAPI.load(transport: httpTransport, accessToken: token)
             guard !Task.isCancelled else { return }
             switch outcome {
-            case .loaded(let itemCount): terminal?.showItemCount(itemCount)
+            case .loaded(let itemCount):
+                terminal?.showItemCount(itemCount)
+                await announceConnectionNotices(accessToken: token)
             case .sessionExpired: expire(input: terminal?.input ?? "")
             case .failed, .cancelled: break
             }

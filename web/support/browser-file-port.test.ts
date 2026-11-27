@@ -114,4 +114,29 @@ describe("브라우저 파일 포트", () => {
     // then
     expect(result).toEqual({ kind: "failed", error: "missingFile" });
   });
+
+  it("쥔HTML파일이있을때_글로읽으면_파일내용을돌려주는지", async () => {
+    // given
+    const port = new BrowserFilePort();
+    const [held] = port.hold([new File(["<DL></DL>"], "bookmarks.html", { type: "text/html" })]);
+
+    // when
+    const result = await port.readText(held.id);
+
+    // then
+    expect(result).toEqual({ kind: "read", text: "<DL></DL>" });
+  });
+
+  it("놓은파일일때_글로읽으면_파일없음으로답하는지", async () => {
+    // given
+    const port = new BrowserFilePort();
+    const [held] = port.hold([pdf()]);
+    port.release(held.id);
+
+    // when
+    const result = await port.readText(held.id);
+
+    // then
+    expect(result).toEqual({ kind: "failed", error: "missingFile" });
+  });
 });

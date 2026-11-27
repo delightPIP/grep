@@ -43,6 +43,8 @@ public protocol TerminalHandle: AnyObject {
     func showItemCount(_ itemCount: Int)
     /// 컨테이너의 요청이 서버에 닿았는지. 터미널 자신의 요청과 같이 `연결 끊김` 표시에 쓴다(COM-010).
     func observeReachability(_ isReachable: Bool)
+    /// 그렙을 열 때 받은, 모르는 사이 끊긴 AI 도구 연결(ACC-002 규칙 11). 한 번만 넘긴다.
+    func showConnectionNotices(_ notices: [ConnectionNotice])
 }
 
 /// 붙일 Router와, 붙인 뒤 값을 넘길 손잡이.

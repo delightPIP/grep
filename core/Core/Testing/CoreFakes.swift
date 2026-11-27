@@ -133,8 +133,15 @@ public final class FakeFilePort: FilePort {
     public private(set) var uploads: [(fileID: String, uploadURL: String)] = []
     public private(set) var released: [String] = []
     public var failure: FileUploadError?
+    /// `readText`가 돌려줄 글. 없는 이름표면 `missingFile`.
+    public var texts: [String: String] = [:]
 
     public init() {}
+
+    public func readText(_ fileID: String) async throws(FileUploadError) -> String {
+        guard let text = texts[fileID] else { throw .missingFile }
+        return text
+    }
 
     public func upload(_ fileID: String, to uploadURL: String) async throws(FileUploadError) {
         uploads.append((fileID, uploadURL))

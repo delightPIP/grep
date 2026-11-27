@@ -30,31 +30,41 @@ extension TerminalInteractor {
     private func searchThenHandOff(_ query: SearchQuery, period: Period?, typed: String) {
         let sequence = inputSequence
         run(typed: typed) { [weak self] token in
-            guard let self else { return }
-            let outcome = await BrowseAPI.search(
-                query, limit: SeekCommand.pageSize, cursor: nil, period: period, transport: httpTransport, accessToken: token
+            await self?.searchThenHandOff(query, period: period, typed: typed, sequence: sequence, accessToken: token)
+        }
+    }
+
+    /// 친 줄은 이미 찍혀 있다. `sequence`는 명령을 친 때의 입력 차례(`찾아두기 … | 넘기기`도 쓴다).
+    func searchThenHandOff(
+        _ query: SearchQuery,
+        period: Period?,
+        typed: String,
+        sequence: Int,
+        accessToken token: String
+    ) async {
+        let outcome = await BrowseAPI.search(
+            query, limit: SeekCommand.pageSize, cursor: nil, period: period, transport: httpTransport, accessToken: token
+        )
+        guard !Task.isCancelled else { return }
+        switch outcome {
+        case .page(let items, _, _, _, let related) where items.isEmpty:
+            await showNoResults(for: query, period: period, related: related, typed: typed, accessToken: token)
+        case .page(let items, let total, _, _, _) where total <= PendingHandoff.instantLimit:
+            await handOff(items.map(\.number), typed: typed, accessToken: token)
+        // 기다리는 동안 다른 입력이 있었으면 그 입력이 이미 답이다. 묻자마자 취소한다(COM-007 규칙 1·3).
+        case .page(_, let total, _, _, _) where inputSequence != sequence:
+            update(viewState.appending(lines: [.handoffConfirm(total: total), .cancelled]))
+        case .page(let items, let total, let nextCursor, _, _):
+            pendingHandoff = PendingHandoff(
+                query: query, total: total, firstPage: items.map(\.number), nextCursor: nextCursor
             )
-            guard !Task.isCancelled else { return }
-            switch outcome {
-            case .page(let items, _, _) where items.isEmpty:
-                await showNoResults(for: query, period: period, typed: typed, accessToken: token)
-            case .page(let items, let total, _) where total <= PendingHandoff.instantLimit:
-                await handOff(items.map(\.number), typed: typed, accessToken: token)
-            // 기다리는 동안 다른 입력이 있었으면 그 입력이 이미 답이다. 묻자마자 취소한다(COM-007 규칙 1·3).
-            case .page(_, let total, _) where inputSequence != sequence:
-                update(viewState.appending(lines: [.handoffConfirm(total: total), .cancelled]))
-            case .page(let items, let total, let nextCursor):
-                pendingHandoff = PendingHandoff(
-                    query: query, total: total, firstPage: items.map(\.number), nextCursor: nextCursor
-                )
-                update(viewState.appending(lines: [.handoffConfirm(total: total)]))
-            case .failed(let reason):
-                update(viewState.appending(lines: [.commandFailed(command: .seek, reason: reason, retry: typed)]))
-            case .sessionExpired:
-                expire(restoring: typed)
-            case .cancelled:
-                break
-            }
+            update(viewState.appending(lines: [.handoffConfirm(total: total)]))
+        case .failed(let reason):
+            update(viewState.appending(lines: [.commandFailed(command: .seek, reason: reason, retry: typed)]))
+        case .sessionExpired:
+            expire(restoring: typed)
+        case .cancelled:
+            break
         }
     }
 
@@ -71,7 +81,7 @@ extension TerminalInteractor {
                 )
                 guard !Task.isCancelled else { return }
                 switch outcome {
-                case .page(let items, _, let nextCursor):
+                case .page(let items, _, let nextCursor, _, _):
                     numbers += items.map(\.number)
                     cursor = nextCursor
                 case .failed(let reason):

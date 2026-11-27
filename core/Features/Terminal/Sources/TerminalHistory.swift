@@ -34,7 +34,7 @@ enum TerminalHistory {
 
     /// 최근 `maxLines`줄을 JSON으로 만든다.
     static func encodeLines(_ lines: [TerminalViewState.Line]) -> String {
-        json(of: kept(lines).map(StoredLine.init))
+        json(of: kept(lines).compactMap(StoredLine.init))
     }
 
     static func payload(linesJSON: String, input: String, selection: [ItemRef]) -> String {
@@ -105,12 +105,17 @@ private struct StoredQuery: Codable {
 
 private struct StoredHandoff: Codable {
     let items: [StoredRef]
+    /// 계약 2. 그 전 기록에는 없다.
+    let bundle: String?
+    let removedCount: Int?
     let charCount: Int
     let missingSummaryCount: Int
     let text: String
 
     init(_ result: HandoffResult) {
         items = result.items.map(StoredRef.init)
+        bundle = result.bundle
+        removedCount = result.removedCount
         charCount = result.charCount
         missingSummaryCount = result.missingSummaryCount
         text = result.text
@@ -118,7 +123,12 @@ private struct StoredHandoff: Codable {
 
     var result: HandoffResult {
         HandoffResult(
-            items: items.map(\.ref), charCount: charCount, missingSummaryCount: missingSummaryCount, text: text
+            items: items.map(\.ref),
+            bundle: bundle,
+            removedCount: removedCount ?? 0,
+            charCount: charCount,
+            missingSummaryCount: missingSummaryCount,
+            text: text
         )
     }
 }
@@ -189,6 +199,13 @@ private struct StoredRecovery: Codable {
     }
 }
 
+private struct StoredImportCounts: Codable {
+    let saved: Int
+    let skipped: Int
+    let failed: Int
+    let overLimit: Int
+}
+
 /// 출력 한 줄. 줄 종류마다 쓰는 칸만 채운다.
 private struct StoredLine: Codable {
     enum Kind: String, Codable {
@@ -197,6 +214,11 @@ private struct StoredLine: Codable {
         case commandFailed, handoffConfirm, cancelled, welcome, guide, about, reconnected
         case dropConfirm, dropped, revived, binList, binEmptyConfirm, binEmptied
         case revised, tagsRemoved, samplesSaved, unpicked, pickCleared, signOutEverywhereConfirm
+        case bundleList, bundleAdded, bundleView, bundleNotFound, bundleUnpicked, notInBundle
+        case bundleDeleteConfirm, bundleDeleted, bundleNameInvalid, itemDetail, oneNumberOnly
+        case searchSaved, savedSearchList, savedSearchPeriod, savedSearchTooLong, savedSearchDeleteConfirm
+        case savedSearchDeleted, savedSearchNotFound, importPrompt, importProgress, importFinished, folderHint
+        case connectionList, disconnectConfirm, disconnected, connectionNotFound, connectionEnded
     }
 
     let kind: Kind
@@ -220,8 +242,21 @@ private struct StoredLine: Codable {
     var handoff: StoredHandoff?
     var saveFailure: StoredSaveFailure?
     var recovery: StoredRecovery?
+    var name: String?
+    var extraCount: Int?
+    var bundles: [BundleEntry]?
+    var detail: ItemDetail?
+    /// 참·거짓 하나를 쓰는 줄의 값(찾아둔 여부, 이미 찾아둠·이미 끊김).
+    var flag: Bool?
+    var searches: [SavedSearchEntry]?
+    var importCounts: StoredImportCounts?
+    var urls: [String]?
+    var connections: [ConnectionEntry]?
+    /// 0건 줄의 뜻이 가까운 자료(#128). 그 전 기록에는 없다.
+    var related: [ItemSummary]?
 
-    init(_ line: TerminalViewState.Line) {
+    /// 아직 남기지 않는 줄(계약 2, 각 이슈에서 더한다)이면 nil.
+    init?(_ line: TerminalViewState.Line) {
         switch line {
         case .prompt(let text):
             kind = .prompt
@@ -230,9 +265,10 @@ private struct StoredLine: Codable {
             kind = .unknownCommand
             text = name
             self.suggestion = suggestion
-        case .missingArgument(let command):
+        case .missingArgument(let command, let sub):
             kind = .missingArgument
             self.command = command.storedName
+            reason = sub?.rawValue
         case .missingTag: kind = .missingTag
         case .saved(let item):
             kind = .saved
@@ -253,18 +289,20 @@ private struct StoredLine: Codable {
             self.hasMore = hasMore
             self.total = total
             self.period = period
-        case .searchResult(let query, let total, let items, let hasMore, let period):
+        case .searchResult(let query, let total, let items, let hasMore, let period, let isSavedSearch):
             kind = .searchResult
             self.query = StoredQuery(query)
             self.total = total
             self.items = items
             self.hasMore = hasMore
             self.period = period
-        case .noResults(let query, let recent, let period):
+            flag = isSavedSearch
+        case .noResults(let query, let recent, let period, let related):
             kind = .noResults
             self.query = StoredQuery(query)
             items = recent
             self.period = period
+            self.related = related
         case .picked(let refs):
             kind = .picked
             self.refs = refs.map(StoredRef.init)
@@ -335,8 +373,101 @@ private struct StoredLine: Codable {
         case .pickCleared(let count):
             kind = .pickCleared
             self.count = count
-        case .signOutEverywhereConfirm:
+        case .signOutEverywhereConfirm(let connectionCount):
             kind = .signOutEverywhereConfirm
+            count = connectionCount
+        case .bundleList(let bundles):
+            kind = .bundleList
+            self.bundles = bundles
+        case .bundleAdded(let name, let count, let alreadyCount):
+            kind = .bundleAdded
+            self.name = name
+            self.count = count
+            extraCount = alreadyCount
+        case .bundleView(let name, let total, let items, let hasMore):
+            kind = .bundleView
+            self.name = name
+            self.total = total
+            self.items = items
+            self.hasMore = hasMore
+        case .bundleNotFound(let name):
+            kind = .bundleNotFound
+            self.name = name
+        case .bundleUnpicked(let name, let remaining):
+            kind = .bundleUnpicked
+            self.name = name
+            count = remaining
+        case .notInBundle(let name, let numbers):
+            kind = .notInBundle
+            self.name = name
+            self.numbers = numbers
+        case .bundleDeleteConfirm(let name, let itemCount):
+            kind = .bundleDeleteConfirm
+            self.name = name
+            count = itemCount
+        case .bundleDeleted(let name):
+            kind = .bundleDeleted
+            self.name = name
+        case .bundleNameInvalid(let problem):
+            kind = .bundleNameInvalid
+            reason = problem.rawValue
+        case .itemDetail(let detail):
+            kind = .itemDetail
+            self.detail = detail
+        case .oneNumberOnly(let command):
+            kind = .oneNumberOnly
+            self.command = command.storedName
+        case .searchSaved(let query, let total, let already):
+            kind = .searchSaved
+            text = query
+            self.total = total
+            flag = already
+        case .savedSearchList(let searches):
+            kind = .savedSearchList
+            self.searches = searches
+        case .savedSearchPeriod(let period, let suggestion):
+            kind = .savedSearchPeriod
+            text = period
+            self.suggestion = suggestion
+        case .savedSearchTooLong: kind = .savedSearchTooLong
+        case .savedSearchDeleteConfirm(let query):
+            kind = .savedSearchDeleteConfirm
+            text = query
+        case .savedSearchDeleted(let query):
+            kind = .savedSearchDeleted
+            text = query
+        case .savedSearchNotFound(let query):
+            kind = .savedSearchNotFound
+            text = query
+        case .folderHint: kind = .folderHint
+        case .connectionList(let mcpUrl, let connections):
+            kind = .connectionList
+            text = mcpUrl
+            self.connections = connections
+        case .disconnectConfirm(let number, let client):
+            kind = .disconnectConfirm
+            self.number = number
+            text = client
+        case .disconnected(let client, let already):
+            kind = .disconnected
+            text = client
+            flag = already
+        case .connectionNotFound(let number):
+            kind = .connectionNotFound
+            self.number = number
+        case .connectionEnded(let client, let reason):
+            kind = .connectionEnded
+            text = client
+            self.reason = reason.rawValue
+        case .importPrompt: kind = .importPrompt
+        case .importProgress(let done, let total):
+            kind = .importProgress
+            count = done
+            self.total = total
+        case .importFinished(let saved, let skipped, let failed, let overLimit, let failedUrls):
+            kind = .importFinished
+            importCounts = StoredImportCounts(saved: saved, skipped: skipped, failed: failed, overLimit: overLimit)
+            urls = failedUrls
         }
     }
 
@@ -347,7 +478,8 @@ private struct StoredLine: Codable {
         switch kind {
         case .prompt: return text.map { .prompt($0) }
         case .unknownCommand: return text.map { .unknownCommand($0, suggestion: suggestion) }
-        case .missingArgument: return commandName.map { .missingArgument($0) }
+        case .missingArgument:
+            return commandName.map { .missingArgument($0, sub: reason.flatMap(MissingArgumentSub.init(rawValue:))) }
         case .missingTag: return .missingTag
         case .saved: return items?.first.map { .saved($0) }
         case .alreadySaved: return items?.first.map { .alreadySaved($0) }
@@ -360,10 +492,13 @@ private struct StoredLine: Codable {
             return .recentList(items: items, hasMore: hasMore, total: total, period: period)
         case .searchResult:
             guard let query, let total, let items, let hasMore else { return nil }
-            return .searchResult(query: query.query, total: total, items: items, hasMore: hasMore, period: period)
+            return .searchResult(
+                query: query.query, total: total, items: items, hasMore: hasMore, period: period,
+                isSavedSearch: flag
+            )
         case .noResults:
             guard let query, let items else { return nil }
-            return .noResults(query: query.query, recent: items, period: period)
+            return .noResults(query: query.query, recent: items, period: period, related: related ?? [])
         case .picked: return refs.map { .picked($0.map(\.ref)) }
         case .notFound: return numbers.map { .notFound(numbers: $0) }
         case .invalidNumber: return text.map { .invalidNumber($0) }
@@ -397,7 +532,76 @@ private struct StoredLine: Codable {
             guard let refs, let count else { return nil }
             return .unpicked(items: refs.map(\.ref), remaining: count)
         case .pickCleared: return count.map { .pickCleared(count: $0) }
-        case .signOutEverywhereConfirm: return .signOutEverywhereConfirm
+        case .signOutEverywhereConfirm: return .signOutEverywhereConfirm(connectionCount: count)
+        default: return bundleLine
+        }
+    }
+
+    private var bundleLine: TerminalViewState.Line? {
+        switch kind {
+        case .bundleList: return bundles.map { .bundleList($0) }
+        case .bundleAdded:
+            guard let name, let count, let extraCount else { return nil }
+            return .bundleAdded(name: name, count: count, alreadyCount: extraCount)
+        case .bundleView:
+            guard let name, let total, let items, let hasMore else { return nil }
+            return .bundleView(name: name, total: total, items: items, hasMore: hasMore)
+        case .bundleNotFound: return name.map { .bundleNotFound(name: $0) }
+        case .bundleUnpicked:
+            guard let name, let count else { return nil }
+            return .bundleUnpicked(name: name, remaining: count)
+        case .notInBundle:
+            guard let name, let numbers else { return nil }
+            return .notInBundle(name: name, numbers: numbers)
+        case .bundleDeleteConfirm:
+            guard let name, let count else { return nil }
+            return .bundleDeleteConfirm(name: name, itemCount: count)
+        case .bundleDeleted: return name.map { .bundleDeleted(name: $0) }
+        case .bundleNameInvalid: return reason.flatMap(BundleNameProblem.init(rawValue:)).map { .bundleNameInvalid($0) }
+        case .itemDetail: return detail.map { .itemDetail($0) }
+        case .oneNumberOnly: return command.flatMap(CommandName.init(storedName:)).map { .oneNumberOnly($0) }
+        default: return savedSearchLine
+        }
+    }
+
+    private var savedSearchLine: TerminalViewState.Line? {
+        switch kind {
+        case .searchSaved:
+            guard let text, let total, let flag else { return nil }
+            return .searchSaved(query: text, total: total, already: flag)
+        case .savedSearchList: return searches.map { .savedSearchList($0) }
+        case .savedSearchPeriod:
+            guard let text, let suggestion else { return nil }
+            return .savedSearchPeriod(period: text, suggestion: suggestion)
+        case .savedSearchTooLong: return .savedSearchTooLong
+        case .savedSearchDeleteConfirm: return text.map { .savedSearchDeleteConfirm(query: $0) }
+        case .savedSearchDeleted: return text.map { .savedSearchDeleted(query: $0) }
+        case .savedSearchNotFound: return text.map { .savedSearchNotFound(query: $0) }
+        case .importPrompt: return .importPrompt
+        case .folderHint: return .folderHint
+        case .connectionList:
+            guard let text, let connections else { return nil }
+            return .connectionList(mcpUrl: text, connections: connections)
+        case .disconnectConfirm:
+            guard let number, let text else { return nil }
+            return .disconnectConfirm(number: number, client: text)
+        case .disconnected:
+            guard let text, let flag else { return nil }
+            return .disconnected(client: text, already: flag)
+        case .connectionNotFound: return number.map { .connectionNotFound(number: $0) }
+        case .connectionEnded:
+            guard let text, let reason = reason.flatMap(ConnectionEndReason.init(rawValue:)) else { return nil }
+            return .connectionEnded(client: text, reason: reason)
+        case .importProgress:
+            guard let count, let total else { return nil }
+            return .importProgress(done: count, total: total)
+        case .importFinished:
+            guard let importCounts, let urls else { return nil }
+            return .importFinished(
+                saved: importCounts.saved, skipped: importCounts.skipped, failed: importCounts.failed,
+                overLimit: importCounts.overLimit, failedUrls: urls
+            )
+        default: return nil
         }
     }
 }
@@ -417,6 +621,11 @@ extension CommandName {
         case .drop: "drop"
         case .revive: "revive"
         case .bin: "bin"
+        case .pack: "pack"
+        case .peek: "peek"
+        case .gather: "gather"
+        case .bring: "bring"
+        case .plug: "plug"
         }
     }
 

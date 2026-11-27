@@ -48,6 +48,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             case recent(limit: Int, period: Period?)
             case search(SearchQuery, period: Period?)
             case bin
+            case bundle(String)
         }
 
         let lineIndex: Int
@@ -61,6 +62,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             case .recent: .recent
             case .search: .seek
             case .bin: .bin
+            case .bundle: .pack
             }
         }
     }
@@ -68,9 +70,9 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     let rawTransport: any HTTPTransport
     let httpTransport: ObservedTransport
     let clipboard: any ClipboardPort
-    private let files: any FilePort
+    let files: any FilePort
     let historyStore: any HistoryStore
-    private let sleeper: any Sleeper
+    let sleeper: any Sleeper
     private weak var listener: (any TerminalListener)?
     private(set) var viewState = TerminalViewState()
     /// 실패해 입력줄에 되돌린 저장 줄과 그때의 멱등성 키. 같은 줄을 다시 치면 같은 키로 보낸다.
@@ -86,6 +88,14 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     var pendingDrop: PendingDrop?
     /// 답을 기다리는 `휴지통 비우기` 확인(ARC-008 규칙 6, COM-007).
     var pendingBinEmpty: PendingBinEmpty?
+    /// 답을 기다리는 `묶음 <이름> 지우기` 확인(ARC-003 규칙 8, COM-007).
+    var pendingBundleDelete: PendingBundleDelete?
+    /// 답을 기다리는 `찾아두기 <검색어> 지우기` 확인(ARC-012 규칙 7, COM-007).
+    var pendingSavedSearchDelete: PendingSavedSearchDelete?
+    /// `가져오기`를 치고 북마크 파일을 기다린다. 다른 입력을 치면 놓는다.
+    var isAwaitingImport = false
+    /// 답을 기다리는 `연결 끊기 <번호>` 확인(ACC-002 규칙 8, COM-007).
+    var pendingDisconnect: PendingDisconnect?
     /// 답을 기다리는 `로그아웃 모든기기` 확인(ACC-002 규칙 4, COM-007).
     var pendingSignOutEverywhere = false
     /// 오타 제안(#118, commands.md 207줄). 빈 입력 엔터면 이 문자열을 실행하고, 다른 입력이면 지운다.
@@ -193,6 +203,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
 
     private func submit(_ text: String) {
         inputSequence += 1
+        isAwaitingImport = false
         if text.trimmingWhitespace().isEmpty, let suggested = pendingSuggestion {
             pendingSuggestion = nil
             submit(suggested)
@@ -214,6 +225,21 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             confirmBinEmpty(typed: text)
             return
         }
+        if let pending = pendingBundleDelete, pending.matches(text) {
+            pendingBundleDelete = nil
+            confirmBundleDelete(pending, typed: text)
+            return
+        }
+        if let pending = pendingSavedSearchDelete, pending.matches(text) {
+            pendingSavedSearchDelete = nil
+            confirmSavedSearchDelete(pending, typed: text)
+            return
+        }
+        if let pending = pendingDisconnect, pending.matches(text) {
+            pendingDisconnect = nil
+            confirmDisconnect(pending, typed: text)
+            return
+        }
         if pendingSignOutEverywhere {
             let answer = text.trimmingWhitespace()
             if answer == "로그아웃" || answer == "signout" {
@@ -224,14 +250,17 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             }
         }
         cancelPendingConfirmations()
+        if FolderHint.matches(text) {
+            update(viewState.appending(lines: [.prompt(text), .folderHint]).with(input: ""))
+            return
+        }
         guard let command = InputCommand(text) else { return }
         switch command.name {
         case .signOut where command.argument.isEmpty:
             forgetHistory()
             listener?.didRequestSignOut()
         case .signOut where command.argument == "모든기기" || command.argument == "all":
-            pendingSignOutEverywhere = true
-            update(viewState.appending(lines: [.prompt(text), .signOutEverywhereConfirm]).with(input: ""))
+            askSignOutEverywhere(typed: text)
         case .keep where command.argument.isEmpty:
             update(viewState.appending(lines: [.prompt(text), .missingArgument(.keep)]).with(input: ""))
         case .keep:
@@ -251,6 +280,17 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             reviveItems(command.argument, typed: text)
         case .bin:
             handleBin(command.argument, typed: text)
+        case .pack:
+            handleBundle(command.argument, typed: text)
+        case .peek:
+            peek(command.argument, typed: text)
+        case .gather:
+            handleGather(command.argument, typed: text)
+        case .plug:
+            handleConnections(command.argument, typed: text)
+        case .bring where command.argument.isEmpty:
+            isAwaitingImport = true
+            update(viewState.appending(lines: [.prompt(text), .importPrompt]).with(input: ""))
         case .revise:
             reviseItem(command.argument, typed: text)
         case .guide:
@@ -259,9 +299,8 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             update(viewState.appending(lines: [.prompt(text), aboutLine(for: command.argument)]).with(input: ""))
         case .handoff where command.argument.isEmpty:
             handOffSelection(typed: text)
-        // shortcut: `넘기기 <묶음 이름>`(F12)은 묶음이 데모 범위 밖이라 받지 않는다. 고른 자료를 대신 넘기지 않도록 없는 명령으로 알린다.
         case .handoff:
-            update(viewState.appending(lines: [.prompt(text), .unknownCommand(text.trimmingWhitespace())]).with(input: ""))
+            handOffBundle(command.argument, typed: text)
         default:
             let suggestion = CommandSuggester.suggest(word: command.word, argument: command.argument)
             pendingSuggestion = suggestion
@@ -325,6 +364,11 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     /// shortcut: `GET /uploads/limits`로 보내기 전에 거르지 않고 서버 판정(413·415)만 쓴다. 큰 파일을 올리기 전에 막아야 할 때 더한다.
     private func drop(_ dropped: [DroppedFile]) {
         guard !dropped.isEmpty else { return }
+        if isAwaitingImport {
+            isAwaitingImport = false
+            importBookmarks(dropped)
+            return
+        }
         inputSequence += 1
         cancelPendingConfirmations()
         update(viewState.appending(lines: [.prompt((["담기"] + dropped.map(\.name)).joined(separator: " "))]))
@@ -447,10 +491,15 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     }
 
     func cancelPendingConfirmations() {
-        let hadPending = pendingHandoff != nil || pendingDrop != nil || pendingBinEmpty != nil || pendingSignOutEverywhere
+        let hadPending = pendingHandoff != nil || pendingDrop != nil || pendingBinEmpty != nil
+            || pendingBundleDelete != nil || pendingSavedSearchDelete != nil || pendingDisconnect != nil
+            || pendingSignOutEverywhere
         pendingHandoff = nil
         pendingDrop = nil
         pendingBinEmpty = nil
+        pendingBundleDelete = nil
+        pendingSavedSearchDelete = nil
+        pendingDisconnect = nil
         pendingSignOutEverywhere = false
         if hadPending {
             update(viewState.appending(lines: [.cancelled]).with(input: ""))
@@ -534,13 +583,15 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
                 transport: httpTransport, accessToken: accessToken
             )
             switch outcome {
-            case .page(let items, let total, let nextCursor): return .page(items: items, total: total, nextCursor: nextCursor)
+            case .page(let items, let total, let nextCursor, _, _): return .page(items: items, total: total, nextCursor: nextCursor)
             case .sessionExpired: return .sessionExpired
             case .failed(let reason): return .failed(reason)
             case .cancelled: return .cancelled
             }
         case .bin:
             return .cancelled
+        case .bundle(let name):
+            return await nextBundlePage(of: page, name: name, accessToken: accessToken)
         }
     }
 
@@ -574,11 +625,14 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             )
             guard !Task.isCancelled else { return }
             switch outcome {
-            case .page(let items, _, _) where items.isEmpty:
-                await showNoResults(for: query, period: period, typed: typed, accessToken: token)
-            case .page(let items, let total, let nextCursor):
+            case .page(let items, _, _, _, let related) where items.isEmpty:
+                await showNoResults(for: query, period: period, related: related, typed: typed, accessToken: token)
+            case .page(let items, let total, let nextCursor, let isSavedSearch, _):
                 showList(
-                    .searchResult(query: query, total: total, items: items, hasMore: nextCursor != nil, period: period),
+                    .searchResult(
+                        query: query, total: total, items: items, hasMore: nextCursor != nil, period: period,
+                        isSavedSearch: isSavedSearch
+                    ),
                     nextCursor: nextCursor, source: .search(query, period: period), typed: typed
                 )
             case .failed(let reason):
@@ -593,16 +647,28 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     }
 
     /// `· 0건` 뒤에 붙일 최근 저장 자료를 받는다. 받지 못해도 찾기는 끝난 것이라 0건 줄은 찍는다.
-    func showNoResults(for query: SearchQuery, period: Period? = nil, typed: String, accessToken: String) async {
+    func showNoResults(
+        for query: SearchQuery,
+        period: Period? = nil,
+        related: [ItemSummary] = [],
+        typed: String,
+        accessToken: String
+    ) async {
         let outcome = await BrowseAPI.recent(
             limit: SeekCommand.noResultsRecentCount, cursor: nil, transport: httpTransport, accessToken: accessToken
         )
         guard !Task.isCancelled else { return }
         switch outcome {
         case .page(let items, _, _):
-            showList(.noResults(query: query, recent: items, period: period), nextCursor: nil, source: .search(query, period: period), typed: typed)
+            showList(
+                .noResults(query: query, recent: items, period: period, related: related),
+                nextCursor: nil, source: .search(query, period: period), typed: typed
+            )
         case .failed:
-            showList(.noResults(query: query, recent: [], period: period), nextCursor: nil, source: .search(query, period: period), typed: typed)
+            showList(
+                .noResults(query: query, recent: [], period: period, related: related),
+                nextCursor: nil, source: .search(query, period: period), typed: typed
+            )
         case .sessionExpired:
             restoreInput(typed)
             expire()

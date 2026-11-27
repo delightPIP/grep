@@ -36,7 +36,8 @@ extension TerminalViewState.Line {
         case .prompt(let text): line("prompt", ["text": text])
         case .unknownCommand(let name, let suggestion):
             line("unknownCommand", ["name": name, "suggestion": suggestion])
-        case .missingArgument(let command): line("missingArgument", ["command": command.bridgeName])
+        case .missingArgument(let command, let sub):
+            line("missingArgument", ["command": command.bridgeName, "sub": sub?.rawValue])
         case .missingTag: line("missingTag")
         case .saved(let item): line("saved", ["item": item.bridgeValue])
         case .alreadySaved(let item): line("alreadySaved", ["item": item.bridgeValue])
@@ -48,7 +49,7 @@ extension TerminalViewState.Line {
                 "recentList",
                 ["items": items.map(\.bridgeValue), "hasMore": hasMore, "total": total, "period": period?.bridgeValue]
             )
-        case .searchResult(let query, let total, let items, let hasMore, let period):
+        case .searchResult(let query, let total, let items, let hasMore, let period, let isSavedSearch):
             line(
                 "searchResult",
                 [
@@ -57,10 +58,19 @@ extension TerminalViewState.Line {
                     "items": items.map(\.bridgeValue),
                     "hasMore": hasMore,
                     "period": period?.bridgeValue,
+                    "isSavedSearch": isSavedSearch,
                 ]
             )
-        case .noResults(let query, let recent, let period):
-            line("noResults", ["query": query.bridgeValue, "recent": recent.map(\.bridgeValue), "period": period?.bridgeValue])
+        case .noResults(let query, let recent, let period, let related):
+            line(
+                "noResults",
+                [
+                    "query": query.bridgeValue,
+                    "recent": recent.map(\.bridgeValue),
+                    "period": period?.bridgeValue,
+                    "related": related.map(\.bridgeValue),
+                ]
+            )
         case .picked(let items): line("picked", ["items": items.map(\.bridgeValue)])
         case .notFound(let numbers): line("notFound", ["numbers": numbers])
         case .invalidNumber(let input): line("invalidNumber", ["input": input])
@@ -89,8 +99,79 @@ extension TerminalViewState.Line {
         case .unpicked(let items, let remaining):
             line("unpicked", ["items": items.map(\.bridgeValue), "remaining": remaining])
         case .pickCleared(let count): line("pickCleared", ["count": count])
-        case .signOutEverywhereConfirm: line("signOutEverywhereConfirm")
+        case .signOutEverywhereConfirm(let connectionCount):
+            line("signOutEverywhereConfirm", ["connectionCount": connectionCount])
+        // 계약 2(#157)
+        case .bundleList(let bundles): line("bundleList", ["bundles": bundles.map(\.bridgeValue)])
+        case .bundleAdded(let name, let count, let alreadyCount):
+            line("bundleAdded", ["name": name, "count": count, "alreadyCount": alreadyCount])
+        case .bundleView(let name, let total, let items, let hasMore):
+            line("bundleView", ["name": name, "total": total, "items": items.map(\.bridgeValue), "hasMore": hasMore])
+        case .bundleNotFound(let name): line("bundleNotFound", ["name": name])
+        case .bundleUnpicked(let name, let remaining): line("bundleUnpicked", ["name": name, "remaining": remaining])
+        case .notInBundle(let name, let numbers): line("notInBundle", ["name": name, "numbers": numbers])
+        case .bundleDeleteConfirm(let name, let itemCount):
+            line("bundleDeleteConfirm", ["name": name, "itemCount": itemCount])
+        case .bundleDeleted(let name): line("bundleDeleted", ["name": name])
+        case .bundleNameInvalid(let reason): line("bundleNameInvalid", ["reason": reason.rawValue])
+        case .folderHint: line("folderHint")
+        case .itemDetail(let detail): line("itemDetail", ["detail": detail.bridgeValue])
+        case .oneNumberOnly(let command): line("oneNumberOnly", ["command": command.bridgeName])
+        case .searchSaved(let query, let total, let already):
+            line("searchSaved", ["query": query, "total": total, "already": already])
+        case .savedSearchList(let searches): line("savedSearchList", ["searches": searches.map(\.bridgeValue)])
+        case .savedSearchPeriod(let period, let suggestion):
+            line("savedSearchPeriod", ["period": period, "suggestion": suggestion])
+        case .savedSearchTooLong: line("savedSearchTooLong")
+        case .savedSearchDeleteConfirm(let query): line("savedSearchDeleteConfirm", ["query": query])
+        case .savedSearchDeleted(let query): line("savedSearchDeleted", ["query": query])
+        case .savedSearchNotFound(let query): line("savedSearchNotFound", ["query": query])
+        case .connectionList(let mcpUrl, let connections):
+            line("connectionList", ["mcpUrl": mcpUrl, "connections": connections.map(\.bridgeValue)])
+        case .disconnectConfirm(let number, let client): line("disconnectConfirm", ["number": number, "client": client])
+        case .disconnected(let client, let already): line("disconnected", ["client": client, "already": already])
+        case .connectionNotFound(let number): line("connectionNotFound", ["number": number])
+        case .connectionEnded(let client, let reason):
+            line("connectionEnded", ["client": client, "reason": reason.rawValue])
+        case .importPrompt: line("importPrompt")
+        case .importProgress(let done, let total): line("importProgress", ["done": done, "total": total])
+        case .importFinished(let saved, let skipped, let failed, let overLimit, let failedUrls):
+            line(
+                "importFinished",
+                ["saved": saved, "skipped": skipped, "failed": failed, "overLimit": overLimit, "failedUrls": failedUrls]
+            )
         }
+    }
+}
+
+extension ItemDetail {
+    fileprivate var bridgeValue: JSValue {
+        object([
+            "item": item.bridgeValue,
+            "url": url,
+            "handoffSummary": handoffSummary,
+            "allTags": allTags,
+            "bundles": bundles,
+            "bodyLength": bodyLength,
+            "body": body,
+            "bodyFromImage": bodyFromImage,
+            "originalUrl": originalUrl,
+            "previewUrl": previewUrl,
+        ])
+    }
+}
+
+extension BundleEntry {
+    fileprivate var bridgeValue: JSValue { object(["name": name, "count": count]) }
+}
+
+extension SavedSearchEntry {
+    fileprivate var bridgeValue: JSValue { object(["query": query, "count": count]) }
+}
+
+extension ConnectionEntry {
+    fileprivate var bridgeValue: JSValue {
+        object(["number": number, "client": client, "connectedAt": connectedAt, "lastReadAt": lastReadAt])
     }
 }
 
@@ -143,6 +224,8 @@ extension HandoffResult {
     fileprivate var bridgeValue: JSValue {
         object([
             "items": items.map(\.bridgeValue),
+            "bundle": bundle,
+            "removedCount": removedCount,
             "charCount": charCount,
             "missingSummaryCount": missingSummaryCount,
             "text": text,

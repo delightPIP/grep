@@ -21,6 +21,15 @@ public protocol FilePort: AnyObject {
     func upload(_ fileID: String, to uploadURL: String) async throws(FileUploadError)
     /// 이 드롭의 파일을 더 쓰지 않는다. 플랫폼은 잡고 있던 바이트를 놓는다.
     func release(_ fileID: String)
+    /// 파일을 UTF-8 글로 읽는다. 북마크 가져오기(F8)가 HTML을 서버에 글로 보낼 때 쓴다.
+    func readText(_ fileID: String) async throws(FileUploadError) -> String
+}
+
+extension FilePort {
+    /// 아직 읽기를 구현하지 않은 플랫폼은 가져오기를 `서버 오류`로 알린다.
+    public func readText(_ fileID: String) async throws(FileUploadError) -> String {
+        throw .missingFile
+    }
 }
 
 public enum FileUploadError: Error, Equatable, Sendable {

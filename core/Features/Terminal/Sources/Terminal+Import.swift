@@ -1,0 +1,104 @@
+import FeatureTerminalInterface
+import GrepCore
+
+// MARK: 북마크 가져오기(#127, F8, user-flow 10절)
+
+extension TerminalInteractor {
+    /// 진행을 묻는 주기. 처리 중 자료 폴링(ARC-005 규칙 10)과 같은 2초.
+    private static let importPollInterval: Duration = .seconds(2)
+    /// 실패 줄의 `→ 다시`에 쓰는 명령.
+    private static let importRetry = "가져오기"
+
+    /// `가져오기` 뒤에 놓은 첫 파일을 HTML 글로 읽어 보낸다. 나머지 파일은 쓰지 않는다.
+    /// 시작한 뒤에는 다른 명령을 쳐도 진행을 계속 묻고, 진행 줄은 제자리에서 고친다.
+    func importBookmarks(_ dropped: [DroppedFile]) {
+        guard let file = dropped.first else { return }
+        startTask { [weak self] in
+            guard let self else { return }
+            let html: String
+            do {
+                html = try await files.readText(file.id)
+            } catch {
+                dropped.forEach { files.release($0.id) }
+                showImportFailure(.serverError)
+                return
+            }
+            // 글을 읽었으면 파일은 더 쓰지 않는다. 진행을 묻는 동안 잡고 있지 않는다.
+            dropped.forEach { files.release($0.id) }
+            guard !Task.isCancelled else { return }
+            let token = await authService.accessToken()
+            guard !Task.isCancelled else { return }
+            guard let token else {
+                expire()
+                return
+            }
+            let outcome = await ImportAPI.start(html: html, transport: httpTransport, accessToken: token)
+            guard !Task.isCancelled else { return }
+            switch outcome {
+            case .status(let status) where status.isFinished:
+                update(viewState.appending(lines: [Self.finishedLine(status)]))
+            case .status(let status):
+                update(viewState.appending(lines: [.importProgress(done: status.done, total: status.total)]))
+                await followImport(status.id, progressIndex: viewState.lines.count - 1, accessToken: token)
+            case .notFound:
+                showImportFailure(.serverError)
+            case .failed(let reason):
+                showImportFailure(reason)
+            case .sessionExpired:
+                expire()
+            case .cancelled:
+                break
+            }
+        }
+    }
+
+    /// 끝날 때까지 묻는다. 서버에 닿지 못하면 다음 주기에 다시 묻는다. 404·만료면 멈춘다.
+    private func followImport(_ id: String, progressIndex: Int, accessToken: String) async {
+        while true {
+            await sleeper.sleep(for: Self.importPollInterval)
+            guard !Task.isCancelled else { return }
+            let outcome = await ImportAPI.status(id: id, transport: httpTransport, accessToken: accessToken)
+            guard !Task.isCancelled else { return }
+            switch outcome {
+            case .status(let status):
+                update(viewState.replacingLine(
+                    at: progressIndex, with: .importProgress(done: status.done, total: status.total)
+                ))
+                if status.isFinished {
+                    update(viewState.appending(lines: [Self.finishedLine(status)]))
+                    return
+                }
+            case .failed:
+                continue
+            case .notFound, .cancelled:
+                return
+            case .sessionExpired:
+                expire()
+                return
+            }
+        }
+    }
+
+    private func showImportFailure(_ reason: CommandFailure) {
+        update(viewState.appending(lines: [
+            .commandFailed(command: .bring, reason: reason, retry: Self.importRetry),
+        ]))
+    }
+
+    private static func finishedLine(_ status: ImportAPI.Status) -> TerminalViewState.Line {
+        .importFinished(
+            saved: status.saved, skipped: status.skipped, failed: status.failed,
+            overLimit: status.overLimit, failedUrls: status.failedUrls
+        )
+    }
+}
+
+extension TerminalViewState {
+    /// `index`의 줄을 바꾼다. 없는 자리면 그대로 둔다.
+    func replacingLine(at index: Int, with line: Line) -> TerminalViewState {
+        guard lines.indices.contains(index) else { return self }
+        var next = self
+        next.lines[index] = line
+        return next
+    }
+}

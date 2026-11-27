@@ -60,20 +60,6 @@ struct TerminalHandoffTests {
         #expect(fixture.fakeClipboard.copied.isEmpty)
     }
 
-    @Test func 자료를골랐을때_넘기기뒤에묶음이름을붙이면_요청없이없는명령으로그리는지() async {
-        // given
-        await fixture.attach()
-        await fixture.pick([25])
-        let requestCount = fixture.transport.requests.count
-
-        // when
-        await fixture.submit("넘기기 결제조사")
-
-        // then
-        #expect(fixture.state.lines.suffix(2) == [.prompt("넘기기 결제조사"), .unknownCommand("넘기기 결제조사")])
-        #expect(fixture.transport.requests.count == requestCount)
-    }
-
     @Test func 처리중자료를넘긴뒤일때_요약이와도_클립보드와복사됨줄을그대로두는지() async {
         // given
         await fixture.attach()

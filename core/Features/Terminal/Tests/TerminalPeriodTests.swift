@@ -69,7 +69,7 @@ struct TerminalPeriodTests {
         await fixture.respond(json: #"{"items":[],"nextCursor":null}"#)
 
         // then
-        guard case .noResults(let query, _, let period) = fixture.state.lines.last else {
+        guard case .noResults(let query, _, let period, _) = fixture.state.lines.last else {
             Issue.record("Expected noResults")
             return
         }

@@ -3,10 +3,10 @@ import FeatureTerminalInterface
 /// 명령 오타 제안(#118, commands.md 207줄). 한글 자모 거리와 영문 문자 편집 거리로 가장 가까운 명령을 찾는다.
 enum CommandSuggester {
     private static let koreanCommands = [
-        "담기", "최근", "찾기", "고르기", "넘기기", "도움말", "설명", "로그아웃", "버리기", "되살리기", "휴지통", "고치기",
+        "담기", "최근", "찾기", "고르기", "넘기기", "도움말", "설명", "로그아웃", "버리기", "되살리기", "휴지통", "고치기", "묶음", "열기", "찾아두기", "가져오기", "연결",
     ]
     private static let englishCommands = [
-        "keep", "recent", "seek", "pick", "handoff", "guide", "about", "signout", "drop", "revive", "bin", "revise",
+        "keep", "recent", "seek", "pick", "handoff", "guide", "about", "signout", "drop", "revive", "bin", "revise", "pack", "peek", "gather", "bring", "plug",
     ]
     private static let excludedWords: Set<String> = ["login", "logout"]
     /// `고르기` 없이 친 하위 명령(#154). `빼기 6`이면 `고르기 빼기 6`을 제안한다.
@@ -16,6 +16,7 @@ enum CommandSuggester {
 
     /// 오타에 가까운 명령이 있으면 인자를 이어 붙인 전체 입력 문자열을 돌려준다(예: `"찾기 결제"`).
     static func suggest(word: String, argument: String) -> String? {
+        if let pickSuggestion = pickSubcommand(word: word, argument: argument) { return pickSuggestion }
         let lower = word.lowercased()
         guard !lower.isEmpty, !excludedWords.contains(lower) else { return nil }
         if let pick = pickSubcommands[lower] {
@@ -30,6 +31,15 @@ enum CommandSuggester {
         }
         guard let matched else { return nil }
         return argument.isEmpty ? matched : "\(matched) \(argument)"
+    }
+
+    /// `고르기`를 빼먹은 하위 명령(#154): `빼기 6` → `고르기 빼기 6`, `비우기` → `고르기 비우기`.
+    private static func pickSubcommand(word: String, argument: String) -> String? {
+        switch word {
+        case "빼기" where !argument.isEmpty: "고르기 빼기 \(argument)"
+        case "비우기" where argument.isEmpty: "고르기 비우기"
+        default: nil
+        }
     }
 
     private static func bestKoreanMatch(for word: String) -> String? {

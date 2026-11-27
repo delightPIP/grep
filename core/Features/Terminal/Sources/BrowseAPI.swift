@@ -18,7 +18,9 @@ enum BrowseAPI {
 
     enum SearchOutcome: Equatable {
         /// `total`은 조건에 맞는 전체 건수다. `nextCursor`가 nil이면 마지막 쪽이다.
-        case page(items: [ItemSummary], total: Int, nextCursor: String?)
+        /// `isSavedSearch`는 같은 검색어를 찾아뒀는지(계약 2, #134). 서버가 주지 않으면 nil.
+        /// `related`는 0건일 때만 오는 뜻이 가까운 자료(최대 3건, #128). 없으면 빈 배열.
+        case page(items: [ItemSummary], total: Int, nextCursor: String?, isSavedSearch: Bool?, related: [ItemSummary])
         case sessionExpired
         case failed(CommandFailure)
         case cancelled
@@ -54,6 +56,8 @@ enum BrowseAPI {
         let items: [ItemSummary]
         let total: Int
         let nextCursor: String?
+        let isSavedSearch: Bool?
+        let related: [ItemSummary]?
     }
 
     private struct LookupBody: Decodable {
@@ -118,7 +122,11 @@ enum BrowseAPI {
         }
         let path = "\(searchPath)?\(conditions.joined(separator: "&"))"
         switch await get(path, as: SearchBody.self, transport: transport, accessToken: accessToken) {
-        case .body(let page): return .page(items: page.items, total: page.total, nextCursor: page.nextCursor)
+        case .body(let page):
+            return .page(
+                items: page.items, total: page.total, nextCursor: page.nextCursor, isSavedSearch: page.isSavedSearch,
+                related: page.related ?? []
+            )
         case .sessionExpired: return .sessionExpired
         case .unauthorized: return .failed(.serverError)
         case .failed(let reason): return .failed(reason)
@@ -177,7 +185,8 @@ enum BrowseAPI {
         return .body(body)
     }
 
-    private static func percentEncoded(_ value: String) -> String {
+    /// 경로 조각·쿼리 값용. RFC 3986 unreserved 밖은 모두 %XX로 바꾼다.
+    static func percentEncoded(_ value: String) -> String {
         value.utf8.map { byte in
             unreservedBytes.contains(byte)
                 ? String(UnicodeScalar(byte))

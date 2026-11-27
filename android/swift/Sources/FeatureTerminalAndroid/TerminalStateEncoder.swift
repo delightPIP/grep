@@ -131,7 +131,7 @@ private struct LineDTO: Encodable {
             self.kind = "unknownCommand"
             self.text = name
             self.suggestion = suggestion
-        case .missingArgument(let cmd):
+        case .missingArgument(let cmd, _):
             self.kind = "missingArgument"
             self.command = Self.encodeCommand(cmd)
         case .missingTag:
@@ -177,13 +177,13 @@ private struct LineDTO: Encodable {
             self.items = items.map(ItemSummaryDTO.init)
             self.hasMore = hasMore
             self.total = total
-        case .searchResult(let query, let total, let items, let hasMore, _):
+        case .searchResult(let query, let total, let items, let hasMore, _, _):
             self.kind = "searchResult"
             self.query = SearchQueryDTO(query)
             self.total = total
             self.items = items.map(ItemSummaryDTO.init)
             self.hasMore = hasMore
-        case .noResults(let query, let recent, _):
+        case .noResults(let query, let recent, _, _):
             self.kind = "noResults"
             self.query = SearchQueryDTO(query)
             self.items = recent.map(ItemSummaryDTO.init)
@@ -224,7 +224,12 @@ private struct LineDTO: Encodable {
             self.kind = "reconnected"
         // shortcut: #95~#120 후속 Android 피처 이슈에서 각 라인 표시를 추가한다.
         case .dropConfirm, .dropped, .revived, .binList, .binEmptyConfirm, .binEmptied,
-             .revised, .tagsRemoved, .samplesSaved, .unpicked, .pickCleared, .signOutEverywhereConfirm:
+             .revised, .tagsRemoved, .samplesSaved, .unpicked, .pickCleared, .signOutEverywhereConfirm,
+             .bundleList, .bundleAdded, .bundleView, .bundleNotFound, .bundleUnpicked, .notInBundle,
+             .bundleDeleteConfirm, .bundleDeleted, .bundleNameInvalid, .folderHint, .itemDetail, .oneNumberOnly,
+             .searchSaved, .savedSearchList, .savedSearchPeriod, .savedSearchTooLong, .savedSearchDeleteConfirm,
+             .savedSearchDeleted, .savedSearchNotFound, .connectionList, .disconnectConfirm, .disconnected,
+             .connectionNotFound, .connectionEnded, .importPrompt, .importProgress, .importFinished:
             return nil
         }
     }
@@ -243,6 +248,11 @@ private struct LineDTO: Encodable {
         case .drop: "drop"
         case .revive: "revive"
         case .bin: "bin"
+        case .pack: "pack"
+        case .peek: "peek"
+        case .gather: "gather"
+        case .bring: "bring"
+        case .plug: "plug"
         }
     }
 

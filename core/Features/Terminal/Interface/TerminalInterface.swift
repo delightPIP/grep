@@ -10,7 +10,8 @@ public struct TerminalViewState: Equatable, Sendable {
         /// `✗ 없는 명령: <name>` (#118 오타 제안이 있으면 `suggestion`에 고친 입력 전체)
         case unknownCommand(String, suggestion: String? = nil)
         /// 빠진 인자(`✗ 검색어 없음  예: …` 등). 문구는 명령마다 뷰가 정책 원문으로 고른다.
-        case missingArgument(CommandName)
+        /// `sub`는 하위 명령(`고르기 빼기`면 `.unpick`, 예시 `예: 고르기 빼기 131`, #154).
+        case missingArgument(CommandName, sub: MissingArgumentSub? = nil)
         /// `찾기 #`처럼 `#` 뒤가 비었다. `✗ 태그 없음  예: 찾기 #결제`(ARC-002).
         case missingTag
         /// `✓ 저장됨  <제목> (<출처>)` 뒤에 `· 요약 생성 중`(ARC-005). 글이면 `✓ 저장됨 (글)  <제목>`.
@@ -26,9 +27,18 @@ public struct TerminalViewState: Equatable, Sendable {
         /// 자료를 든 다른 줄(`saved`·`alreadySaved`·`searchResult`·`noResults`)도 같이 바꾼다.
         case recentList(items: [ItemSummary], hasMore: Bool, total: Int? = nil, period: Period? = nil)
         /// `찾기` 결과. 머리줄 `4건` 또는 `23건 중 10건`(total과 items 수).
-        case searchResult(query: SearchQuery, total: Int, items: [ItemSummary], hasMore: Bool, period: Period? = nil)
+        /// `isSavedSearch`가 false·nil이면 뷰가 `찾아두기 <검색어>` 칩을 둔다(ARC-012 규칙 9, 계약 2).
+        case searchResult(
+            query: SearchQuery,
+            total: Int,
+            items: [ItemSummary],
+            hasMore: Bool,
+            period: Period? = nil,
+            isSavedSearch: Bool? = nil
+        )
         /// `· 0건: "<검색어>"` 뒤에 `· 최근 저장 3건 (검색 결과 아님)` 머리줄과 그 자료들(commands 6절).
-        case noResults(query: SearchQuery, recent: [ItemSummary], period: Period? = nil)
+        /// `related`는 뜻이 가까운 자료(#128). 있으면 뷰가 `· 뜻이 가까운 자료 N건 (낱말은 다름)`을 그린다.
+        case noResults(query: SearchQuery, recent: [ItemSummary], period: Period? = nil, related: [ItemSummary] = [])
         /// `✓ 선택 N건  <제목> · <제목>` 뒤에 `→ 넘기기 또는 묶음 <이름>`.
         case picked([ItemRef])
         /// `✗ 없는 번호: <번호>`(여러 개면 쉼표, ARC-001 규칙 10).
@@ -70,8 +80,44 @@ public struct TerminalViewState: Equatable, Sendable {
         // #108 고르기 빼기·비우기
         case unpicked(items: [ItemRef], remaining: Int)
         case pickCleared(count: Int)
-        // #111 로그아웃 모든기기(ACC-002)
-        case signOutEverywhereConfirm
+        // #111 로그아웃 모든기기(ACC-002). connectionCount: 끊길 AI 도구 연결 수(`· AI 도구 연결 N개`). 모르면 nil
+        case signOutEverywhereConfirm(connectionCount: Int?)
+        // 계약 2 묶음(ARC-003)
+        case bundleList([BundleEntry])
+        case bundleAdded(name: String, count: Int, alreadyCount: Int)
+        case bundleView(name: String, total: Int, items: [ItemSummary], hasMore: Bool)
+        case bundleNotFound(name: String)
+        case bundleUnpicked(name: String, remaining: Int)
+        case notInBundle(name: String, numbers: [Int])
+        case bundleDeleteConfirm(name: String, itemCount: Int)
+        case bundleDeleted(name: String)
+        case bundleNameInvalid(BundleNameProblem)
+        /// `폴더`·`mkdir` 입력 안내(ARC-007 규칙 11).
+        case folderHint
+        // 계약 2 자세히 보기(ARC-011)
+        case itemDetail(ItemDetail)
+        /// `✗ 번호 하나만  예: <명령> 131`
+        case oneNumberOnly(CommandName)
+        // 계약 2 찾아두기(ARC-012). 결과 목록은 searchResult 줄이 이어서 온다
+        case searchSaved(query: String, total: Int, already: Bool)
+        case savedSearchList([SavedSearchEntry])
+        /// `✗ 시점은 찾아두지 않음: <시점>` 다음 줄 `→ 찾아두기 <검색어>`
+        case savedSearchPeriod(period: String, suggestion: String)
+        case savedSearchTooLong
+        case savedSearchDeleteConfirm(query: String)
+        case savedSearchDeleted(query: String)
+        case savedSearchNotFound(query: String)
+        // 계약 2 AI 도구 연결(ACC-002)
+        case connectionList(mcpUrl: String, connections: [ConnectionEntry])
+        case disconnectConfirm(number: Int, client: String)
+        case disconnected(client: String, already: Bool)
+        case connectionNotFound(number: Int)
+        /// 그렙을 열 때 한 번(ACC-002 규칙 11) `! 연결 끊김: <AI 도구> (<이유>)`
+        case connectionEnded(client: String, reason: ConnectionEndReason)
+        // 계약 2 북마크 가져오기(commands 6절)
+        case importPrompt
+        case importProgress(done: Int, total: Int)
+        case importFinished(saved: Int, skipped: Int, failed: Int, overLimit: Int, failedUrls: [String])
     }
 
     /// 상태줄 `자료 N`. 서버 `GET /me`의 itemCount. 받기 전이면 nil.
@@ -174,14 +220,27 @@ public struct SearchQuery: Equatable, Sendable {
 /// 서버 `POST /handoff` 결과(api/openapi.yaml `Handoff`).
 public struct HandoffResult: Equatable, Sendable {
     public let items: [ItemRef]
+    /// `넘기기 <묶음>`이면 그 이름(계약 2). 아니면 nil.
+    public let bundle: String?
+    /// 묶음에서 휴지통·영구 삭제로 빠진 수 `! 빠진 자료 N건 (삭제됨)`.
+    public let removedCount: Int
     /// 줄바꿈을 포함한 글자 수.
     public let charCount: Int
     public let missingSummaryCount: Int
     /// 클립보드에 넣은 글 전체. `펼치기`로 보인다.
     public let text: String
 
-    public init(items: [ItemRef], charCount: Int, missingSummaryCount: Int, text: String) {
+    public init(
+        items: [ItemRef],
+        bundle: String? = nil,
+        removedCount: Int = 0,
+        charCount: Int,
+        missingSummaryCount: Int,
+        text: String
+    ) {
         self.items = items
+        self.bundle = bundle
+        self.removedCount = removedCount
         self.charCount = charCount
         self.missingSummaryCount = missingSummaryCount
         self.text = text
@@ -278,6 +337,16 @@ public enum CommandName: Equatable, Sendable, CaseIterable {
     case revive
     /// `휴지통`(bin)
     case bin
+    /// `묶음`(pack)
+    case pack
+    /// `열기`(peek)
+    case peek
+    /// `찾아두기`(gather)
+    case gather
+    /// `가져오기`(bring)
+    case bring
+    /// `연결`(plug)
+    case plug
 }
 
 /// 저장 실패 이유.

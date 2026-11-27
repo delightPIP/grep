@@ -103,7 +103,7 @@ struct TerminalGuideTests {
         #expect(fixture.state.lines == [.prompt(typed), .missingArgument(.about)])
     }
 
-    @Test(arguments: [("설명 찻기", "찻기"), ("설명 묶음", "묶음"), ("설명 찾기 결제", "찾기 결제")])
+    @Test(arguments: [("설명 찻기", "찻기"), ("설명 폴더", "폴더"), ("설명 찾기 결제", "찾기 결제")])
     func 터미널화면일때_모르는명령의설명을찾으면_없는명령으로그리는지(typed: String, name: String) async {
         // given
         await fixture.attach()

@@ -9,6 +9,8 @@ enum PickCommand {
         case clear
         /// 번호가 없다. `✗ 번호 없음`
         case missingArgument
+        /// `고르기 빼기` 뒤에 번호가 없다. `예: 고르기 빼기 131`(#154)
+        case missingUnpickNumbers
         /// 양의 정수가 아닌 첫 낱말. `✗ 잘못된 번호: <입력>`
         case invalidNumber(String)
     }
@@ -21,7 +23,7 @@ enum PickCommand {
         }
         if first == "빼기" || first == "remove" {
             let rest = Array(tokens.dropFirst())
-            guard !rest.isEmpty else { return .missingArgument }
+            guard !rest.isEmpty else { return .missingUnpickNumbers }
             switch parseNumbers(rest) {
             case .numbers(let numbers): return .unpick(numbers)
             case .invalidNumber(let token): return .invalidNumber(token)

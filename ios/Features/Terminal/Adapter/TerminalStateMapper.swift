@@ -156,7 +156,7 @@ public enum TerminalStateMapper {
             return [.prompt(command: text, failed: failed)]
         case .unknownCommand(let name, _):
             return [.status(tone: .error, boldPrefix: "없는 명령:", body: " \(name)")]
-        case .missingArgument(let command):
+        case .missingArgument(let command, _):
             switch command {
             case .keep:
                 return [.status(tone: .error, boldPrefix: nil, body: "저장할 것 없음  예: 담기 https://…")]
@@ -199,14 +199,14 @@ public enum TerminalStateMapper {
                 items: items.map { mapRow($0, isPicked: pickedNumbers.contains($0.number)) },
                 hasMore: hasMore
             )]
-        case .searchResult(_, let total, let items, let hasMore, _):
+        case .searchResult(_, let total, let items, let hasMore, _, _):
             let header = countHeader(total: total, shown: items.count)
             return [.list(
                 header: header,
                 items: items.map { mapRow($0, isPicked: pickedNumbers.contains($0.number)) },
                 hasMore: hasMore
             )]
-        case .noResults(let query, let recent, _):
+        case .noResults(let query, let recent, _, _):
             var result: [TerminalOutputBlockLine] = [
                 .status(tone: .info, boldPrefix: nil, body: #"0건: "\#(query.text)""#),
             ]
@@ -301,7 +301,12 @@ public enum TerminalStateMapper {
             // 시안 Edit ③(문구 제안). 지운 태그는 다시 붙지 않는다(ARC-002 규칙 2).
             let removed = tags.map { "#\($0)" }.joined(separator: " ")
             return [.status(tone: .ok, boldPrefix: "태그 지움", body: " \(removed) (\(item.number)번)")]
-        case .samplesSaved, .unpicked, .pickCleared, .signOutEverywhereConfirm:
+        case .samplesSaved, .unpicked, .pickCleared, .signOutEverywhereConfirm,
+             .bundleList, .bundleAdded, .bundleView, .bundleNotFound, .bundleUnpicked, .notInBundle,
+             .bundleDeleteConfirm, .bundleDeleted, .bundleNameInvalid, .folderHint, .itemDetail, .oneNumberOnly,
+             .searchSaved, .savedSearchList, .savedSearchPeriod, .savedSearchTooLong, .savedSearchDeleteConfirm,
+             .savedSearchDeleted, .savedSearchNotFound, .connectionList, .disconnectConfirm, .disconnected,
+             .connectionNotFound, .connectionEnded, .importPrompt, .importProgress, .importFinished:
             // 후속 iOS 이슈(#103~)에서 정책 원문으로 추가한다.
             return []
         }
@@ -417,6 +422,11 @@ public enum TerminalStateMapper {
         case .drop: "버리기"
         case .revive: "되살리기"
         case .bin: "휴지통"
+        case .pack: "묶음"
+        case .peek: "열기"
+        case .gather: "찾아두기"
+        case .bring: "가져오기"
+        case .plug: "연결"
         }
     }
 
@@ -434,6 +444,11 @@ public enum TerminalStateMapper {
         case .drop: "자료를 휴지통으로  예: 버리기 131, 버리기 1-8"
         case .revive: "휴지통에서 돌리기  예: 되살리기 131"
         case .bin: "휴지통 목록·비우기  예: 휴지통, 휴지통 비우기"
+        case .pack: "선택한 자료를 묶음에 넣기·보기  예: 묶음 결제조사"
+        case .peek: "자료 하나 자세히 보기  예: 열기 131"
+        case .gather: "검색어를 저장해 자료 모으기  예: 찾아두기 텀블러 캠페인"
+        case .bring: "북마크 파일의 링크 한 번에 저장  예: 가져오기"
+        case .plug: "AI 도구 연결 주소·목록  예: 연결, 연결 끊기 1"
         }
     }
 
