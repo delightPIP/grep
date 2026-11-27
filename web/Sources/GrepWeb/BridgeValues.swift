@@ -54,6 +54,11 @@ extension CommandName {
         case .drop: "drop"
         case .revive: "revive"
         case .bin: "bin"
+        case .pack: "pack"
+        case .peek: "peek"
+        case .gather: "gather"
+        case .bring: "bring"
+        case .plug: "plug"
         }
     }
 }

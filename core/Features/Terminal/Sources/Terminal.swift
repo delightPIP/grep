@@ -231,7 +231,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             listener?.didRequestSignOut()
         case .signOut where command.argument == "모든기기" || command.argument == "all":
             pendingSignOutEverywhere = true
-            update(viewState.appending(lines: [.prompt(text), .signOutEverywhereConfirm]).with(input: ""))
+            update(viewState.appending(lines: [.prompt(text), .signOutEverywhereConfirm(connectionCount: nil)]).with(input: ""))
         case .keep where command.argument.isEmpty:
             update(viewState.appending(lines: [.prompt(text), .missingArgument(.keep)]).with(input: ""))
         case .keep:

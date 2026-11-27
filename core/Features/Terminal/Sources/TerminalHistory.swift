@@ -34,7 +34,7 @@ enum TerminalHistory {
 
     /// 최근 `maxLines`줄을 JSON으로 만든다.
     static func encodeLines(_ lines: [TerminalViewState.Line]) -> String {
-        json(of: kept(lines).map(StoredLine.init))
+        json(of: kept(lines).compactMap(StoredLine.init))
     }
 
     static func payload(linesJSON: String, input: String, selection: [ItemRef]) -> String {
@@ -105,12 +105,17 @@ private struct StoredQuery: Codable {
 
 private struct StoredHandoff: Codable {
     let items: [StoredRef]
+    /// 계약 2. 그 전 기록에는 없다.
+    let bundle: String?
+    let removedCount: Int?
     let charCount: Int
     let missingSummaryCount: Int
     let text: String
 
     init(_ result: HandoffResult) {
         items = result.items.map(StoredRef.init)
+        bundle = result.bundle
+        removedCount = result.removedCount
         charCount = result.charCount
         missingSummaryCount = result.missingSummaryCount
         text = result.text
@@ -118,7 +123,12 @@ private struct StoredHandoff: Codable {
 
     var result: HandoffResult {
         HandoffResult(
-            items: items.map(\.ref), charCount: charCount, missingSummaryCount: missingSummaryCount, text: text
+            items: items.map(\.ref),
+            bundle: bundle,
+            removedCount: removedCount ?? 0,
+            charCount: charCount,
+            missingSummaryCount: missingSummaryCount,
+            text: text
         )
     }
 }
@@ -221,7 +231,8 @@ private struct StoredLine: Codable {
     var saveFailure: StoredSaveFailure?
     var recovery: StoredRecovery?
 
-    init(_ line: TerminalViewState.Line) {
+    /// 아직 남기지 않는 줄(계약 2, 각 이슈에서 더한다)이면 nil.
+    init?(_ line: TerminalViewState.Line) {
         switch line {
         case .prompt(let text):
             kind = .prompt
@@ -335,8 +346,15 @@ private struct StoredLine: Codable {
         case .pickCleared(let count):
             kind = .pickCleared
             self.count = count
-        case .signOutEverywhereConfirm:
+        case .signOutEverywhereConfirm(let connectionCount):
             kind = .signOutEverywhereConfirm
+            count = connectionCount
+        case .bundleList, .bundleAdded, .bundleView, .bundleNotFound, .bundleUnpicked, .notInBundle,
+             .bundleDeleteConfirm, .bundleDeleted, .bundleNameInvalid, .folderHint, .itemDetail, .oneNumberOnly,
+             .searchSaved, .savedSearchList, .savedSearchPeriod, .savedSearchTooLong, .savedSearchDeleteConfirm,
+             .savedSearchDeleted, .savedSearchNotFound, .connectionList, .disconnectConfirm, .disconnected,
+             .connectionNotFound, .connectionEnded, .importPrompt, .importProgress, .importFinished:
+            return nil
         }
     }
 
@@ -397,7 +415,7 @@ private struct StoredLine: Codable {
             guard let refs, let count else { return nil }
             return .unpicked(items: refs.map(\.ref), remaining: count)
         case .pickCleared: return count.map { .pickCleared(count: $0) }
-        case .signOutEverywhereConfirm: return .signOutEverywhereConfirm
+        case .signOutEverywhereConfirm: return .signOutEverywhereConfirm(connectionCount: count)
         }
     }
 }
@@ -417,6 +435,11 @@ extension CommandName {
         case .drop: "drop"
         case .revive: "revive"
         case .bin: "bin"
+        case .pack: "pack"
+        case .peek: "peek"
+        case .gather: "gather"
+        case .bring: "bring"
+        case .plug: "plug"
         }
     }
 

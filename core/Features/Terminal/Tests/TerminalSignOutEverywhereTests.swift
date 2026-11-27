@@ -13,7 +13,7 @@ struct TerminalSignOutEverywhereTests {
 
         // when
         await fixture.submit("로그아웃 모든기기")
-        let asked = fixture.state.lines.contains(.signOutEverywhereConfirm)
+        let asked = fixture.state.lines.contains(.signOutEverywhereConfirm(connectionCount: nil))
         let countBeforeConfirm = fixture.listener.signOutEverywhereRequestCount
         await fixture.submit("로그아웃")
 
