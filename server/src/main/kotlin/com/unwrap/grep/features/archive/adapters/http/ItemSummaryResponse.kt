@@ -1,5 +1,6 @@
 package com.unwrap.grep.features.archive.adapters.http
 
+import com.unwrap.grep.features.archive.domain.MatchedIn
 import com.unwrap.grep.features.archive.domain.StoredItem
 import java.time.Instant
 
@@ -22,8 +23,8 @@ data class ItemSummaryResponse(
 	val savedAt: Instant,
 ) {
 	companion object {
-		/** 직접 고친 요약이 AI 요약보다 앞선다(ARC-004 규칙 5). 찾기가 아니므로 matchedIn은 null. */
-		fun of(item: StoredItem) = ItemSummaryResponse(
+		/** 직접 고친 요약이 AI 요약보다 앞선다(ARC-004 규칙 5). 찾기가 아니면 matchedIn은 null. */
+		fun of(item: StoredItem, matchedIn: MatchedIn? = null) = ItemSummaryResponse(
 			number = item.number,
 			kind = item.kind.value,
 			title = item.title,
@@ -38,7 +39,7 @@ data class ItemSummaryResponse(
 			},
 			partialNote = item.partialNote,
 			tags = item.tags,
-			matchedIn = null,
+			matchedIn = matchedIn?.value,
 			savedAt = item.savedAt,
 		)
 	}
