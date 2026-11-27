@@ -1,6 +1,7 @@
 package com.unwrap.grep.features.archive.adapters.postgres
 
 import com.unwrap.grep.features.archive.api.ItemCounter
+import com.unwrap.grep.features.archive.api.ItemSavedTimes
 import com.unwrap.grep.features.archive.domain.FileFormat
 import com.unwrap.grep.features.archive.domain.HandoffSource
 import com.unwrap.grep.features.archive.domain.HandoffSourceRepository
@@ -13,6 +14,7 @@ import org.springframework.jdbc.core.RowMapper
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Repository
 import java.sql.Types
+import java.time.Instant
 import java.time.OffsetDateTime
 import java.util.UUID
 
@@ -42,7 +44,8 @@ internal val ITEM_ROW = RowMapper { rs, _ ->
 
 /** items·item_jobs(V2). 모든 쿼리는 user_id로 거른다(COM-006). */
 @Repository
-class JdbcItemRepository(private val jdbc: JdbcClient) : ItemRepository, ItemCounter, HandoffSourceRepository {
+class JdbcItemRepository(private val jdbc: JdbcClient) :
+	ItemRepository, ItemCounter, ItemSavedTimes, HandoffSourceRepository {
 
 	override fun lockOwner(userId: UUID) {
 		jdbc.sql("SELECT id FROM users WHERE id = :userId FOR UPDATE")
@@ -116,6 +119,13 @@ class JdbcItemRepository(private val jdbc: JdbcClient) : ItemRepository, ItemCou
 			.single()
 
 	override fun countActiveItems(userId: UUID): Long = countActive(userId)
+
+	override fun savedTimes(userId: UUID, numbers: Collection<Long>): List<Instant> =
+		jdbc.sql("SELECT created_at FROM items WHERE user_id = :userId AND deleted_at IS NULL AND number = ANY(:numbers)")
+			.param("userId", userId)
+			.param("numbers", numbers.toLongArray())
+			.query { rs, _ -> rs.getObject("created_at", OffsetDateTime::class.java).toInstant() }
+			.list()
 
 	override fun findActive(userId: UUID, beforeNumber: Long?, limit: Int): List<StoredItem> =
 		jdbc.sql(
