@@ -38,6 +38,7 @@ struct InputCommand: Equatable {
         "버리기": .drop, "drop": .drop,
         "되살리기": .revive, "revive": .revive,
         "휴지통": .bin, "bin": .bin,
+        "고치기": .revise, "revise": .revise,
     ]
 }
 

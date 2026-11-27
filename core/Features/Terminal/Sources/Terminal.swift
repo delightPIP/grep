@@ -139,7 +139,11 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
         case .pasted(let text): paste(text)
         case .filesDropped(let dropped): drop(dropped)
         case .moreRequested: loadMore()
-        case .samplesRequested, .reviseSubmitted, .reviseCancelled: break
+        case .samplesRequested: break
+        case .reviseSubmitted(let number, let title, let summary):
+            submitRevise(number: number, title: title, summary: summary)
+        case .reviseCancelled:
+            cancelRevise()
         }
     }
 
@@ -220,6 +224,8 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             reviveItems(command.argument, typed: text)
         case .bin:
             handleBin(command.argument, typed: text)
+        case .revise:
+            reviseItem(command.argument, typed: text)
         case .guide:
             update(viewState.appending(lines: [.prompt(text), .guide]).with(input: ""))
         case .about:
@@ -691,6 +697,12 @@ extension TerminalViewState {
     func with(selection: [ItemRef]) -> TerminalViewState {
         var next = self
         next.selection = selection
+        return next
+    }
+
+    func with(revising: Revising?) -> TerminalViewState {
+        var next = self
+        next.revising = revising
         return next
     }
 
