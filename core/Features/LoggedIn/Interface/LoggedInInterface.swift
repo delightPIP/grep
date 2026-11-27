@@ -19,8 +19,8 @@ public struct LoggedInViewState: Equatable, Sendable {
         case alreadySaved(ItemSummary)
         /// `! 휴지통에 있음 → N번. 되살리기 N`(COM-001 규칙 7, ARC-008).
         case inTrash(number: Int)
-        /// `✗ 저장 안 됨: <이유>  입력은 남겨 둠`(ARC-005), 파일이면 COM-004 문구.
-        case saveFailed(SaveFailure)
+        /// `✗ 저장 안 됨: <이유>`(ARC-005), 파일이면 COM-004 문구. 뒤에 붙는 말은 `SaveRecovery`가 정한다.
+        case saveFailed(SaveFailure, SaveRecovery)
         /// `최근` 목록. 자료마다 두 줄(번호·제목·출처·저장 시각 / 흐린 요약, 태그 앞 3개).
         /// `hasMore`면 `→ 더 보기`. 처리 상태가 바뀌면 코어가 같은 줄의 자료 값을 바꾼다(ARC-005 규칙 10).
         /// 자료를 든 다른 줄(`saved`·`alreadySaved`·`searchResult`·`noResults`)도 같이 바꾼다.
@@ -126,6 +126,16 @@ public struct HandoffResult: Equatable, Sendable {
         self.missingSummaryCount = missingSummaryCount
         self.text = text
     }
+}
+
+/// 저장에 실패한 뒤 사용자가 다시 넣는 길(ARC-005 규칙 2, #57 사용자 결정 2026-11-27).
+public enum SaveRecovery: Equatable, Sendable {
+    /// 넣으려던 줄을 입력줄에 되돌렸다. `  입력은 남겨 둠`
+    case inputKept
+    /// 그새 친 새 글이 있어 입력줄을 덮지 않았다. 다음 줄 `→ 다시: <명령>`
+    case retry(String)
+    /// 끌어다 놓은 파일. 원본은 사용자의 기기에 그대로 있다. ` (<파일 이름>)`
+    case file(name: String)
 }
 
 /// 명령 실패 이유(COM-008, COM-010).
