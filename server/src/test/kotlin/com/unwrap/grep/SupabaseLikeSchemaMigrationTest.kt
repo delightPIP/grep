@@ -38,6 +38,6 @@ class SupabaseLikeSchemaMigrationTest {
 		val applied = jdbc.sql("SELECT version FROM flyway_schema_history WHERE success ORDER BY installed_rank")
 			.query(String::class.java)
 			.list()
-		assertEquals(listOf("0", "1", "2", "3", "4", "5", "6"), applied)
+		assertEquals(listOf("0", "1", "2", "3", "4", "5", "6", "7"), applied)
 	}
 }

@@ -26,10 +26,11 @@ class ProcessingWorker(
 	private val documents: DocumentText,
 	private val summarizer: Summarizer,
 	private val clock: Clock,
+	private val limits: ProcessingLimits,
 ) {
 	/** 작업 하나를 처리했으면 true, 기다리는 작업이 없으면 false. */
 	fun runOnce(): Boolean {
-		val job = queue.claimNext(LEASE) ?: return false
+		val job = queue.claimNext(LEASE, limits.lowPriorityGate(startOfKoreanDay(clock.instant()))) ?: return false
 		if (job.inTrash) {
 			queue.discard(job)
 			return true
@@ -53,7 +54,7 @@ class ProcessingWorker(
 		val searchBody = content.text?.take(MAX_SEARCH_CHARS)
 		// 글 자료는 text_body가 곧 본문이라 따로 남기지 않는다(V5).
 		val body = content.text?.takeIf { job.kind != "text" }?.let { ItemBody.of(it) }
-		if (queue.countClaimedSince(job.userId, startOfKoreanDay(clock.instant())) > DAILY_LIMIT) {
+		if (limits.exceeded(queue.countClaimedSince(job.userId, startOfKoreanDay(clock.instant())))) {
 			return finish(job, ProcessingOutcome.Failed("daily_limit", searchBody, body))
 		}
 		val input = SummaryInput(job.title, job.source, content.text?.let(::forLlm), content.image)
@@ -168,9 +169,6 @@ class ProcessingWorker(
 	}
 
 	companion object {
-		/** COM-005 계정당 하루 AI 처리(가정값). 50건째까지 처리한다. */
-		const val DAILY_LIMIT = 50
-
 		/** 일시적 오류 시도 횟수와 간격(ARC-005 규칙 5, 개발자 값). */
 		const val MAX_ATTEMPTS = 3
 		val RETRY_DELAY: Duration = Duration.ofMinutes(1)

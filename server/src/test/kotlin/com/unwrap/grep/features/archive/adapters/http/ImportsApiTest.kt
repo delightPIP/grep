@@ -40,10 +40,6 @@ class ImportsApiTest : ArchiveApiTestSupport() {
 		return awaitFinished(token, JsonPath.read(started, "$.id"))
 	}
 
-	private fun jobCount(token: String): Int =
-		jdbc.sql("SELECT count(*) FROM item_jobs j JOIN items i ON i.id = j.item_id WHERE i.user_id = :userId")
-			.param("userId", userIdOf(token)).query(Int::class.java).single()
-
 	@Test
 	fun `새링크와이미저장한링크와파일안중복과잘못된주소가섞였을때_가져오면_저장건너뜀실패를세고실패주소를주는지`() {
 		// given
@@ -84,28 +80,23 @@ class ImportsApiTest : ArchiveApiTestSupport() {
 	}
 
 	@Test
-	fun `가져온자료일때_가져오면_처리작업이없고열거나넘길때처음한번만작업을만드는지`() {
+	fun `가져온자료일때_가져오면_낮은우선순위처리작업을하나씩만들고열어도새로만들지않는지`() {
 		// given
 		val token = newUser()
 		startAndAwait(token, bookmarks("https://example.com/1", "https://example.com/2"))
 		listItems(token).andExpect { jsonPath("$.items[*].title") { value(contains("제목 https://example.com/2", "제목 https://example.com/1")) } }
-		val before = jobCount(token)
 
 		// when
 		mockMvc.get("/items/{number}", 1) { header("Authorization", "Bearer $token") }.andExpect { status { isOk() } }
-		mockMvc.get("/items/{number}", 1) { header("Authorization", "Bearer $token") }.andExpect { status { isOk() } }
-		val afterOpen = jobCount(token)
-		mockMvc.post("/handoff") {
-			header("Authorization", "Bearer $token")
-			contentType = MediaType.APPLICATION_JSON
-			content = """{"numbers":[2,1]}"""
-		}.andExpect { status { isOk() } }
 
 		// then
-		assertEquals(0, before)
-		assertEquals(1, afterOpen)
-		assertEquals(2, jobCount(token))
+		assertEquals(listOf(0, 1), priorities(token))
 	}
+
+	private fun priorities(token: String): List<Int> =
+		jdbc.sql(
+			"SELECT j.priority FROM item_jobs j JOIN items i ON i.id = j.item_id WHERE i.user_id = :userId ORDER BY i.number",
+		).param("userId", userIdOf(token)).query { rs, _ -> rs.getInt(1) }.list()
 
 	@Test
 	fun `남의가져오기이거나없는id일때_진행을부르면_404인지`() {

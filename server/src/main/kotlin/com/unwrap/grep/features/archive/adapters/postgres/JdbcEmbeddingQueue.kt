@@ -25,9 +25,10 @@ class JdbcEmbeddingQueue(private val jdbc: JdbcClient) : EmbeddingQueue {
 				WHERE i.status = 'ready' AND i.embedding IS NULL AND i.deleted_at IS NULL
 				  AND (i.embedding_attempted_at IS NULL OR i.embedding_attempted_at < now() - interval '1 hour')
 				  AND (SELECT count(*) FROM items c WHERE c.user_id = i.user_id AND c.embedding_attempted_at >= :dayStart) < :dailyLimit
-				ORDER BY i.updated_at
+				-- 가져온 자료(낮은 우선순위 작업)는 직접 저장한 자료 뒤에 한다(ADR-BCK-017)
+				ORDER BY coalesce((SELECT min(j.priority) FROM item_jobs j WHERE j.item_id = i.id), 0), i.updated_at
 				LIMIT 1
-				FOR UPDATE SKIP LOCKED
+				FOR UPDATE OF i SKIP LOCKED
 			)
 			RETURNING id, user_id, title, coalesce(user_summary, handoff_summary) AS summary,
 			          left(CASE WHEN kind = 'text' THEN text_body ELSE body_text END, :bodyChars) AS body

@@ -182,7 +182,7 @@ class ProcessingWorkerTest : ArchiveApiTestSupport() {
 	fun `오늘이미50건을처리했을때_처리하면_AI를부르지않고failed이며본문은찾기에남는지`() {
 		// given
 		val token = newUser()
-		repeat(ProcessingWorker.DAILY_LIMIT) {
+		repeat(ProcessingLimits.DEFAULT_DAILY_LIMIT) {
 			saveItem(token, """{"kind":"text","text":"이미 처리한 글 $it"}""").andExpect { status { isCreated() } }
 		}
 		jdbc.sql(
@@ -194,7 +194,7 @@ class ProcessingWorkerTest : ArchiveApiTestSupport() {
 		worker.runOnce()
 
 		// then
-		val item = row(token, ProcessingWorker.DAILY_LIMIT + 1L)
+		val item = row(token, ProcessingLimits.DEFAULT_DAILY_LIMIT + 1L)
 		assertEquals("failed", item["status"])
 		assertTrue((item["search_text"] as String).contains("한도 넘은 글"))
 		assertTrue(summarizer.calls.isEmpty())

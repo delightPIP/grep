@@ -43,7 +43,7 @@ interface ItemDetailRepository {
 
 /**
  * `열기 <번호>`(ARC-011). 자료 내용은 고치지 않는다(규칙 11). 휴지통·없는·남의 번호는 `not_found`(규칙 3, COM-006).
- * 가져온 자료를 처음 열면 처리 작업을 만든다(user-flow 10절).
+ * 가져온 자료를 열면 기다리는 처리 작업을 보통 우선순위로 올린다(ADR-BCK-017).
  */
 @Service
 class ItemDetailService(
@@ -55,7 +55,7 @@ class ItemDetailService(
 	fun detail(userId: UUID, number: Long): ItemDetail {
 		val source = details.findActiveDetail(userId, number)
 			?: throw ApiProblem(ApiErrorCode.NOT_FOUND, numbers = listOf(number))
-		items.startDeferredProcessing(userId, listOf(number))
+		items.raiseProcessingPriority(userId, listOf(number))
 		val original = source.objectPath?.let { storage.presignGet(it, SIGNED_URL_LIFETIME) }
 		return ItemDetail(
 			item = source.item,

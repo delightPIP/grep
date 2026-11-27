@@ -72,13 +72,20 @@ sealed interface ProcessingOutcome {
 	) : ProcessingOutcome
 }
 
+/**
+ * 낮은 우선순위(가져온 자료) 작업을 그날 몇 건까지 집을지(ADR-BCK-017). 그 사용자의 [dayStart] 뒤 집힌 작업이
+ * [maxClaims]건에 닿으면 낮은 작업은 다음 날까지 기다린다. 보통 작업은 이 값과 상관없이 집는다.
+ */
+data class LowPriorityGate(val dayStart: Instant, val maxClaims: Int)
+
 interface ProcessingQueue {
 	/**
 	 * 때가 된 작업 또는 [lease]보다 오래 `running`인 작업 하나를 `SKIP LOCKED`로 집는다(ADR-BCK-002).
+	 * 우선순위가 높은(보통) 작업부터, 같으면 run_at 순이다(ADR-BCK-017). [lowPriorityGate]가 null이면 낮은 작업도 제한 없이 집는다.
 	 * 집으면 시도 횟수를 늘리고, 휴지통 밖 자료면 상태를 `processing`으로 바꾼다.
 	 * 큐의 시각은 모두 DB `now()`로 잰다(run_at 기본값과 같은 시계).
 	 */
-	fun claimNext(lease: Duration): ProcessingJob?
+	fun claimNext(lease: Duration, lowPriorityGate: LowPriorityGate?): ProcessingJob?
 
 	/** [since] 뒤에 집힌 그 사용자의 작업 수(지금 작업 포함). 하루 한도(COM-005)를 센다. */
 	fun countClaimedSince(userId: UUID, since: Instant): Int

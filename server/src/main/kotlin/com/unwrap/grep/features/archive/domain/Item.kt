@@ -41,8 +41,8 @@ data class NewItem(
 	val normalizedUrl: String? = null,
 	val textBody: String? = null,
 	val file: StoredFile? = null,
-	/** 가져온 자료(F8)는 처리 작업을 바로 만들지 않고 처음 열거나 넘길 때 만든다(V4, ADR-BCK-008). */
-	val processingDeferred: Boolean = false,
+	/** 가져온 자료(F8)는 처리 작업을 낮은 우선순위로 만든다(V7, ADR-BCK-017). */
+	val lowPriority: Boolean = false,
 )
 
 data class StoredFile(
@@ -93,11 +93,11 @@ interface ItemRepository {
 
 	fun findByContentHash(userId: UUID, contentHash: String): StoredItem?
 
-	/** 번호를 발급하고 자료와 처리 작업을 넣는다. 처리를 미룬 자료는 작업을 넣지 않는다. [lockOwner]와 같은 트랜잭션에서 부른다. */
+	/** 번호를 발급하고 자료와 처리 작업을 넣는다. [lockOwner]와 같은 트랜잭션에서 부른다. */
 	fun insert(item: NewItem): StoredItem
 
-	/** [numbers] 중 처리를 미뤄 둔 휴지통 밖 자료에 처리 작업을 만든다(가져온 자료를 처음 열거나 넘길 때). 한 번만 만든다. */
-	fun startDeferredProcessing(userId: UUID, numbers: Collection<Long>)
+	/** [numbers] 중 휴지통 밖 자료의 기다리는 낮은 우선순위 작업을 보통으로 올린다(가져온 자료를 열거나 넘길 때, ADR-BCK-017). */
+	fun raiseProcessingPriority(userId: UUID, numbers: Collection<Long>)
 
 	/** 휴지통 밖 자료 수. [saved]가 있으면 그 기간 안만, [filter]가 있으면 그 자동 묶음만. */
 	fun countActive(userId: UUID, saved: SavedRange = SavedRange.ANY, filter: ItemFilter = ItemFilter.NONE): Long

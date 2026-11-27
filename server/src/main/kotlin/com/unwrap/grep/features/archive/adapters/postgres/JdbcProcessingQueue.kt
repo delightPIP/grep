@@ -1,6 +1,7 @@
 package com.unwrap.grep.features.archive.adapters.postgres
 
 import com.unwrap.grep.features.archive.api.ItemOriginals
+import com.unwrap.grep.features.archive.api.LowPriorityGate
 import com.unwrap.grep.features.archive.api.ProcessingJob
 import com.unwrap.grep.features.archive.api.ProcessingOutcome
 import com.unwrap.grep.features.archive.api.ProcessingQueue
@@ -14,6 +15,8 @@ import java.sql.Timestamp
 import java.sql.Types
 import java.time.Duration
 import java.time.Instant
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 import java.util.UUID
 
 /** item_jobs 큐(V2 주석)와 처리 결과 쓰기. 결과는 휴지통 밖 자료에만 쓴다(ARC-005 규칙 7). */
@@ -24,16 +27,21 @@ class JdbcProcessingQueue(
 	private val storage: ObjectStorage,
 ) : ProcessingQueue, ItemOriginals {
 
-	override fun claimNext(lease: Duration): ProcessingJob? = transaction.execute {
+	override fun claimNext(lease: Duration, lowPriorityGate: LowPriorityGate?): ProcessingJob? = transaction.execute {
 		jdbc.sql(
 			"""
 			WITH picked AS (
-				SELECT id FROM item_jobs
-				WHERE (status = 'queued' AND run_at <= now())
-				   OR (status = 'running' AND locked_at < now() - make_interval(secs => :leaseSeconds))
-				ORDER BY run_at
+				SELECT q.id FROM item_jobs q
+				WHERE ((q.status = 'queued' AND q.run_at <= now())
+				       OR (q.status = 'running' AND q.locked_at < now() - make_interval(secs => :leaseSeconds)))
+				  AND (q.priority = 0 OR CAST(:maxLowClaims AS integer) IS NULL OR (
+				      SELECT count(*) FROM item_jobs c JOIN items ci ON ci.id = c.item_id
+				      WHERE ci.user_id = (SELECT qi.user_id FROM items qi WHERE qi.id = q.item_id)
+				        AND c.locked_at >= CAST(:dayStart AS timestamptz)
+				  ) < CAST(:maxLowClaims AS integer))
+				ORDER BY q.priority, q.run_at
 				LIMIT 1
-				FOR UPDATE SKIP LOCKED
+				FOR UPDATE OF q SKIP LOCKED
 			), claimed AS (
 				UPDATE item_jobs j SET status = 'running', locked_at = now(), attempts = j.attempts + 1
 				FROM picked WHERE j.id = picked.id
@@ -48,6 +56,8 @@ class JdbcProcessingQueue(
 			""".trimIndent(),
 		)
 			.param("leaseSeconds", lease.seconds)
+			.param("maxLowClaims", lowPriorityGate?.maxClaims, Types.INTEGER)
+			.param("dayStart", lowPriorityGate?.dayStart?.let { OffsetDateTime.ofInstant(it, ZoneOffset.UTC) }, Types.TIMESTAMP_WITH_TIMEZONE)
 			.query(JOB_ROW)
 			.optional()
 			.orElse(null)
@@ -155,8 +165,9 @@ class JdbcProcessingQueue(
 			.update() == 1
 	}
 
+	/** locked_at은 지우지 않는다. 그날 집힌 작업 수(하루 한도, COM-005·ADR-BCK-017)를 이 시각으로 센다. 임대 만료는 running일 때만 본다. */
 	private fun endJob(jobId: Long, status: String, error: String?) {
-		jdbc.sql("UPDATE item_jobs SET status = :status, locked_at = NULL, last_error = :error WHERE id = :id")
+		jdbc.sql("UPDATE item_jobs SET status = :status, last_error = :error WHERE id = :id")
 			.param("status", status)
 			.param("error", error, Types.VARCHAR)
 			.param("id", jobId)

@@ -54,7 +54,7 @@ fun interface ImportRunner {
 
 /**
  * 북마크 가져오기(F8, user-flow 10절). 앞 200건만 가져오고 넘는 수는 `overLimit`으로 센다.
- * 같은 링크(COM-001, 휴지통 포함)와 파일 안에서 겹친 링크는 건너뛴다. 처리 작업은 만들지 않는다(ADR-BCK-008).
+ * 같은 링크(COM-001, 휴지통 포함)와 파일 안에서 겹친 링크는 건너뛴다. 처리 작업은 낮은 우선순위로 만든다(ADR-BCK-017).
  * shortcut: 진행은 서버 메모리의 작업이라 도는 중에 서버가 내려가면 그 가져오기는 `running`으로 남는다. 다시 시작이 필요해지면 작업 큐로 옮긴다.
  */
 @Service
@@ -103,7 +103,7 @@ class BookmarkImportService(
 				NewItem(
 					userId = userId, kind = ItemKind.LINK, title = bookmark.title ?: bookmark.url, source = link.host,
 					idempotencyKey = UUID.randomUUID(), url = bookmark.url, normalizedUrl = link.value,
-					processingDeferred = true,
+					lowPriority = true,
 				),
 			)
 			ImportResult.SAVED

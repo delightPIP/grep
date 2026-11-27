@@ -87,13 +87,13 @@ class JdbcItemRepository(private val jdbc: JdbcClient) :
 				RETURNING last_item_number
 			), created AS (
 				INSERT INTO items (user_id, number, kind, url, normalized_url, text_body, object_path, file_name,
-				                   file_format, file_size, content_hash, title, source, idempotency_key, processing_deferred)
+				                   file_format, file_size, content_hash, title, source, idempotency_key)
 				SELECT :userId, last_item_number, :kind, :url, :normalizedUrl, :textBody, :objectPath, :fileName,
-				       :fileFormat, :fileSize, :contentHash, :title, :source, :idempotencyKey, :deferred
+				       :fileFormat, :fileSize, :contentHash, :title, :source, :idempotencyKey
 				FROM issued
 				RETURNING *
 			), queued AS (
-				INSERT INTO item_jobs (item_id) SELECT id FROM created WHERE NOT created.processing_deferred
+				INSERT INTO item_jobs (item_id, priority) SELECT id, :priority FROM created
 			)
 			SELECT $SUMMARY_COLUMNS FROM created
 			""".trimIndent(),
@@ -111,21 +111,19 @@ class JdbcItemRepository(private val jdbc: JdbcClient) :
 			.param("title", item.title)
 			.param("source", item.source, Types.VARCHAR)
 			.param("idempotencyKey", item.idempotencyKey)
-			.param("deferred", item.processingDeferred)
+			.param("priority", if (item.lowPriority) LOW_PRIORITY else NORMAL_PRIORITY)
 			.query(ITEM_ROW)
 			.single()
 	}
 
-	/** 미룸 표시를 지우는 문장과 작업을 넣는 문장을 하나로 묶어, 두 요청이 겹쳐도 작업은 하나다. */
-	override fun startDeferredProcessing(userId: UUID, numbers: Collection<Long>) {
+	/** 아직 기다리는 작업만 올린다. 이미 집혀 도는 작업은 그대로 둔다. */
+	override fun raiseProcessingPriority(userId: UUID, numbers: Collection<Long>) {
 		jdbc.sql(
 			"""
-			WITH started AS (
-				UPDATE items SET processing_deferred = false
-				WHERE user_id = :userId AND number = ANY(:numbers) AND processing_deferred AND deleted_at IS NULL
-				RETURNING id
-			)
-			INSERT INTO item_jobs (item_id) SELECT id FROM started
+			UPDATE item_jobs j SET priority = $NORMAL_PRIORITY
+			FROM items i
+			WHERE i.id = j.item_id AND i.user_id = :userId AND i.number = ANY(:numbers) AND i.deleted_at IS NULL
+			  AND j.status = 'queued' AND j.priority = $LOW_PRIORITY
 			""".trimIndent(),
 		)
 			.param("userId", userId)
@@ -207,6 +205,10 @@ class JdbcItemRepository(private val jdbc: JdbcClient) :
 			.param("tag", filter.tag, Types.VARCHAR)
 
 	private companion object {
+		/** item_jobs.priority(V7). 숫자가 작을수록 먼저 집는다. */
+		const val NORMAL_PRIORITY = 0
+		const val LOW_PRIORITY = 1
+
 		val HANDOFF_ROW = RowMapper { rs, _ ->
 			HandoffSource(
 				number = rs.getLong("number"),
