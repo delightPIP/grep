@@ -2220,13 +2220,36 @@ describe("LoggedInView", () => {
 
     it("처리중인자료를열었을때_화면을그리면_상태에요약생성중을보이는지", () => {
       // given
-      const value = detail({ handoffSummary: null, body: null, bodyLength: 0 }, { status: "processing", summarySource: null });
+      const value = detail({ handoffSummary: null, body: null, bodyLength: null }, { status: "processing", summarySource: null });
 
       // when
       const shown = shownDetail(value);
 
       // then
       expect(shown).toContain("상태 · 요약 생성 중");
+      expect(shown.some((text) => text.includes("본문"))).toBe(false);
+    });
+
+    it("처리에실패해본문이없을때_화면을그리면_본문없음과처리실패를보이는지", () => {
+      // given
+      const value = detail({ handoffSummary: null, body: null, bodyLength: null }, { status: "failed", summarySource: null });
+
+      // when
+      const shown = shownDetail(value);
+
+      // then
+      expect(shown).toContain("· 본문 없음: 처리 실패");
+    });
+
+    it("처리가끝났는데본문이없을때_화면을그리면_본문줄을그리지않는지", () => {
+      // given
+      const value = detail({ body: null, bodyLength: null });
+
+      // when
+      const shown = shownDetail(value);
+
+      // then
+      expect(shown.some((text) => text.includes("본문"))).toBe(false);
     });
 
     it("자세히보기일때_다음명령칩을누르면_입력줄에그명령을찍기만하는지", () => {

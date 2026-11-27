@@ -98,7 +98,8 @@ export type ItemDetail = {
   allTags: string[];
   /** 든 묶음 이름. 비면 `묶음  없음` */
   bundles: string[];
-  bodyLength: number;
+  /** 본문 글자 수. body가 null이면 null(#131, 통합 승인) */
+  bodyLength: number | null;
   /** 펼치기용 본문(앞 2만 자). null이면 `· 본문 없음: <이유>`(item.blockedReason·status) */
   body: string | null;
   bodyFromImage: boolean;

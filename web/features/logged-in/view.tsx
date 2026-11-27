@@ -886,7 +886,8 @@ function ChipList({ commands }: { commands: ReadonlyArray<readonly [label: strin
 function bodyHead(detail: ItemDetail): string {
   const from = detail.bodyFromImage ? "(이미지에서 읽음) " : "";
   const partial = detail.item.partialNote ? ` (${detail.item.partialNote})` : "";
-  return `${from}${charCountText(detail.bodyLength)}${partial}  `;
+  // 본문이 있으면 서버가 글자 수도 준다. 없으면 받은 본문(앞 2만 자) 길이로 대신한다.
+  return `${from}${charCountText(detail.bodyLength ?? Array.from(detail.body ?? "").length)}${partial}  `;
 }
 
 /** ARC-011 규칙 6-9 원본. 이미지는 그림, 파일은 `원본 열기`(서명 URL 10분). PDF 첫 쪽 그림은 계약에 아직 없다. */
@@ -909,12 +910,23 @@ function OriginalRow({ detail }: { detail: ItemDetail }) {
 }
 
 /** ARC-011 규칙 6-8 본문. 본문이 없으면 이유가 있을 때만 `· 본문 없음: <이유>`. */
+/**
+ * 본문이 없을 때 `· 본문 없음: <이유>`의 이유(통합 세션 규칙, #131). blocked·failed만 그리고,
+ * 처리 중(상태 줄이 알림)과 ready(본문 열이 생기기 전에 처리된 자료)는 본문 줄을 그리지 않는다.
+ * shortcut: failed 이유 낱말 `처리 실패`는 정책에 없어 통합 세션에 확인을 요청했다.
+ */
+function noBodyReason(item: ItemSummary): string | null {
+  if (item.status === "failed") return "처리 실패";
+  if (item.status === "blocked" && item.blockedReason !== null) return BLOCKED_REASON_LABEL[item.blockedReason];
+  return null;
+}
+
 function DetailBody({ detail }: { detail: ItemDetail }) {
   const { item } = detail;
   const [isExpanded, setExpanded] = useState(item.kind === "text");
   if (detail.body === null) {
-    if (item.blockedReason === null) return null;
-    return <Line tone="info">{`본문 없음: ${BLOCKED_REASON_LABEL[item.blockedReason]}`}</Line>;
+    const reason = noBodyReason(item);
+    return reason === null ? null : <Line tone="info">{`본문 없음: ${reason}`}</Line>;
   }
   return (
     <>
