@@ -43,6 +43,8 @@ paths:
       parameters:
         - $ref: "#/components/parameters/Cursor"
         - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/SavedFrom"
+        - $ref: "#/components/parameters/SavedTo"
       responses:
         "200":
           description: 자료 한 쪽
@@ -137,7 +139,7 @@ paths:
       description: |
         `q`는 제목·본문·요약·이미지 속 글자·태그에서 부분 일치로 찾는다(PGroonga, ADR-BCK-002 결정 4).
         `tag`는 `#` 없이 여러 번 줄 수 있고, 모든 조건을 만족하는 자료만 돌려준다. 영문 태그는 대소문자를 가리지 않는다(ARC-002 규칙 5).
-        `q`와 `tag`가 둘 다 없으면 `invalid_request`다.
+        `q`와 `tag`가 둘 다 없으면 `invalid_request`다. 기간(`from`·`to`)만으로는 찾지 않는다(시점만 있으면 클라이언트가 `GET /items`를 부른다).
       parameters:
         - name: q
           in: query
@@ -153,6 +155,8 @@ paths:
               type: string
         - $ref: "#/components/parameters/Cursor"
         - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/SavedFrom"
+        - $ref: "#/components/parameters/SavedTo"
       responses:
         "200":
           description: 찾은 자료 한 쪽과 전체 건수(`23건 중 10건`)
@@ -189,6 +193,164 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ItemLookup"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /items/trash:
+    post:
+      operationId: trashItems
+      summary: 버리기(ARC-008 규칙 1). 자료를 휴지통으로 옮긴다
+      description: |
+        번호 범위 `a-b`는 클라이언트가 번호 목록으로 펼쳐 보낸다(ARC-001 비고, ARC-010 규칙 6).
+        번호 중 하나라도 없거나 이미 휴지통에 있으면 아무것도 옮기지 않고 `not_found`(ARC-001 규칙 10).
+        2건 이상이면 클라이언트가 먼저 확인을 받는다(ARC-008 규칙 1, COM-007). 서버는 묻지 않는다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NumbersRequest"
+      responses:
+        "200":
+          description: 옮긴 자료, 요청 순서
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemRefList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    get:
+      operationId: listTrash
+      summary: 휴지통 목록(ARC-008 규칙 5·10). 지운 날 최신순, 남은 날 포함
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: 휴지통 한 쪽과 전체 건수(`휴지통 비우기` 확인에 쓴다)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrashPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    delete:
+      operationId: emptyTrash
+      summary: 휴지통 비우기(ARC-008 규칙 6). 휴지통 자료를 모두 영구 삭제한다. 확인은 클라이언트가 먼저 받는다
+      responses:
+        "200":
+          description: 영구 삭제한 건수. 번호는 다시 쓰지 않는다(ARC-001 규칙 6)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CountResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /items/restore:
+    post:
+      operationId: restoreItems
+      summary: 되살리기(ARC-008 규칙 4). 번호는 그대로 돌아온다
+      description: 번호 중 하나라도 휴지통에 없으면 아무것도 되살리지 않고 `not_found`(ARC-001 규칙 10의 `되살리기` 예외).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NumbersRequest"
+      responses:
+        "200":
+          description: 되살린 자료, 요청 순서
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemRefList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /items/{number}:
+    patch:
+      operationId: reviseItem
+      summary: 고치기(commands 3절, ARC-002 규칙 2·3, ARC-004)
+      description: |
+        `title`·`summary`·`removeTags` 중 하나 이상. 고친 제목·요약은 다시 처리해도 덮어쓰지 않고, 고친 요약은 `summarySource = user`가 된다.
+        지운 태그는 그 자료에 다시 붙이지 않는다. 고쳐도 태그를 다시 만들지 않는다.
+        AI 요약으로 되돌리기는 받지 않는다(04 질문 17, 정하지 않음). 휴지통 자료는 `not_found`.
+      parameters:
+        - name: number
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviseItemRequest"
+      responses:
+        "200":
+          description: 고친 자료
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemSummary"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /samples:
+    post:
+      operationId: saveSamples
+      summary: 샘플 8건 저장(ARC-010). 다음 번호부터 8개를 한꺼번에
+      description: |
+        하나라도 실패하면 아무것도 저장하지 않는다(규칙 3). 이미 받은 사용자가 다시 부르면 새로 만들지 않고 처음 받은 범위를 200으로 돌려준다(규칙 7).
+        요약·태그는 미리 만든 값이라 처리 작업과 하루 AI 처리 한도를 쓰지 않는다.
+      responses:
+        "201":
+          description: 새로 저장했다
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SampleResult"
+        "200":
+          description: 이미 받았다. 처음 받은 범위
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SampleResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /events:
+    post:
+      operationId: recordEvent
+      summary: 클라이언트가 아는 측정 이벤트(PRD 4절, D-08). 지금은 `handoff_copied`만
+      description: |
+        클립보드 복사에 성공한 뒤에만 보낸다(08 6절 개발 답 9). `item_saved`는 서버가 저장 때 직접 남긴다.
+        서버는 번호로 건수와 저장 뒤 지난 일수를 계산해 남기고, 번호·제목·본문·검색어는 남기지 않는다.
+        이벤트를 남기지 못해도 사용자 동작은 실패로 보이지 않는다(클라이언트는 결과를 기다리지 않는다).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EventRequest"
+      responses:
+        "204":
+          description: 받았다
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -237,6 +399,20 @@ components:
         minimum: 1
         maximum: 50
         default: 10
+    SavedFrom:
+      name: from
+      in: query
+      description: 저장 시각이 이 시각 이상(F22 시점). 한국 시간 기준 경계는 클라이언트가 계산해 RFC 3339로 보낸다(주는 월요일 시작)
+      schema:
+        type: string
+        format: date-time
+    SavedTo:
+      name: to
+      in: query
+      description: 저장 시각이 이 시각 미만(반열린 구간)
+      schema:
+        type: string
+        format: date-time
     IdempotencyKey:
       name: Idempotency-Key
       in: header
@@ -513,6 +689,112 @@ components:
           type: integer
           format: int64
           description: 20MB(COM-004 규칙 7·8)
+    NumbersRequest:
+      type: object
+      required: [numbers]
+      properties:
+        numbers:
+          type: array
+          minItems: 1
+          description: 자료 번호. 같은 번호가 두 번 오면 처음 것만 쓴다
+          items:
+            type: integer
+            format: int64
+            minimum: 1
+    ItemRefList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [number, title]
+            properties:
+              number:
+                type: integer
+                format: int64
+              title:
+                type: string
+    CountResult:
+      type: object
+      required: [count]
+      properties:
+        count:
+          type: integer
+          minimum: 0
+    TrashItem:
+      type: object
+      required: [item, trashedAt, daysLeft]
+      properties:
+        item:
+          $ref: "#/components/schemas/ItemSummary"
+        trashedAt:
+          type: string
+          format: date-time
+        daysLeft:
+          type: integer
+          minimum: 0
+          description: 영구 삭제까지 남은 날(`30일 남음`, ARC-008 규칙 10). 서버가 한국 시간 날짜로 계산한다
+    TrashPage:
+      type: object
+      required: [items, total, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/TrashItem"
+        total:
+          type: integer
+          minimum: 0
+        nextCursor:
+          type: [string, "null"]
+    ReviseItemRequest:
+      type: object
+      minProperties: 1
+      properties:
+        title:
+          type: string
+          minLength: 1
+        summary:
+          type: string
+          minLength: 1
+        removeTags:
+          type: array
+          minItems: 1
+          description: 지울 태그, `#` 없이. 자료에 없는 태그는 무시한다
+          items:
+            type: string
+    SampleResult:
+      type: object
+      required: [firstNumber, lastNumber]
+      properties:
+        firstNumber:
+          type: integer
+          format: int64
+        lastNumber:
+          type: integer
+          format: int64
+          description: 받은 범위. 완료 줄과 `버리기 <a>-<b>` 안내에 쓴다(ARC-010 규칙 4·6)
+    EventRequest:
+      type: object
+      required: [name, numbers, method]
+      properties:
+        name:
+          type: string
+          const: handoff_copied
+        numbers:
+          type: array
+          minItems: 1
+          description: 넘긴 자료 번호. 서버가 건수와 저장 뒤 지난 일수를 계산하는 데만 쓰고 번호 자체는 남기지 않는다
+          items:
+            type: integer
+            format: int64
+            minimum: 1
+        method:
+          type: string
+          enum: [pick, pipe]
+          description: 방식. pick = 고른 자료, pipe = `찾기 … | 넘기기`
     HandoffRequest:
       type: object
       required: [numbers]
