@@ -1,5 +1,5 @@
 /// 자료 한 건의 목록용 값(api/openapi.yaml `ItemSummary`). 자료는 사용자별 번호로만 가리킨다(ARC-001).
-public struct ItemSummary: Equatable, Sendable, Decodable {
+public struct ItemSummary: Equatable, Sendable, Codable {
     /// ARC-001 자료 번호. 화면에 숫자만 쓴다.
     public let number: Int
     public let kind: ItemKind
@@ -52,14 +52,14 @@ public struct ItemSummary: Equatable, Sendable, Decodable {
     }
 }
 
-public enum ItemKind: String, Equatable, Sendable, Decodable {
+public enum ItemKind: String, Equatable, Sendable, Codable {
     case link
     case text
     case file
 }
 
 /// ARC-005 처리 상태. 이 다섯 가지뿐이다.
-public enum ItemStatus: String, Equatable, Sendable, Decodable {
+public enum ItemStatus: String, Equatable, Sendable, Codable {
     case received
     case processing
     case ready
@@ -68,7 +68,7 @@ public enum ItemStatus: String, Equatable, Sendable, Decodable {
 }
 
 /// `! 본문 못 가져옴: <이유>`. ARC-005 세 가지와 COM-004 규칙 6 두 가지.
-public enum BlockedReason: String, Equatable, Sendable, Decodable {
+public enum BlockedReason: String, Equatable, Sendable, Codable {
     /// `로그인 필요`
     case loginRequired = "login_required"
     /// `접근 거부`
@@ -82,7 +82,7 @@ public enum BlockedReason: String, Equatable, Sendable, Decodable {
 }
 
 /// 찾기에서 일치한 곳. 요약 줄 끝에 흐리게 쓴다(commands 6절 목록 꼬리표, 예: `이미지 속 글자`).
-public enum MatchLocation: String, Equatable, Sendable, Decodable {
+public enum MatchLocation: String, Equatable, Sendable, Codable {
     case title
     case source
     case summary
@@ -92,7 +92,7 @@ public enum MatchLocation: String, Equatable, Sendable, Decodable {
 }
 
 /// ARC-004 규칙 5 출처 값.
-public enum SummarySource: String, Equatable, Sendable, Decodable {
+public enum SummarySource: String, Equatable, Sendable, Codable {
     case ai
     case user
 }
