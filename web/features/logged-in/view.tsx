@@ -571,10 +571,16 @@ function TrashRow({ entry: { item, daysLeft } }: { entry: TrashEntry }) {
   );
 }
 
+/** 빈 휴지통(`휴지통` 목록 0건, 빈 휴지통 비우기). 문구는 정책에 없어 통합 세션 요청을 따른다. */
+function EmptyBinLine() {
+  return <Line tone="info">휴지통 비어 있음</Line>;
+}
+
 type BinListLinesProps = { total: number; items: TrashEntry[]; hasMore: boolean; onMoreRequested?: () => void };
 
 /** `휴지통` 목록(ARC-008 규칙 5, 시안 Trash ③). 순서는 서버가 지운 날 최신순으로 준다. */
 function BinListLines({ total, items, hasMore, onMoreRequested }: BinListLinesProps) {
+  if (total === 0) return <EmptyBinLine />;
   return (
     <>
       <Plain>{searchHeader(total, items.length)}</Plain>
@@ -832,6 +838,8 @@ function OutputLine({ line, failed, onMoreRequested }: OutputLineProps) {
     case "binEmptyConfirm":
       return <BinEmptyConfirmLines total={line.total} />;
     case "binEmptied":
+      // 빈 휴지통을 비우면 `0건 영구 삭제` 대신 비어 있다고만 알린다(통합 세션 요청, 브라우저 실측).
+      if (line.count === 0) return <EmptyBinLine />;
       // ARC-008 사용자 문구.
       return <Line tone="ok">{`비움  ${line.count}건 영구 삭제`}</Line>;
     case "signOutEverywhereConfirm":

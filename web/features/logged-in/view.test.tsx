@@ -1434,6 +1434,31 @@ describe("LoggedInView", () => {
       expect(shown.slice(1)).toEqual(["! 비우기? 2건 (되돌릴 수 없음)", "→ 실행: 비우기 다시 입력 · 취소: 그 외 입력"]);
     });
 
+    it("휴지통이비었을때_비우기결과가오면_비어있음줄을그리는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [{ kind: "prompt", text: "휴지통 비우기" }, { kind: "binEmptied", count: 0 }];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown.slice(1)).toEqual(["· 휴지통 비어 있음"]);
+    });
+
+    it("휴지통이비었을때_휴지통을치면_비어있음한줄만그리는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [
+        { kind: "prompt", text: "휴지통" },
+        { kind: "binList", total: 0, items: [], hasMore: false },
+      ];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown.slice(1)).toEqual(["· 휴지통 비어 있음"]);
+    });
+
     it("휴지통을비웠을때_화면을그리면_영구삭제건수를보이는지", () => {
       // given
       const lines: LoggedInState["lines"] = [{ kind: "prompt", text: "비우기" }, { kind: "binEmptied", count: 2 }];
