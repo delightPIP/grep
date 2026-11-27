@@ -149,6 +149,23 @@ class BrowseItemsApiTest : ArchiveApiTestSupport() {
 	}
 
 	@Test
+	fun `남의자료에만있는번호일때_번호로찾으면_없는번호와같은본문을주는지`() {
+		// given
+		val owner = newUser()
+		saveLinks(owner, 3)
+		val other = newUser()
+		val stranger = newUser()
+
+		// when
+		val othersNumber = getStatuses(other, "3").andReturn().response
+		val neverIssued = getStatuses(stranger, "3").andReturn().response
+
+		// then
+		assertEquals(neverIssued.status, othersNumber.status)
+		assertEquals(neverIssued.contentAsString, othersNumber.contentAsString)
+	}
+
+	@Test
 	fun `numbers가없거나양의정수가아닐때_번호로찾으면_400invalid_request인지`() {
 		// given
 		val token = newUser()
