@@ -40,6 +40,7 @@ struct InputCommand: Equatable {
         "휴지통": .bin, "bin": .bin,
         "고치기": .revise, "revise": .revise,
         "묶음": .pack, "pack": .pack,
+        "열기": .peek, "peek": .peek,
     ]
 }
 

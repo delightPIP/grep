@@ -262,6 +262,8 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             handleBin(command.argument, typed: text)
         case .pack:
             handleBundle(command.argument, typed: text)
+        case .peek:
+            peek(command.argument, typed: text)
         case .revise:
             reviseItem(command.argument, typed: text)
         case .guide:

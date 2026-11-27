@@ -208,7 +208,7 @@ private struct StoredLine: Codable {
         case dropConfirm, dropped, revived, binList, binEmptyConfirm, binEmptied
         case revised, tagsRemoved, samplesSaved, unpicked, pickCleared, signOutEverywhereConfirm
         case bundleList, bundleAdded, bundleView, bundleNotFound, bundleUnpicked, notInBundle
-        case bundleDeleteConfirm, bundleDeleted, bundleNameInvalid
+        case bundleDeleteConfirm, bundleDeleted, bundleNameInvalid, itemDetail, oneNumberOnly
     }
 
     let kind: Kind
@@ -235,6 +235,7 @@ private struct StoredLine: Codable {
     var name: String?
     var extraCount: Int?
     var bundles: [BundleEntry]?
+    var detail: ItemDetail?
 
     /// 아직 남기지 않는 줄(계약 2, 각 이슈에서 더한다)이면 nil.
     init?(_ line: TerminalViewState.Line) {
@@ -389,7 +390,13 @@ private struct StoredLine: Codable {
         case .bundleNameInvalid(let problem):
             kind = .bundleNameInvalid
             reason = problem.rawValue
-        case .folderHint, .itemDetail, .oneNumberOnly,
+        case .itemDetail(let detail):
+            kind = .itemDetail
+            self.detail = detail
+        case .oneNumberOnly(let command):
+            kind = .oneNumberOnly
+            self.command = command.storedName
+        case .folderHint,
              .searchSaved, .savedSearchList, .savedSearchPeriod, .savedSearchTooLong, .savedSearchDeleteConfirm,
              .savedSearchDeleted, .savedSearchNotFound, .connectionList, .disconnectConfirm, .disconnected,
              .connectionNotFound, .connectionEnded, .importPrompt, .importProgress, .importFinished:
@@ -480,6 +487,8 @@ private struct StoredLine: Codable {
             return .bundleDeleteConfirm(name: name, itemCount: count)
         case .bundleDeleted: return name.map { .bundleDeleted(name: $0) }
         case .bundleNameInvalid: return reason.flatMap(BundleNameProblem.init(rawValue:)).map { .bundleNameInvalid($0) }
+        case .itemDetail: return detail.map { .itemDetail($0) }
+        case .oneNumberOnly: return command.flatMap(CommandName.init(storedName:)).map { .oneNumberOnly($0) }
         default: return nil
         }
     }

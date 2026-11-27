@@ -138,6 +138,7 @@ extension ItemDetail {
     fileprivate var bridgeValue: JSValue {
         object([
             "item": item.bridgeValue,
+            "url": url,
             "handoffSummary": handoffSummary,
             "allTags": allTags,
             "bundles": bundles,
