@@ -146,6 +146,19 @@ public struct TerminalConfirmPrompt: Equatable, Sendable {
     }
 }
 
+/// `고치기 <번호>` 편집 칸에 넣는 지금 값(시안 20 Edit ①).
+public struct TerminalRevisePresentation: Equatable, Sendable {
+    public let number: Int
+    public let title: String
+    public let summary: String
+
+    public init(number: Int, title: String, summary: String) {
+        self.number = number
+        self.title = title
+        self.summary = summary
+    }
+}
+
 public struct TerminalPresentation: Equatable, Sendable {
     public let title: String
     public let statusText: String
@@ -154,6 +167,7 @@ public struct TerminalPresentation: Equatable, Sendable {
     public let input: String
     public let isOffline: Bool
     public let pendingConfirm: TerminalConfirmPrompt?
+    public let revising: TerminalRevisePresentation?
 
     public init(
         title: String = "처음",
@@ -162,7 +176,8 @@ public struct TerminalPresentation: Equatable, Sendable {
         selection: [TerminalItemRef] = [],
         input: String = "",
         isOffline: Bool = false,
-        pendingConfirm: TerminalConfirmPrompt? = nil
+        pendingConfirm: TerminalConfirmPrompt? = nil,
+        revising: TerminalRevisePresentation? = nil
     ) {
         self.title = title
         self.statusText = statusText
@@ -171,5 +186,6 @@ public struct TerminalPresentation: Equatable, Sendable {
         self.input = input
         self.isOffline = isOffline
         self.pendingConfirm = pendingConfirm
+        self.revising = revising
     }
 }

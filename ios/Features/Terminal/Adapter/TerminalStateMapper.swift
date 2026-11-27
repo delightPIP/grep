@@ -45,7 +45,10 @@ public enum TerminalStateMapper {
             selection: state.selection.map { TerminalItemRef(number: $0.number, title: $0.title) },
             input: state.input,
             isOffline: state.isOffline,
-            pendingConfirm: pendingConfirm(lines: state.lines)
+            pendingConfirm: pendingConfirm(lines: state.lines),
+            revising: state.revising.map {
+                TerminalRevisePresentation(number: $0.number, title: $0.title, summary: $0.summary)
+            }
         )
     }
 
@@ -285,8 +288,21 @@ public enum TerminalStateMapper {
             guard count > 0 else { return [emptyBinLine] }
             // ARC-008 사용자 문구.
             return [.status(tone: .ok, boldPrefix: "비움", body: "  \(count)건 영구 삭제")]
-        case .revised, .tagsRemoved, .samplesSaved, .unpicked, .pickCleared, .signOutEverywhereConfirm:
-            // 후속 iOS 이슈(#100~)에서 정책 원문으로 추가한다.
+        case .revised(let item):
+            // 시안 Edit ②. 직접 고친 요약에는 ARC-004 규칙 1 이름표를 붙인다(웹 `RevisedLines`와 같음).
+            var result: [TerminalOutputBlockLine] = [
+                .status(tone: .ok, boldPrefix: "고침", body: "  \(item.number)번  \(item.title)"),
+            ]
+            if item.summarySource == .user, let summary = item.listSummary {
+                result.append(.plain(text: "요약 (직접 고침)  \(summary)", dim: true))
+            }
+            return result
+        case .tagsRemoved(let item, let tags):
+            // 시안 Edit ③(문구 제안). 지운 태그는 다시 붙지 않는다(ARC-002 규칙 2).
+            let removed = tags.map { "#\($0)" }.joined(separator: " ")
+            return [.status(tone: .ok, boldPrefix: "태그 지움", body: " \(removed) (\(item.number)번)")]
+        case .samplesSaved, .unpicked, .pickCleared, .signOutEverywhereConfirm:
+            // 후속 iOS 이슈(#103~)에서 정책 원문으로 추가한다.
             return []
         }
     }

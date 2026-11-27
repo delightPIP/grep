@@ -10,6 +10,8 @@ public struct TerminalView: View {
     let onSubmit: (String) -> Void
     let onPaste: (String) -> Void
     let onMoreRequested: () -> Void
+    let onReviseSubmit: (Int, String, String) -> Void
+    let onReviseCancel: () -> Void
     let onKeyboardVisibilityChange: ((Bool) -> Void)?
 
     @State private var showAllKeys = false
@@ -23,6 +25,8 @@ public struct TerminalView: View {
         onSubmit: @escaping (String) -> Void,
         onPaste: @escaping (String) -> Void,
         onMoreRequested: @escaping () -> Void,
+        onReviseSubmit: @escaping (Int, String, String) -> Void = { _, _, _ in },
+        onReviseCancel: @escaping () -> Void = {},
         onKeyboardVisibilityChange: ((Bool) -> Void)? = nil
     ) {
         self.presentation = presentation
@@ -31,6 +35,8 @@ public struct TerminalView: View {
         self.onSubmit = onSubmit
         self.onPaste = onPaste
         self.onMoreRequested = onMoreRequested
+        self.onReviseSubmit = onReviseSubmit
+        self.onReviseCancel = onReviseCancel
         self.onKeyboardVisibilityChange = onKeyboardVisibilityChange
     }
 
@@ -101,6 +107,15 @@ public struct TerminalView: View {
                             .id(block.id)
                         }
                     }
+                    if let revising = presentation.revising {
+                        TerminalReviseForm(
+                            revising: revising,
+                            palette: palette,
+                            onSubmit: onReviseSubmit,
+                            onCancel: onReviseCancel
+                        )
+                        .id("revise-\(revising.number)")
+                    }
                     Color.clear.frame(height: 1).id("terminalBottom")
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -109,6 +124,11 @@ public struct TerminalView: View {
             .scrollDismissesKeyboard(.interactively)
             .background(palette.surface)
             .onChange(of: presentation.blocks.count) { _, _ in
+                withAnimation(.easeOut(duration: 0.15)) {
+                    proxy.scrollTo("terminalBottom", anchor: .bottom)
+                }
+            }
+            .onChange(of: presentation.revising) { _, _ in
                 withAnimation(.easeOut(duration: 0.15)) {
                     proxy.scrollTo("terminalBottom", anchor: .bottom)
                 }

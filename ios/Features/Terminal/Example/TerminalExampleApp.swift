@@ -23,6 +23,8 @@ enum TerminalDemoScenario: String, CaseIterable, Identifiable {
     case droppedAndRevived = "버리기 1건 · 되살리기 결과"
     case dropConfirm = "버리기 2건 확인 시트 (실제 입력)"
     case binList = "휴지통 목록 (남은 날 · 다음 명령)"
+    case revise = "고치기 131 편집 칸 (실제 입력)"
+    case removeTags = "고치기 131 -#가이드 태그 지우기 (실제 입력)"
     case expired = "로그인 만료 이벤트"
 
     var id: String { rawValue }
@@ -285,6 +287,11 @@ final class TerminalExampleHarness: TerminalListener, TerminalDependency {
         case .dropConfirm:
             // 코어가 확인 대기를 잡도록 실제 입력으로 보낸다. 시트의 `버리기`는 가짜 서버가 받는다.
             currentScreen?.listener?.handle(.submitted("버리기 131 118"))
+        case .revise:
+            // 코어가 `/items/status`로 지금 값을 받아 편집 칸을 연다. 저장하면 가짜 서버가 `PATCH /items/131`을 받는다.
+            currentScreen?.listener?.handle(.submitted("고치기 131"))
+        case .removeTags:
+            currentScreen?.listener?.handle(.submitted("고치기 131 -#가이드"))
         case .binList:
             let trashed = [(29, "주간 업무 메모.md", "md", 30), (21, "사무실 비품 주문 목록.txt", "txt", 12)]
             currentScreen?.render(TerminalViewState(
@@ -352,9 +359,60 @@ private final class ExampleTerminalTransport: HTTPTransport {
         switch (request.method, request.path) {
         case (.post, "/items/trash"), (.post, "/items/restore"):
             return HTTPResponse(status: 200, body: Array(Self.movedBody(for: request).utf8))
+        case (.get, "/items/status?numbers=131"):
+            return HTTPResponse(status: 200, body: Self.encoded(LookupBody(items: [Self.reviseItem()], missing: [])))
+        case (.patch, "/items/131"):
+            return HTTPResponse(status: 200, body: Self.encoded(Self.revisedItem(for: request)))
         default:
             return HTTPResponse(status: 200, body: Array(#"{"items":[],"total":0,"nextCursor":null}"#.utf8))
         }
+    }
+
+    private struct LookupBody: Encodable {
+        let items: [ItemSummary]
+        let missing: [Int]
+    }
+
+    private struct ReviseBody: Decodable {
+        let title: String?
+        let summary: String?
+        let removeTags: [String]?
+    }
+
+    private static func reviseItem(
+        title: String = "결제위젯 연동 가이드",
+        summary: String = "웹·모바일 결제위젯 SDK 설치와 승인 흐름 정리",
+        summarySource: SummarySource = .ai,
+        tags: [String] = ["결제", "sdk", "가이드"]
+    ) -> ItemSummary {
+        ItemSummary(
+            number: 131,
+            kind: .link,
+            title: title,
+            source: "tosspayments",
+            status: .ready,
+            listSummary: summary,
+            summarySource: summarySource,
+            tags: tags,
+            savedAt: "2026-11-26T05:03:00Z"
+        )
+    }
+
+    /// `PATCH /items/131`을 받은 값대로 고친 자료. 요약을 고치면 `summarySource`가 `user`가 된다(ARC-004 규칙 1).
+    private static func revisedItem(for request: HTTPRequest) -> ItemSummary {
+        let body = request.body.flatMap { try? JSONDecoder().decode(ReviseBody.self, from: Data($0.utf8)) }
+        let base = reviseItem()
+        let removed = Set(body?.removeTags ?? [])
+        return reviseItem(
+            title: body?.title ?? base.title,
+            summary: body?.summary ?? base.listSummary ?? "",
+            summarySource: body?.summary == nil ? .ai : .user,
+            tags: base.tags.filter { !removed.contains($0) }
+        )
+    }
+
+    private static func encoded(_ value: some Encodable) -> [UInt8] {
+        Array((try? JSONEncoder().encode(value)) ?? Data())
     }
 
     /// 받은 번호를 그대로 옮겼다고 답한다(api `ItemRefList`).

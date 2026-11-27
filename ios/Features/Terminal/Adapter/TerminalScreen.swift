@@ -96,6 +96,10 @@ private struct TerminalContent: View {
                 onSubmit: { send(.submitted($0)) },
                 onPaste: { send(.pasted($0)) },
                 onMoreRequested: { send(.moreRequested) },
+                onReviseSubmit: { number, title, summary in
+                    send(.reviseSubmitted(number: number, title: title, summary: summary))
+                },
+                onReviseCancel: { send(.reviseCancelled) },
                 onKeyboardVisibilityChange: { isKeyboardVisible = $0 }
             )
         )
