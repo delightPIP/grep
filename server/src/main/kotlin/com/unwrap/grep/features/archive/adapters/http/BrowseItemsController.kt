@@ -1,6 +1,8 @@
 package com.unwrap.grep.features.archive.adapters.http
 
 import com.unwrap.grep.features.archive.domain.BrowseItemsService
+import com.unwrap.grep.features.archive.domain.GroupKind
+import com.unwrap.grep.features.archive.domain.ItemFilter
 import com.unwrap.grep.features.archive.domain.SavedRange
 import com.unwrap.grep.features.archive.domain.SavedSearchService
 import com.unwrap.grep.features.archive.domain.SearchQuery
@@ -43,8 +45,11 @@ class BrowseItemsController(private val browse: BrowseItemsService, private val 
 		@RequestParam(required = false) limit: String?,
 		@RequestParam(required = false) from: String?,
 		@RequestParam(required = false) to: String?,
+		@RequestParam(required = false) kind: String?,
+		@RequestParam(required = false) source: String?,
+		@RequestParam(required = false) tag: String?,
 	): ItemPageResponse {
-		val page = browse.recent(userId, beforeNumber(cursor), pageSizeOf(limit), savedRange(from, to))
+		val page = browse.recent(userId, beforeNumber(cursor), pageSizeOf(limit), savedRange(from, to), filterOf(kind, source, tag))
 		return ItemPageResponse(page.items.map { ItemSummaryResponse.of(it) }, page.total, page.nextBeforeNumber?.toString())
 	}
 
@@ -82,6 +87,13 @@ class BrowseItemsController(private val browse: BrowseItemsService, private val 
 		val lookup = browse.lookup(userId, parsed)
 		return ItemLookupResponse(lookup.items.map { ItemSummaryResponse.of(it) }, lookup.missing)
 	}
+
+	/** 자동 묶음 하나(ARC-007). 출처는 호스트 그대로, 태그는 `#` 없이 소문자로 맞춘다(ARC-002 규칙 5). */
+	private fun filterOf(kind: String?, source: String?, tag: String?) = ItemFilter(
+		kind = kind?.let { GroupKind.of(it) ?: invalid("kind must be link, text, image or file") },
+		source = source?.let { it.trim().ifEmpty { invalid("source must not be blank") } },
+		tag = tag?.let { it.trim().ifEmpty { invalid("tag must not be blank") }.lowercase() },
+	)
 
 	private fun beforeNumber(cursor: String?): Long? = cursor?.let { positiveLong(it) ?: invalid("cursor is invalid") }
 

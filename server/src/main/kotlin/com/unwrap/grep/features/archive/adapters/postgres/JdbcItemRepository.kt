@@ -5,6 +5,7 @@ import com.unwrap.grep.features.archive.api.ItemSavedTimes
 import com.unwrap.grep.features.archive.domain.FileFormat
 import com.unwrap.grep.features.archive.domain.HandoffSource
 import com.unwrap.grep.features.archive.domain.HandoffSourceRepository
+import com.unwrap.grep.features.archive.domain.ItemFilter
 import com.unwrap.grep.features.archive.domain.ItemKind
 import com.unwrap.grep.features.archive.domain.ItemRepository
 import com.unwrap.grep.features.archive.domain.ItemStatus
@@ -132,18 +133,20 @@ class JdbcItemRepository(private val jdbc: JdbcClient) :
 			.update()
 	}
 
-	override fun countActive(userId: UUID, saved: SavedRange): Long =
+	override fun countActive(userId: UUID, saved: SavedRange, filter: ItemFilter): Long =
 		jdbc.sql(
 			"""
 			SELECT count(*) FROM items
 			WHERE user_id = :userId AND deleted_at IS NULL
 			  AND (CAST(:from AS timestamptz) IS NULL OR created_at >= CAST(:from AS timestamptz))
 			  AND (CAST(:to AS timestamptz) IS NULL OR created_at < CAST(:to AS timestamptz))
+			  $GROUP_FILTER_SQL
 			""".trimIndent(),
 		)
 			.param("userId", userId)
 			.param("from", saved.from?.let { OffsetDateTime.ofInstant(it, ZoneOffset.UTC) })
 			.param("to", saved.to?.let { OffsetDateTime.ofInstant(it, ZoneOffset.UTC) })
+			.filterParams(filter)
 			.query(Long::class.java)
 			.single()
 
@@ -156,13 +159,14 @@ class JdbcItemRepository(private val jdbc: JdbcClient) :
 			.query { rs, _ -> rs.getObject("created_at", OffsetDateTime::class.java).toInstant() }
 			.list()
 
-	override fun findActive(userId: UUID, beforeNumber: Long?, limit: Int, saved: SavedRange): List<StoredItem> =
+	override fun findActive(userId: UUID, beforeNumber: Long?, limit: Int, saved: SavedRange, filter: ItemFilter): List<StoredItem> =
 		jdbc.sql(
 			"""
 			SELECT $SUMMARY_COLUMNS FROM items
 			WHERE user_id = :userId AND deleted_at IS NULL AND (CAST(:before AS bigint) IS NULL OR number < :before)
 			  AND (CAST(:from AS timestamptz) IS NULL OR created_at >= CAST(:from AS timestamptz))
 			  AND (CAST(:to AS timestamptz) IS NULL OR created_at < CAST(:to AS timestamptz))
+			  $GROUP_FILTER_SQL
 			ORDER BY number DESC
 			LIMIT :limit
 			""".trimIndent(),
@@ -172,6 +176,7 @@ class JdbcItemRepository(private val jdbc: JdbcClient) :
 			.param("from", saved.from?.let { OffsetDateTime.ofInstant(it, ZoneOffset.UTC) })
 			.param("to", saved.to?.let { OffsetDateTime.ofInstant(it, ZoneOffset.UTC) })
 			.param("limit", limit)
+			.filterParams(filter)
 			.query(ITEM_ROW)
 			.list()
 
@@ -195,6 +200,11 @@ class JdbcItemRepository(private val jdbc: JdbcClient) :
 			.param("numbers", numbers.toLongArray())
 			.query(HANDOFF_ROW)
 			.list()
+
+	private fun JdbcClient.StatementSpec.filterParams(filter: ItemFilter): JdbcClient.StatementSpec =
+		param("kind", filter.kind?.value, Types.VARCHAR)
+			.param("source", filter.source, Types.VARCHAR)
+			.param("tag", filter.tag, Types.VARCHAR)
 
 	private companion object {
 		val HANDOFF_ROW = RowMapper { rs, _ ->

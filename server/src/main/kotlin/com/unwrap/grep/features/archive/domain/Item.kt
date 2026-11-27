@@ -99,11 +99,17 @@ interface ItemRepository {
 	/** [numbers] 중 처리를 미뤄 둔 휴지통 밖 자료에 처리 작업을 만든다(가져온 자료를 처음 열거나 넘길 때). 한 번만 만든다. */
 	fun startDeferredProcessing(userId: UUID, numbers: Collection<Long>)
 
-	/** 휴지통 밖 자료 수. [saved]가 있으면 그 기간 안만. */
-	fun countActive(userId: UUID, saved: SavedRange = SavedRange.ANY): Long
+	/** 휴지통 밖 자료 수. [saved]가 있으면 그 기간 안만, [filter]가 있으면 그 자동 묶음만. */
+	fun countActive(userId: UUID, saved: SavedRange = SavedRange.ANY, filter: ItemFilter = ItemFilter.NONE): Long
 
 	/** 휴지통 밖 자료를 번호 내림차순으로 [limit]건. [beforeNumber]가 있으면 그보다 작은 번호만, [saved] 기간 안만. */
-	fun findActive(userId: UUID, beforeNumber: Long?, limit: Int, saved: SavedRange = SavedRange.ANY): List<StoredItem>
+	fun findActive(
+		userId: UUID,
+		beforeNumber: Long?,
+		limit: Int,
+		saved: SavedRange = SavedRange.ANY,
+		filter: ItemFilter = ItemFilter.NONE,
+	): List<StoredItem>
 
 	/** [numbers] 중 휴지통 밖 자료. 순서는 정하지 않는다. */
 	fun findActiveByNumbers(userId: UUID, numbers: Collection<Long>): List<StoredItem>
