@@ -85,6 +85,8 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     var pendingDrop: PendingDrop?
     /// 답을 기다리는 `휴지통 비우기` 확인(ARC-008 규칙 6, COM-007).
     var pendingBinEmpty: PendingBinEmpty?
+    /// `POST /samples` 중복 실행 방지.
+    var isSavingSamples = false
     /// 사용자가 넣은 입력(엔터·붙여 넣기·파일 놓기)의 차례. 늦게 온 응답이 그 뒤의 입력을 답으로 삼지 않게 한다.
     private(set) var inputSequence = 0
     /// `로그아웃`으로 기록을 지웠다. 늦게 끝난 되살리기가 다시 남기지 않게 한다.
@@ -139,7 +141,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
         case .pasted(let text): paste(text)
         case .filesDropped(let dropped): drop(dropped)
         case .moreRequested: loadMore()
-        case .samplesRequested: break
+        case .samplesRequested: saveSamples()
         case .reviseSubmitted(let number, let title, let summary):
             submitRevise(number: number, title: title, summary: summary)
         case .reviseCancelled:
