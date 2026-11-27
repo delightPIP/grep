@@ -1180,7 +1180,7 @@ describe("LoggedInView", () => {
       expect(onSubmit).not.toHaveBeenCalled();
     });
 
-    it("도움말을쳤을때_화면을그리면_안내줄과명령16줄과예시줄을보이는지", () => {
+    it("도움말을쳤을때_화면을그리면_안내줄과명령18줄과예시줄을보이는지", () => {
       // given
       const lines: LoggedInState["lines"] = [{ kind: "prompt", text: "도움말" }, { kind: "guide" }];
 
@@ -1193,6 +1193,8 @@ describe("LoggedInView", () => {
         "담기 keep 자료 저장",
         "최근 recent 최근 자료 목록",
         "찾기 seek 검색",
+        "열기 peek 자료 자세히 보기",
+        "찾아두기 gather 검색어 저장",
         "고르기 pick 번호로 선택",
         "넘기기 handoff AI 도구용 글 복사",
         "묶음 pack 선택에 이름 붙이기",

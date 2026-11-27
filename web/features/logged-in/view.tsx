@@ -1073,6 +1073,8 @@ const GUIDE_ROWS: ReadonlyArray<readonly [string, string, string]> = [
   ["담기", "keep", "자료 저장"],
   ["최근", "recent", "최근 자료 목록"],
   ["찾기", "seek", "검색"],
+  ["열기", "peek", "자료 자세히 보기"],
+  ["찾아두기", "gather", "검색어 저장"],
   ["고르기", "pick", "번호로 선택"],
   ["넘기기", "handoff", "AI 도구용 글 복사"],
   ["묶음", "pack", "선택에 이름 붙이기"],
