@@ -33,7 +33,7 @@ class BrowseItemsController(private val browse: BrowseItemsService) {
 		@RequestParam(required = false) cursor: String?,
 		@RequestParam(required = false) limit: String?,
 	): ItemPageResponse {
-		val page = browse.recent(userId, beforeNumber(cursor), pageSize(limit))
+		val page = browse.recent(userId, beforeNumber(cursor), pageSizeOf(limit))
 		return ItemPageResponse(page.items.map { ItemSummaryResponse.of(it) }, page.nextBeforeNumber?.toString())
 	}
 
@@ -49,7 +49,7 @@ class BrowseItemsController(private val browse: BrowseItemsService) {
 		val words = q?.split(WHITESPACE)?.filter { it.isNotEmpty() }?.distinct().orEmpty()
 		val tags = tag.orEmpty().map { it.trim().ifEmpty { invalid("tag must not be empty") }.lowercase() }.distinct()
 		if (words.isEmpty() && tags.isEmpty()) invalid("q or tag is required")
-		val page = browse.search(userId, SearchQuery(words, tags), beforeNumber(cursor), pageSize(limit))
+		val page = browse.search(userId, SearchQuery(words, tags), beforeNumber(cursor), pageSizeOf(limit))
 		return SearchPageResponse(
 			items = page.hits.map { ItemSummaryResponse.of(it.item, it.matchedIn) },
 			total = page.total,
@@ -71,17 +71,20 @@ class BrowseItemsController(private val browse: BrowseItemsService) {
 
 	private fun beforeNumber(cursor: String?): Long? = cursor?.let { positiveLong(it) ?: invalid("cursor is invalid") }
 
-	private fun pageSize(limit: String?): Int =
-		limit?.let { value -> value.toIntOrNull()?.takeIf { it in LIMIT_RANGE } ?: invalid("limit must be 1..50") }
-			?: DEFAULT_LIMIT
-
 	private fun positiveLong(value: String): Long? = value.toLongOrNull()?.takeIf { it >= 1 }
 
 	private fun invalid(detail: String): Nothing = throw ApiProblem.invalidRequest(detail)
 
 	private companion object {
-		const val DEFAULT_LIMIT = 10
-		val LIMIT_RANGE = 1..50
 		val WHITESPACE = Regex("\\s+")
 	}
 }
+
+private const val DEFAULT_LIMIT = 10
+private val LIMIT_RANGE = 1..50
+
+/** openapi `Limit`. 없으면 10, 1..50 밖이면 `invalid_request`. */
+internal fun pageSizeOf(limit: String?): Int =
+	limit?.let { value ->
+		value.toIntOrNull()?.takeIf { it in LIMIT_RANGE } ?: throw ApiProblem.invalidRequest("limit must be 1..50")
+	} ?: DEFAULT_LIMIT
