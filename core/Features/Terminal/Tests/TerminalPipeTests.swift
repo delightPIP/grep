@@ -99,6 +99,22 @@ struct TerminalPipeTests {
         #expect(fixture.state.selection.isEmpty)
     }
 
+    @Test func 선택이있을때_이어쓰기로넘기기에성공해도_기존선택을그대로두는지() async {
+        // given
+        await fixture.attach()
+        await fixture.pick([30, 25])
+
+        // when
+        await search(total: 3)
+        let result = Fixture.handoff([1, 2, 3])
+        await fixture.respond(json: Fixture.handoffJSON(result))
+
+        // then: 이어 쓰기는 찾기 결과를 넘기고 이미 고른 선택은 건드리지 않는다(COM-008 규칙 9).
+        #expect(fixture.fakeClipboard.copied == [result.text])
+        #expect(fixture.state.lines.last == .handedOff(result))
+        #expect(fixture.state.selection == [Fixture.ref(30), Fixture.ref(25)])
+    }
+
     @Test(arguments: [6, 10, 11])
     func 이어쓴찾기를기다릴때_5건을넘게오면_복사하지않고확인줄을그리는지(total: Int) async {
         // given

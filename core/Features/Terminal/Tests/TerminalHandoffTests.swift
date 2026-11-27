@@ -30,7 +30,7 @@ struct TerminalHandoffTests {
         #expect(fixture.fakeClipboard.copied.isEmpty)
     }
 
-    @Test func 넘길글을기다릴때_글이오면_받은글그대로복사하고복사됨줄을찍는지() async {
+    @Test func 넘길글을기다릴때_글이오면_받은글그대로복사하고복사됨줄을찍고선택을푸는지() async {
         // given
         await fixture.attach()
         await fixture.pick([30, 25])
@@ -40,10 +40,10 @@ struct TerminalHandoffTests {
         // when
         await fixture.respond(json: Fixture.handoffJSON(result))
 
-        // then: 화면 글자 수는 클립보드에 넣은 글과 함께 온 서버 값이다(AC-13).
+        // then: 화면 글자 수는 클립보드에 넣은 글과 함께 온 서버 값이다(AC-13). 성공하면 선택을 푼다(COM-008 규칙 8).
         #expect(fixture.fakeClipboard.copied == [result.text])
         #expect(fixture.state.lines.last == .handedOff(result))
-        #expect(fixture.state.selection == [Fixture.ref(30), Fixture.ref(25)])
+        #expect(fixture.state.selection.isEmpty)
     }
 
     @Test(arguments: ["넘기기", "handoff"])
@@ -181,9 +181,10 @@ struct TerminalHandoffTests {
         #expect(fixture.transport.requests.last == Fixture.handoffRequest([30, 25]))
         #expect(fixture.fakeClipboard.copied == [result.text])
         #expect(fixture.state.lines.last == .handedOff(result))
+        #expect(fixture.state.selection.isEmpty)
     }
 
-    @Test func 고른자료가그새지워졌을때_넘기기를치면_없는번호줄을찍고복사하지않는지() async {
+    @Test func 고른자료가그새지워졌을때_넘기기를치면_없는번호줄을찍고복사하지않고선택을남기는지() async {
         // given
         await fixture.attach()
         await fixture.pick([30, 25])
@@ -195,5 +196,6 @@ struct TerminalHandoffTests {
         // then
         #expect(fixture.state.lines.last == .notFound(numbers: [25]))
         #expect(fixture.fakeClipboard.copied.isEmpty)
+        #expect(fixture.state.selection == [Fixture.ref(30), Fixture.ref(25)])
     }
 }
