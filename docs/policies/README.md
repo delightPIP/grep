@@ -27,7 +27,7 @@
 |---|---|---|---|
 | [COM-001](common/COM-001-same-link-detection.md) | 같은 링크나 같은 파일을 다시 저장하면 새로 만들지 않고 기존 자료를 알린다 | 확정 | 공통 |
 | [COM-002](common/COM-002-external-llm-data.md) | 자료 내용은 허용 제공사의 외부 LLM API로만 보내고, 프로젝트 기간에는 팀이 만든 자료만 넣어 무료 플랜을 쓴다 | 검토 중 (개발자 확인 대기) | 공통 |
-| [COM-003](common/COM-003-desktop-clipboard-link-prompt.md) | 데스크톱 앱은 복사한 링크를 사용자가 켰을 때만 알리고, 묻기 전에는 저장하지 않는다 | 검토 중 (개발자 확인 대기) | 공통 |
+| [COM-003](common/COM-003-desktop-clipboard-link-prompt.md) | 데스크톱 앱은 복사한 링크를 사용자가 켰을 때만 알리고, 묻기 전에는 저장하지 않는다 | 검토 중 (데스크톱 실험 뒤 확정) | 공통 |
 | [COM-004](common/COM-004-accepted-file-formats.md) | 저장할 수 있는 파일은 PDF, md, txt, docx와 PNG, JPEG, WebP, HEIC 이미지다 | 검토 중 (개발자 확인 대기) | 공통 |
 | [COM-005](common/COM-005-free-tier-only.md) | 그렙은 돈이 드는 서비스를 쓰지 않고 무료 플랜·무료 한도 안에서만 돈다 | 검토 중 (개발자 확인 대기) | 공통 |
 | [COM-006](common/COM-006-per-user-isolation.md) | 한 사용자의 자료는 그 사용자만 보고, 다른 사용자의 자료에 닿는 길을 두지 않는다 | 검토 중 (개발자 확인 대기) | 공통 |
@@ -35,9 +35,9 @@
 | [COM-008](common/COM-008-handoff-count-and-copy-failure.md) | 넘기기는 이어 쓰기 결과가 5건을 넘으면 묻고, 복사에 성공하면 선택을 풀고, 실패하면 선택을 남기고 직접 복사할 길을 보인다 | 확정 | 공통 |
 | [COM-009](common/COM-009-terminal-history-kept.md) | 터미널 출력 기록·치던 글·선택은 이 기기에 남기고, 로그아웃하거나 다른 계정으로 로그인하면 지운다 | 확정 | 공통 |
 | [COM-010](common/COM-010-server-unreachable.md) | 서버에 닿지 못하면 명령 실패를 알리고 상태줄에 표시하며, 끊긴 동안 친 명령은 저절로 다시 하지 않는다 | 확정 | 공통 |
-| [DSK-001](desktop/DSK-001-resident-mole.md) | 데스크톱 두더지는 화면 오른쪽 아래에 상주하고, 사용자가 숨기거나 끌 수 있다 | 검토 중 (개발자 확인 대기) | 데스크톱 |
-| [DSK-002](desktop/DSK-002-drop-to-save.md) | 데스크톱 두더지에 끌어다 놓으면 묻지 않고 저장한다 | 검토 중 (개발자 확인 대기) | 데스크톱 |
-| [DSK-003](desktop/DSK-003-quick-window-shortcut.md) | 빠른 창은 두더지를 누르거나 전역 단축키로 열고 닫는다 | 검토 중 (개발자 확인 대기) | 데스크톱 |
+| [DSK-001](desktop/DSK-001-resident-mole.md) | 데스크톱 두더지는 화면 오른쪽 아래에 상주하고, 사용자가 숨기거나 끌 수 있다 | 검토 중 (데스크톱 실험 뒤 확정) | 데스크톱 |
+| [DSK-002](desktop/DSK-002-drop-to-save.md) | 데스크톱 두더지에 끌어다 놓으면 묻지 않고 저장한다 | 검토 중 (데스크톱 실험 뒤 확정) | 데스크톱 |
+| [DSK-003](desktop/DSK-003-quick-window-shortcut.md) | 빠른 창은 두더지를 누르거나 전역 단축키로 열고 닫는다 | 검토 중 (데스크톱 실험 뒤 확정) | 데스크톱 |
 | [ACC-001](account/ACC-001-social-login-required.md) | Google 또는 GitHub로 로그인해야 그렙을 쓸 수 있다 | 확정 | 계정 |
 | [ACC-002](account/ACC-002-devices-and-connections.md) | 기기 수는 제한하지 않고, 모든 기기 로그아웃과 AI 도구 연결별 끊기를 제공한다 | 확정 | 계정 |
 | [ARC-001](archive/ARC-001-item-number.md) | 자료마다 사용자별 고유 번호를 붙이고, 모든 명령이 그 번호 하나로 자료를 가리킨다 | 확정 | 자료 |
@@ -48,9 +48,9 @@
 | [ARC-006](archive/ARC-006-link-fetch-scope.md) | 서버는 공개 웹 페이지만 열어 본문을 가져오고, 로그인·유료벽·접근 제한을 우회하지 않는다 | 확정 | 자료 |
 | [ARC-007](archive/ARC-007-archive-auto-groups.md) | 보관함은 자동 묶음과 사용자 묶음, 저장한 찾기로만 자료를 보여 주고, 따로 폴더를 두지 않는다 | 확정 | 자료 |
 | [ARC-008](archive/ARC-008-trash-30-days.md) | 지운 자료는 휴지통에 30일 두고, 그동안 되살릴 수 있다 | 검토 중 (개발자 확인 대기) | 자료 |
-| [ARC-009](archive/ARC-009-ai-connection-read-scope.md) | AI 도구 연결은 검색에 요약을, 읽기에 본문 텍스트를 돌려주고 원본 파일은 주지 않는다 | 검토 중 (개발자 확인 대기) | 자료 |
+| [ARC-009](archive/ARC-009-ai-connection-read-scope.md) | AI 도구 연결은 검색에 요약을, 읽기에 본문 텍스트를 돌려주고 원본 파일은 주지 않는다 | 확정 | 자료 |
 | [ARC-010](archive/ARC-010-sample-items.md) | 첫 화면의 샘플 8건은 실제 자료로 저장하고 버리기로 치운다 | 검토 중 (개발자 확인 대기) | 자료 |
-| [ARC-011](archive/ARC-011-item-detail-view.md) | 자료 하나는 `열기`로 자세히 보기를 열어 요약·출처·태그·묶음·본문·원본을 한 화면에 보여 준다 | 검토 중 (개발자 확인 대기) | 자료 |
-| [ARC-012](archive/ARC-012-saved-search.md) | 저장한 찾기는 `찾아두기 <검색어>`로 만들고 보고 지우며, 이름은 검색어 그대로다 | 검토 중 (개발자 확인 대기) | 자료 |
+| [ARC-011](archive/ARC-011-item-detail-view.md) | 자료 하나는 `열기`로 자세히 보기를 열어 요약·출처·태그·묶음·본문·원본을 한 화면에 보여 준다 | 확정 | 자료 |
+| [ARC-012](archive/ARC-012-saved-search.md) | 저장한 찾기는 `찾아두기 <검색어>`로 만들고 보고 지우며, 이름은 검색어 그대로다 | 확정 | 자료 |
 | [MOB-001](mobile/MOB-001-bottom-tabs.md) | 모바일 화면은 하단 탭 세 개(터미널 · 보관함 · 설정)로 오가고, 설정은 탭으로 둔다 | 확정 | 모바일 |
 | [MOB-002](mobile/MOB-002-tap-runs-command.md) | 모바일에서는 번호·명령을 누르면 바로 실행하고, 확인 질문은 낱말 버튼으로 답한다 | 검토 중 (PO 확인 대기) | 모바일 |
