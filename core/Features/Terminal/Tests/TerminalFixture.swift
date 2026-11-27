@@ -128,4 +128,27 @@ final class TerminalFixture: TerminalDependency {
     static func get(_ path: String) -> HTTPRequest {
         HTTPRequest(method: .get, path: path, headers: authorization)
     }
+
+    static func handoffRequest(_ numbers: [Int]) -> HTTPRequest {
+        HTTPRequest(
+            method: .post, path: "/handoff",
+            headers: authorization.merging(["Content-Type": "application/json"]) { own, _ in own },
+            body: #"{"numbers":[\#(numbers.map(String.init).joined(separator: ","))]}"#
+        )
+    }
+
+    /// 넘길 글. 글자 수는 서버가 센 값이라 일부러 글의 길이와 다르게 둔다.
+    static func handoff(_ numbers: [Int], missingSummaryCount: Int = 0) -> HandoffResult {
+        HandoffResult(
+            items: numbers.map(ref), charCount: 442, missingSummaryCount: missingSummaryCount,
+            text: "<그렙_자료 건수=\"\(numbers.count)\">\n제목: 자료\n</그렙_자료>"
+        )
+    }
+
+    static func handoffJSON(_ result: HandoffResult) -> String {
+        let items = result.items.map { #"{"number":\#($0.number),"title":"\#($0.title)"}"# }.joined(separator: ",")
+        let text = result.text.replacing("\"", with: "\\\"").replacing("\n", with: "\\n")
+        return #"{"text":"\#(text)","charCount":\#(result.charCount),"items":[\#(items)],"#
+            + #""missingSummaryCount":\#(result.missingSummaryCount)}"#
+    }
 }

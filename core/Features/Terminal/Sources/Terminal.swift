@@ -21,6 +21,7 @@ public final class TerminalBuilder: Builder<any TerminalDependency>, TerminalBui
             presenter: view,
             authService: dependency.authService,
             httpTransport: dependency.httpTransport,
+            clipboard: dependency.clipboard,
             files: dependency.files,
             sleeper: dependency.sleeper,
             listener: listener
@@ -30,7 +31,7 @@ public final class TerminalBuilder: Builder<any TerminalDependency>, TerminalBui
 }
 
 /// 터미널 화면. 입력줄의 명령을 해석한다. 자료 수와 되살릴 줄은 부모가 `TerminalHandle`로 넘긴다.
-/// 아는 명령은 `담기`·`최근`·`찾기`·`고르기`·`로그아웃`이다. 붙여 넣기와 끌어다 놓기도 저장한다(#57). 나머지는 없는 명령으로 그린다.
+/// 아는 명령은 `담기`·`최근`·`찾기`·`고르기`·`넘기기`·`로그아웃`이다. 붙여 넣기와 끌어다 놓기도 저장한다(#57). 나머지는 없는 명령으로 그린다.
 /// 처리 중 자료가 화면에 있으면 2초마다 상태를 묻고(ARC-005 규칙 10), 서버에 닿지 못하면 5초마다 다시 확인한다(COM-010).
 final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, TerminalPresentableListener, TerminalHandle {
 
@@ -62,6 +63,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     }
 
     let httpTransport: ObservedTransport
+    let clipboard: any ClipboardPort
     private let files: any FilePort
     private let sleeper: any Sleeper
     private weak var listener: (any TerminalListener)?
@@ -82,12 +84,14 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
         presenter: any TerminalPresentable,
         authService: any AuthService,
         httpTransport: any HTTPTransport,
+        clipboard: any ClipboardPort,
         files: any FilePort,
         sleeper: any Sleeper,
         listener: any TerminalListener
     ) {
         self.authService = authService
         self.httpTransport = ObservedTransport(base: httpTransport)
+        self.clipboard = clipboard
         self.files = files
         self.sleeper = sleeper
         self.listener = listener
@@ -165,6 +169,11 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             seek(SeekCommand.parse(command.argument), typed: text)
         case .pick:
             pick(PickCommand.parse(command.argument), typed: text)
+        case .handoff where command.argument.isEmpty:
+            handOffSelection(typed: text)
+        // shortcut: `넘기기 <묶음 이름>`(F12)은 묶음이 데모 범위 밖이라 받지 않는다. 고른 자료를 대신 넘기지 않도록 없는 명령으로 알린다.
+        case .handoff:
+            update(viewState.appending(lines: [.prompt(text), .unknownCommand(text.trimmingWhitespace())]).with(input: ""))
         default:
             update(viewState.appending(lines: [.prompt(text), .unknownCommand(command.word)]).with(input: ""))
         }

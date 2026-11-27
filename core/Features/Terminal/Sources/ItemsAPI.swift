@@ -117,7 +117,7 @@ enum ItemsAPI {
     }
 
     @MainActor
-    private static func post(
+    static func post(
         _ path: String,
         body: some Encodable,
         headers: [String: String],
@@ -162,7 +162,7 @@ enum ItemsAPI {
         }
     }
 
-    private static func isSessionExpired(_ response: HTTPResponse) -> Bool {
+    static func isSessionExpired(_ response: HTTPResponse) -> Bool {
         response.status == unauthorizedStatus
             && decode(ErrorBody.self, from: response.body)?.code == sessionExpiredCode
     }
@@ -199,7 +199,7 @@ enum ItemsAPI {
         return String(decoding: data, as: UTF8.self)
     }
 
-    private static func decode<T: Decodable>(_ type: T.Type, from body: [UInt8]) -> T? {
+    static func decode<T: Decodable>(_ type: T.Type, from body: [UInt8]) -> T? {
         try? JSONDecoder().decode(type, from: Data(body))
     }
 }
