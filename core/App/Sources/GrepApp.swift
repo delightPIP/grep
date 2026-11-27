@@ -145,6 +145,12 @@ final class RootInteractor: Interactor, LoggedOutListener, LoggedInListener {
         router?.routeToLoggedOut(notice: .signedOut)
     }
 
+    func didSignOutEverywhere() {
+        pendingInput = nil
+        router?.routeAwayFromLoggedIn()
+        router?.routeToLoggedOut(notice: .signedOutEverywhere)
+    }
+
     /// 서버가 거부한 세션을 이 기기에서도 지운다. 남겨 두면 새로 고침할 때 터미널이 잠깐 떴다가 다시 만료로 간다.
     /// 지운 뒤에 로그인 화면을 붙여, 새 로그인이 늦게 끝난 로그아웃에 지워지지 않게 한다.
     func didExpire(pendingInput: PendingInput?) {

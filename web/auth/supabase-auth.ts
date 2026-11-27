@@ -163,6 +163,12 @@ export function createSupabaseAuthService(deps: SupabaseAuthDeps): AuthService {
       await deps.auth.signOut({ scope: "local" });
     },
 
+    async signOutEverywhere() {
+      lastToken = null;
+      // global은 서버의 모든 갱신 토큰을 끊는다(ACC-002 규칙 4). 다른 기기는 접근 토큰 만료 때(최대 1시간) 로그아웃된다.
+      await deps.auth.signOut({ scope: "global" });
+    },
+
     async accessToken() {
       // getSession은 접근 토큰이 만료됐으면 갱신 토큰으로 조용히 새로 받는다(ACC-001 규칙 6).
       // 갱신이 네트워크 문제로 실패하면 마지막 토큰을 돌려준다. 그 요청은 서버에 닿지 못해 `연결 끊김`이 되고,

@@ -75,6 +75,17 @@ final class LoggedInInteractor: Interactor, TerminalListener {
         }
     }
 
+    func didRequestSignOutEverywhere() {
+        guard !isSigningOut else { return }
+        isSigningOut = true
+        startTask { [weak self] in
+            guard let self else { return }
+            await authService.signOutEverywhere()
+            guard !Task.isCancelled else { return }
+            listener?.didSignOutEverywhere()
+        }
+    }
+
     func didExpire(input: String) {
         expire(input: input)
     }

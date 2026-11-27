@@ -30,12 +30,14 @@ public final class FakeTerminalViewFactory: TerminalViewFactory {
 @MainActor
 public final class FakeTerminalListener: TerminalListener {
     public private(set) var signOutRequestCount = 0
+    public private(set) var signOutEverywhereRequestCount = 0
     /// 만료를 알릴 때 함께 온 입력줄 글.
     public private(set) var expiredInputs: [String] = []
 
     public init() {}
 
     public func didRequestSignOut() { signOutRequestCount += 1 }
+    public func didRequestSignOutEverywhere() { signOutEverywhereRequestCount += 1 }
 
     public func didExpire(input: String) { expiredInputs.append(input) }
 }

@@ -86,6 +86,8 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     var pendingDrop: PendingDrop?
     /// 답을 기다리는 `휴지통 비우기` 확인(ARC-008 규칙 6, COM-007).
     var pendingBinEmpty: PendingBinEmpty?
+    /// 답을 기다리는 `로그아웃 모든기기` 확인(ACC-002 규칙 4, COM-007).
+    var pendingSignOutEverywhere = false
     /// `POST /samples` 중복 실행 방지.
     var isSavingSamples = false
     /// 사용자가 넣은 입력(엔터·붙여 넣기·파일 놓기)의 차례. 늦게 온 응답이 그 뒤의 입력을 답으로 삼지 않게 한다.
@@ -204,12 +206,24 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             confirmBinEmpty(typed: text)
             return
         }
+        if pendingSignOutEverywhere {
+            let answer = text.trimmingWhitespace()
+            if answer == "로그아웃" || answer == "signout" {
+                pendingSignOutEverywhere = false
+                forgetHistory()
+                listener?.didRequestSignOutEverywhere()
+                return
+            }
+        }
         cancelPendingConfirmations()
         guard let command = InputCommand(text) else { return }
         switch command.name {
         case .signOut where command.argument.isEmpty:
             forgetHistory()
             listener?.didRequestSignOut()
+        case .signOut where command.argument == "모든기기" || command.argument == "all":
+            pendingSignOutEverywhere = true
+            update(viewState.appending(lines: [.prompt(text), .signOutEverywhereConfirm]).with(input: ""))
         case .keep where command.argument.isEmpty:
             update(viewState.appending(lines: [.prompt(text), .missingArgument(.keep)]).with(input: ""))
         case .keep:
@@ -422,10 +436,11 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     }
 
     func cancelPendingConfirmations() {
-        let hadPending = pendingHandoff != nil || pendingDrop != nil || pendingBinEmpty != nil
+        let hadPending = pendingHandoff != nil || pendingDrop != nil || pendingBinEmpty != nil || pendingSignOutEverywhere
         pendingHandoff = nil
         pendingDrop = nil
         pendingBinEmpty = nil
+        pendingSignOutEverywhere = false
         if hadPending {
             update(viewState.appending(lines: [.cancelled]).with(input: ""))
         }
