@@ -1608,4 +1608,17 @@ describe("LoggedInView", () => {
       expect(onSubmit).not.toHaveBeenCalled();
     });
   });
+
+  describe("고르기 비우기(#108, commands 6절)", () => {
+    it("선택을모두풀었을때_화면을그리면_선택비움한줄을보이는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [{ kind: "prompt", text: "고르기 비우기" }, { kind: "pickCleared", count: 3 }];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown.slice(1)).toEqual(["✓ 선택 비움"]);
+    });
+  });
 });
