@@ -178,7 +178,8 @@ export type TerminalLine =
       isSavedSearch?: boolean | null;
     }
   /** period: 시점을 붙인 찾기가 0건이면 그 시점. `→ 기간 없이: 찾기 <검색어>`를 보인다(#114, 통합 승인) */
-  | { kind: "noResults"; query: SearchQuery; recent: ItemSummary[]; period?: Period | null }
+  /** related: 뜻이 가까운 자료(최대 3건). 1건 이상이면 최근 저장 대신 그린다. 비었거나 null·없음이면 최근 저장(#128, 통합 승인) */
+  | { kind: "noResults"; query: SearchQuery; recent: ItemSummary[]; period?: Period | null; related?: ItemSummary[] | null }
   | { kind: "picked"; items: ItemRef[] }
   | { kind: "notFound"; numbers: number[] }
   | { kind: "invalidNumber"; input: string }

@@ -2715,4 +2715,60 @@ describe("LoggedInView", () => {
       expect(onInputChange).toHaveBeenCalledWith("묶음 ");
     });
   });
+
+  describe("뜻 찾기 0건(#128, ADR-BCK-016)", () => {
+    const QUERY = { text: "텀블러 할인", words: "텀블러 할인", tags: [] };
+    const RELATED = [
+      item({ number: 30, title: "카페 텀블러 할인, 올겨울 캠페인 늘었다", status: "ready" }),
+      item({ number: 28, title: "파란컵 텀블러 캠페인 캡처.png", status: "ready" }),
+    ];
+    const RECENT = [item({ number: 131, title: "결제위젯 연동 가이드", status: "ready" })];
+
+    it("뜻결과가있을때_0건이면_뜻이가까운자료줄과목록만그리는지", () => {
+      // given
+      const line: TerminalLine = { kind: "noResults", query: QUERY, recent: RECENT, related: RELATED };
+
+      // when
+      const shown = shownOutput([{ kind: "prompt", text: "찾기 텀블러 할인" }, line]).slice(1);
+
+      // then
+      expect(shown.slice(0, 2)).toEqual(['· 0건: "텀블러 할인"', "· 뜻이 가까운 자료 2건 (낱말은 다름)"]);
+      expect(shown.filter((text) => /^(30|28) /.test(text))).toHaveLength(2);
+      expect(shown.some((text) => text.includes("최근 저장") || text.startsWith("131 "))).toBe(false);
+    });
+
+    it("뜻결과가없을때_0건이면_최근저장3건을그리는지", () => {
+      // given
+      const line: TerminalLine = { kind: "noResults", query: QUERY, recent: RECENT, related: [] };
+
+      // when
+      const shown = shownOutput([{ kind: "prompt", text: "찾기 텀블러 할인" }, line]).slice(1);
+
+      // then
+      expect(shown.slice(0, 2)).toEqual(['· 0건: "텀블러 할인"', "· 최근 저장 1건 (검색 결과 아님)"]);
+      expect(shown.some((text) => text.includes("뜻이 가까운"))).toBe(false);
+    });
+
+    it("시점이붙은0건에뜻결과가있을때_화면을그리면_기간없이줄다음에뜻결과를그리는지", () => {
+      // given
+      const period = { label: "지난주", from: "2026-11-16T15:00:00Z", to: "2026-11-23T15:00:00Z" };
+      const line: TerminalLine = {
+        kind: "noResults",
+        query: { text: "텀블러 할인 지난주", words: "텀블러 할인", tags: [] },
+        recent: RECENT,
+        period,
+        related: RELATED,
+      };
+
+      // when
+      const shown = shownOutput([line]);
+
+      // then
+      expect(shown.slice(0, 3)).toEqual([
+        '· 0건: "텀블러 할인" (지난주)',
+        "→ 기간 없이: 찾기 텀블러 할인",
+        "· 뜻이 가까운 자료 2건 (낱말은 다름)",
+      ]);
+    });
+  });
 });

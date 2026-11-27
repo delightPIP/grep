@@ -503,9 +503,30 @@ function UnknownCommandLines({ name, suggestion }: { name: string; suggestion: s
 /** 시점 낱말을 뺀 검색어(`결제 #위젯`). 시점이 붙은 찾기에서 query.text는 시점까지 친 그대로라 다시 만든다. */
 const queryWithoutPeriod = (query: SearchQuery) => [query.words, ...query.tags.map((tag) => `#${tag}`)].filter(Boolean).join(" ");
 
-type NoResultsLinesProps = { query: SearchQuery; recent: ItemSummary[]; period?: Period | null };
+type NoResultsLinesProps = { query: SearchQuery; recent: ItemSummary[]; period?: Period | null; related?: ItemSummary[] | null };
 
-function NoResultsLines({ query, recent, period }: NoResultsLinesProps) {
+/**
+ * 0건 뒤 목록. 뜻이 가까운 자료(#128, ADR-BCK-016)가 있으면 최근 저장 대신 그것을 보인다. 문구는 통합 세션 확정(사용자 승인).
+ * 시점이 붙은 0건이어도 같고, `→ 기간 없이` 줄은 그 위에 그대로 둔다.
+ */
+function NoResultsList({ recent, related }: { recent: ItemSummary[]; related: ItemSummary[] }) {
+  if (related.length > 0) {
+    return (
+      <>
+        <Line tone="info">{`뜻이 가까운 자료 ${related.length}건 (낱말은 다름)`}</Line>
+        <ListLines items={related} hasMore={false} />
+      </>
+    );
+  }
+  return (
+    <>
+      {recent.length > 0 && <Line tone="info">{`최근 저장 ${recent.length}건 (검색 결과 아님)`}</Line>}
+      <ListLines items={recent} hasMore={false} />
+    </>
+  );
+}
+
+function NoResultsLines({ query, recent, period, related }: NoResultsLinesProps) {
   const bare = queryWithoutPeriod(query);
   return (
     <>
@@ -521,8 +542,7 @@ function NoResultsLines({ query, recent, period }: NoResultsLinesProps) {
           </Plain>
         </>
       )}
-      {recent.length > 0 && <Line tone="info">{`최근 저장 ${recent.length}건 (검색 결과 아님)`}</Line>}
-      <ListLines items={recent} hasMore={false} />
+      <NoResultsList recent={recent} related={related ?? []} />
     </>
   );
 }
@@ -1201,7 +1221,7 @@ function OutputLine({ line, failed, savedInBlock, onMoreRequested }: OutputLineP
         />
       );
     case "noResults":
-      return <NoResultsLines query={line.query} recent={line.recent} period={line.period} />;
+      return <NoResultsLines query={line.query} recent={line.recent} period={line.period} related={line.related} />;
     case "picked":
       return <PickedLines items={line.items} />;
     case "notFound":
