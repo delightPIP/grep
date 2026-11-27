@@ -17,6 +17,7 @@ import type {
   BundleEntry,
   CommandFailure,
   CommandName,
+  ConnectionEntry,
   HandoffResult,
   ItemDetail,
   ItemRef,
@@ -642,18 +643,51 @@ function BinEmptyConfirmLines({ total }: { total: number }) {
   );
 }
 
-/**
- * ACC-002 모든 기기 로그아웃 확인. 정책 문구의 `· AI 도구 연결 N개`는 연결(F7)을 만들 때부터 적용한다(ACC-002 적용 범위).
- * shortcut: 연결 수가 계약에 없어 그 칸을 뺐다. F7에서 연결 수를 계약에 더할 때 넣는다.
- */
-function SignOutEverywhereConfirmLines() {
+/** ACC-002 모든 기기 로그아웃 확인. 끊길 AI 도구 연결이 있으면 `· AI 도구 연결 N개`, 없거나 모르면 그 칸을 뺀다. */
+function SignOutEverywhereConfirmLines({ connectionCount }: { connectionCount: number | null }) {
+  const connections = connectionCount !== null && connectionCount > 0 ? ` · AI 도구 연결 ${connectionCount}개` : "";
   return (
     <>
-      <Line tone="warn">로그아웃? 모든 기기 (다른 기기는 최대 1시간 뒤)</Line>
+      <Line tone="warn">{`로그아웃? 모든 기기${connections} (다른 기기는 최대 1시간 뒤)`}</Line>
       <ConfirmAnswer word="로그아웃" />
     </>
   );
 }
+
+/** 연결 목록 날짜 `11/20`. 한국 날짜다(ARC-004 규칙 7). */
+const connectionDay = (iso: string) => monthDay(kstDay(Date.parse(iso)));
+
+/** ACC-002 규칙 7·10 `연결`: 연결 주소 안내 두 줄, 그 아래 연결 목록. 읽은 적 없는 연결은 `읽음` 칸을 뺀다. */
+function ConnectionListLines({ mcpUrl, connections }: { mcpUrl: string; connections: ConnectionEntry[] }) {
+  return (
+    <>
+      <Line tone="info">{`연결 주소  ${mcpUrl}`}</Line>
+      <Plain dim>{"  AI 도구의 연결(MCP) 설정에 이 주소를 넣고 그렙 계정으로 로그인. 연결한 도구는 검색·읽기만 가능"}</Plain>
+      {connections.length === 0 ? (
+        <Line tone="info">연결 0개</Line>
+      ) : (
+        <>
+          <Plain>{`${connections.length}개 연결`}</Plain>
+          {connections.map((connection) => (
+            <div key={connection.number} className="gt-line gt-name-row">
+              <span className="gt-row-num">{connection.number}</span>
+              <span>{connection.client}</span>
+              <span className="gt-hint">{`연결 ${connectionDay(connection.connectedAt)}`}</span>
+              {connection.lastReadAt !== null && <span className="gt-hint">{`읽음 ${connectionDay(connection.lastReadAt)}`}</span>}
+            </div>
+          ))}
+          <Plain>
+            {"→ "}
+            <CommandChip command="연결 끊기 ">연결 끊기 &lt;번호&gt;</CommandChip>
+          </Plain>
+        </>
+      )}
+    </>
+  );
+}
+
+/** ACC-002 규칙 11 연결이 끝난 이유. revoked 낱말은 정책에 없어 계약 설명(다른 기기에서 끊음·모든 기기 로그아웃)에서 줄였다. */
+const CONNECTION_END_REASON = { expired: "로그인 만료", revoked: "다른 기기에서 끊음" } as const;
 
 /** 휴지통 행. 시각 칸에 영구 삭제까지 남은 날(ARC-008 규칙 10). */
 function TrashRow({ entry: { item, daysLeft } }: { entry: TrashEntry }) {
@@ -1176,7 +1210,32 @@ function OutputLine({ line, failed, savedInBlock, onMoreRequested }: OutputLineP
       // ARC-008 사용자 문구.
       return <Line tone="ok">{`비움  ${line.count}건 영구 삭제`}</Line>;
     case "signOutEverywhereConfirm":
-      return <SignOutEverywhereConfirmLines />;
+      return <SignOutEverywhereConfirmLines connectionCount={line.connectionCount ?? null} />;
+    // #124 AI 도구 연결(ACC-002 사용자 문구)
+    case "connectionList":
+      return <ConnectionListLines mcpUrl={line.mcpUrl} connections={line.connections} />;
+    case "disconnectConfirm":
+      return (
+        <>
+          <Line tone="warn">{`끊기? ${line.client} (다시 연결하려면 처음부터)`}</Line>
+          <ConfirmAnswer word="끊기" />
+        </>
+      );
+    case "disconnected":
+      if (line.already) return <Line tone="warn">{`이미 끊김  ${line.client}`}</Line>;
+      return <Line tone="ok">{`끊김  ${line.client}`}</Line>;
+    case "connectionNotFound":
+      return <Line tone="error">{`없는 연결: ${line.number}`}</Line>;
+    case "connectionEnded":
+      return (
+        <>
+          <Line tone="warn">{`연결 끊김: ${line.client} (${CONNECTION_END_REASON[line.reason]})`}</Line>
+          <Plain>
+            {"→ "}
+            <CommandChip command="연결" />
+          </Plain>
+        </>
+      );
     case "unpicked":
       // commands 6절 선택 빼기. 남은 수는 그 시점 값을 줄이 들고 온다(지난 줄이 나중 선택에 따라 바뀌지 않게).
       return <Line tone="ok">{`뺌  선택 ${line.remaining}건 남음`}</Line>;
