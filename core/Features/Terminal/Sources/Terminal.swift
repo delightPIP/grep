@@ -65,6 +65,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
         }
     }
 
+    let rawTransport: any HTTPTransport
     let httpTransport: ObservedTransport
     let clipboard: any ClipboardPort
     private let files: any FilePort
@@ -113,6 +114,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
         listener: any TerminalListener
     ) {
         self.authService = authService
+        self.rawTransport = httpTransport
         self.httpTransport = ObservedTransport(base: httpTransport)
         self.clipboard = clipboard
         self.files = files

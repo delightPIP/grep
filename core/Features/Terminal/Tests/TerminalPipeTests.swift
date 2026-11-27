@@ -93,7 +93,7 @@ struct TerminalPipeTests {
         await fixture.respond(json: Fixture.handoffJSON(result))
 
         // then
-        #expect(fixture.transport.requests.last == Fixture.handoffRequest([1, 2, 3, 4, 5]))
+        #expect(fixture.transport.requests.filter { $0.path != "/events" }.last == Fixture.handoffRequest([1, 2, 3, 4, 5]))
         #expect(fixture.fakeClipboard.copied == [result.text])
         #expect(fixture.state.lines == [.prompt(Self.typed), .handedOff(result)])
         #expect(fixture.state.selection.isEmpty)
@@ -173,7 +173,7 @@ struct TerminalPipeTests {
         await fixture.respond(json: Fixture.handoffJSON(result))
 
         // then
-        #expect(fixture.transport.requests.suffix(2) == [Fixture.get(Self.firstPagePath), Fixture.handoffRequest(numbers)])
+        #expect(fixture.transport.requests.filter { $0.path != "/events" }.suffix(2) == [Fixture.get(Self.firstPagePath), Fixture.handoffRequest(numbers)])
         #expect(fixture.fakeClipboard.copied == [result.text])
         #expect(fixture.state.lines.suffix(2) == [.prompt(answer), .handedOff(result)])
     }
@@ -189,7 +189,7 @@ struct TerminalPipeTests {
         await fixture.respond(json: Fixture.handoffJSON(result))
 
         // then
-        #expect(fixture.transport.requests.last == Fixture.handoffRequest(Array(1...10)))
+        #expect(fixture.transport.requests.filter { $0.path != "/events" }.last == Fixture.handoffRequest(Array(1...10)))
         #expect(fixture.fakeClipboard.copied == [result.text])
     }
 
@@ -205,7 +205,7 @@ struct TerminalPipeTests {
         await fixture.respond(json: Fixture.handoffJSON(result))
 
         // then
-        #expect(fixture.transport.requests.suffix(2) == [
+        #expect(fixture.transport.requests.filter { $0.path != "/events" }.suffix(2) == [
             Fixture.get("/items/search?q=pay&limit=50&cursor=next"), Fixture.handoffRequest(Array(1...11)),
         ])
         #expect(fixture.state.lines.suffix(2) == [.prompt("전부"), .handedOff(result)])
