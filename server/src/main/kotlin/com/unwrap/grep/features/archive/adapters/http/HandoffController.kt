@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController
 import java.util.UUID
 
 /** openapi `HandoffRequest`. 값 검사는 [HandoffController]가 한다. */
-data class HandoffRequest(val numbers: List<Long?>?)
+data class HandoffRequest(val numbers: List<Long?>? = null, val bundle: String? = null)
 
 /** POST /handoff(createHandoff). 응답은 openapi `Handoff` 모양 그대로다. */
 @RestController
@@ -19,6 +19,10 @@ class HandoffController(private val handoffs: HandoffService) {
 
 	@PostMapping("/handoff")
 	fun create(@RequestAttribute(CURRENT_USER_ID) userId: UUID, @RequestBody request: HandoffRequest): Handoff {
+		if (request.bundle != null) {
+			if (request.numbers != null) throw ApiProblem.invalidRequest("give numbers or bundle, not both")
+			return handoffs.composeBundle(userId, request.bundle)
+		}
 		val numbers = request.numbers?.takeIf { it.isNotEmpty() }
 			?: throw ApiProblem.invalidRequest("numbers is required")
 		if (numbers.any { it == null || it < 1 }) throw ApiProblem.invalidRequest("numbers must be positive integers")
