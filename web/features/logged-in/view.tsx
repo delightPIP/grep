@@ -1,6 +1,7 @@
 // 터미널 화면. 순수 뷰: 받은 상태만 그리고, 입력은 onInputChange·onSubmit·onPaste·onFilesDrop으로만 알린다.
 // 배치는 시안 Main·Errors·Logout ③ 아트보드, 출력 비우기(로그아웃·다른 계정 로그인, COM-009)는 코어가 lines로 내려준다.
 import {
+  Fragment,
   createContext,
   useContext,
   useEffect,
@@ -18,6 +19,7 @@ import type {
   ItemRef,
   ItemSummary,
   LoggedInState,
+  Period,
   Revising,
   SaveFailure,
   SaveRecovery,
@@ -286,12 +288,58 @@ function MoreChip({ onMoreRequested }: { onMoreRequested?: () => void }) {
   );
 }
 
-function ListLines({ items, hasMore, onMoreRequested }: { items: ItemSummary[]; hasMore: boolean; onMoreRequested?: () => void }) {
+/**
+ * 시점(F22) 날짜 계산. 한국 시간은 일광 절약 시간이 없어 UTC+9 고정이므로, 9시간을 더한 UTC 날짜를 한국 날짜로 쓴다.
+ * 날짜는 1970-01-01부터 센 한국 날짜 번호로 다룬다.
+ */
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const DAYS_PER_WEEK = 7;
+
+const kstDay = (ms: number) => Math.floor((ms + KST_OFFSET_MS) / DAY_MS);
+/** 주는 월요일에 시작한다(commands 3절 시점). */
+function weekStart(day: number): number {
+  const sundayBased = new Date(day * DAY_MS).getUTCDay();
+  return day - ((sundayBased + DAYS_PER_WEEK - 1) % DAYS_PER_WEEK);
+}
+function monthDay(day: number): string {
+  const date = new Date(day * DAY_MS);
+  return `${date.getUTCMonth() + 1}/${date.getUTCDate()}`;
+}
+
+/** 기간의 첫날과 마지막 날. to는 반열린 구간 끝이라 1ms 앞이 마지막 날이다. */
+function periodDays(period: Period): { first: number; last: number } {
+  return { first: kstDay(Date.parse(period.from)), last: kstDay(Date.parse(period.to) - 1) };
+}
+
+/** 기간이 여러 주에 걸치면 주 구분선을 넣는다(user-flow 5절 3번). */
+function spansWeeks(period: Period): boolean {
+  const { first, last } = periodDays(period);
+  return weekStart(first) !== weekStart(last);
+}
+
+/** 주 구분선 `── 10/26~11/1 ──`. 기간 끝에서 자르지 않고 월~일 한 주를 보인다(시안 TimeSearch ②). */
+function WeekDivider({ start }: { start: number }) {
+  return <Plain dim>{`── ${monthDay(start)}~${monthDay(start + DAYS_PER_WEEK - 1)} ──`}</Plain>;
+}
+
+type ListLinesProps = { items: ItemSummary[]; hasMore: boolean; onMoreRequested?: () => void; period?: Period | null };
+
+function ListLines({ items, hasMore, onMoreRequested, period }: ListLinesProps) {
+  const divided = period != null && spansWeeks(period);
+  const weekOf = (item: ItemSummary) => weekStart(kstDay(Date.parse(item.savedAt)));
   return (
     <>
-      {items.map((item) => (
-        <ListRow key={item.number} item={item} />
-      ))}
+      {items.map((item, index) => {
+        const week = weekOf(item);
+        const newWeek = divided && (index === 0 || weekOf(items[index - 1]) !== week);
+        return (
+          <Fragment key={item.number}>
+            {newWeek && <WeekDivider start={week} />}
+            <ListRow item={item} />
+          </Fragment>
+        );
+      })}
       {hasMore && <MoreChip onMoreRequested={onMoreRequested} />}
     </>
   );
@@ -302,13 +350,27 @@ function searchHeader(total: number, shown: number): string {
   return shown < total ? `${total}건 중 ${shown}건` : `${total}건`;
 }
 
-type SearchResultLinesProps = { total: number; items: ItemSummary[]; hasMore: boolean; onMoreRequested?: () => void };
+/** 시점이 붙으면 머리 뒤에 ` · 지난달 (10/1~10/31)`(commands 6절 시점을 붙인 결과). */
+function listHeader(total: number, shown: number, period: Period | null | undefined): string {
+  const count = searchHeader(total, shown);
+  if (period == null) return count;
+  const { first, last } = periodDays(period);
+  return `${count} · ${period.label} (${monthDay(first)}~${monthDay(last)})`;
+}
 
-function SearchResultLines({ total, items, hasMore, onMoreRequested }: SearchResultLinesProps) {
+type SearchResultLinesProps = {
+  total: number;
+  items: ItemSummary[];
+  hasMore: boolean;
+  onMoreRequested?: () => void;
+  period?: Period | null;
+};
+
+function SearchResultLines({ total, items, hasMore, onMoreRequested, period }: SearchResultLinesProps) {
   return (
     <>
-      <Plain>{searchHeader(total, items.length)}</Plain>
-      <ListLines items={items} hasMore={hasMore} onMoreRequested={onMoreRequested} />
+      <Plain>{listHeader(total, items.length, period)}</Plain>
+      <ListLines items={items} hasMore={hasMore} onMoreRequested={onMoreRequested} period={period} />
     </>
   );
 }
@@ -668,10 +730,26 @@ function OutputLine({ line, failed, onMoreRequested }: OutputLineProps) {
     case "saveFailed":
       return <SaveFailedLines reason={line.reason} recovery={line.recovery} />;
     case "recentList":
-      return <ListLines items={line.items} hasMore={line.hasMore} onMoreRequested={onMoreRequested} />;
+      // 시점이 없는 `최근`은 머리 줄 없이 목록만(commands 6절). 시점이 있으면 찾기와 같은 머리 줄.
+      if (line.period == null) return <ListLines items={line.items} hasMore={line.hasMore} onMoreRequested={onMoreRequested} />;
+      return (
+        <SearchResultLines
+          total={line.total ?? line.items.length}
+          items={line.items}
+          hasMore={line.hasMore}
+          onMoreRequested={onMoreRequested}
+          period={line.period}
+        />
+      );
     case "searchResult":
       return (
-        <SearchResultLines total={line.total} items={line.items} hasMore={line.hasMore} onMoreRequested={onMoreRequested} />
+        <SearchResultLines
+          total={line.total}
+          items={line.items}
+          hasMore={line.hasMore}
+          onMoreRequested={onMoreRequested}
+          period={line.period}
+        />
       );
     case "noResults":
       return <NoResultsLines query={line.query} recent={line.recent} />;

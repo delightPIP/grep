@@ -127,7 +127,8 @@ export type TerminalLine =
   | { kind: "alreadySaved"; item: ItemSummary }
   | { kind: "inTrash"; number: number }
   | { kind: "saveFailed"; reason: SaveFailure; recovery: SaveRecovery }
-  | { kind: "recentList"; items: ItemSummary[]; hasMore: boolean; period?: Period | null }
+  /** total: 시점이 붙은 `최근`이면 그 기간 전체 건수, 시점이 없으면 null(#114, 통합 승인) */
+  | { kind: "recentList"; items: ItemSummary[]; hasMore: boolean; period?: Period | null; total?: number | null }
   | { kind: "searchResult"; query: SearchQuery; total: number; items: ItemSummary[]; hasMore: boolean; period?: Period | null }
   | { kind: "noResults"; query: SearchQuery; recent: ItemSummary[] }
   | { kind: "picked"; items: ItemRef[] }
