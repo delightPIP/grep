@@ -74,6 +74,11 @@ tasks.processResources {
 }
 
 // #69 데모 시드: ./gradlew seedDemo -Pemail=<계정 이메일> [-Pprovider=google]. 서버와 같은 DB·스토리지 환경변수를 쓴다.
+// 시드 도구(DemoSeedMain)도 main이 있어 bootRun·bootJar가 실행 클래스를 고르지 못한다. 서버 진입점을 못 박는다
+springBoot {
+	mainClass = "com.unwrap.grep.GrepServerApplicationKt"
+}
+
 tasks.register<JavaExec>("seedDemo") {
 	group = "application"
 	description = "db/seed/demo/seed.json 34건을 지정한 계정에 넣는다(demo-seed 2절)."
