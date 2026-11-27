@@ -987,7 +987,7 @@ components:
           description: 다음 쪽이 없으면 null
     SearchPage:
       type: object
-      required: [items, total, nextCursor]
+      required: [items, total, nextCursor, isSavedSearch]
       properties:
         items:
           type: array
@@ -999,6 +999,9 @@ components:
           description: 조건에 맞는 전체 건수
         nextCursor:
           type: [string, "null"]
+        isSavedSearch:
+          type: boolean
+          description: 같은 검색어(`q` 낱말 차례와 `tag`, ARC-012 규칙 2 공백 정리)를 찾아뒀으면 true. 시점(`from`·`to`)은 비교하지 않는다. true면 `찾아두기 <검색어>` 칩을 두지 않는다(ARC-012 규칙 9)
     ItemLookup:
       type: object
       required: [items, missing]
