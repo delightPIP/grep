@@ -1077,6 +1077,82 @@ describe("LoggedInView", () => {
     });
   });
 
+  describe("첫 화면·도움말(#67, commands 2절·6절)", () => {
+    it("자료가0건일때_첫화면을그리면_한문장과표어를보이는지", () => {
+      // given
+      // when
+      const { container } = renderView({ itemCount: 0, lines: [{ kind: "welcome" }] });
+
+      // then
+      const banner = container.querySelector(".gt-banner")!.textContent;
+      expect(banner).toContain("저장해 둔 링크·캡처·PDF를 찾아 AI 도구에 붙여 넣을 글로 복사");
+      expect(banner).toContain("담기 → 찾기 → 넘기기");
+    });
+
+    it("자료가0건일때_첫화면을그리면_자료0건과샘플안내와명령전체안내를보이고13줄표는없는지", () => {
+      // given
+      // when
+      const shown = shownOutput([{ kind: "welcome" }]);
+
+      // then
+      expect(shown).toEqual([
+        "· 자료 0건",
+        "→ 샘플 8건으로 해 보기 또는 아래에 링크 붙여 넣기",
+        "· 명령 전체: 도움말",
+      ]);
+    });
+
+    it("첫화면일때_도움말칩을누르면_입력줄에도움말을찍기만하는지", () => {
+      // given
+      const { onInputChange, onSubmit } = renderView({ lines: [{ kind: "welcome" }] });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "도움말" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("도움말");
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+
+    it("도움말을쳤을때_화면을그리면_안내줄과명령13줄과예시줄을보이는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [{ kind: "prompt", text: "도움말" }, { kind: "guide" }];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown.slice(1)).toEqual([
+        "저장: 링크·글 붙여 넣기, 파일 끌어다 놓기. 명령: 한글·영문 같음",
+        "담기 keep 자료 저장",
+        "최근 recent 최근 자료 목록",
+        "찾기 seek 검색",
+        "고르기 pick 번호로 선택",
+        "넘기기 handoff AI 도구용 글 복사",
+        "묶음 pack 선택에 이름 붙이기",
+        "고치기 revise 제목·요약 수정",
+        "버리기 drop 삭제",
+        "가져오기 bring 북마크 파일 가져오기",
+        "연결 plug AI 도구 연결",
+        "로그아웃 signout 로그아웃",
+        "도움말 guide 명령 목록",
+        "설명 about 명령 설명",
+        "→ 예: 찾기 결제 | 넘기기 · 자세히: 설명 찾기",
+      ]);
+    });
+
+    it("도움말을쳤을때_예시칩을누르면_입력줄에그명령을찍는지", () => {
+      // given
+      const { onInputChange } = renderView({ lines: [{ kind: "guide" }] });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "찾기 결제 | 넘기기" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("찾기 결제 | 넘기기");
+    });
+  });
+
   describe("상태줄·연결(#60, ARC-005·COM-010)", () => {
     it("처리중인자료가있을때_화면을그리면_상태줄에요약생성중N을보이는지", () => {
       // given

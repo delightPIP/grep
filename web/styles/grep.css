@@ -100,3 +100,7 @@ html, body, #root, #app { height: 100%; }
 .gt-login-prompt-head { color: var(--prompt); font-weight: 700; }
 .gt-login-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3) !important; }
 @media (max-width: 560px) { .gt-screen { padding: var(--space-4); } }
+
+/* 도움말 명령 표(commands 2절): 한글 · 영문 · 뜻 세 칸. 좁은 화면에서는 뜻이 다음 줄로. */
+.gt-guide-row { display: grid; grid-template-columns: 8ch 8ch minmax(0, 1fr); column-gap: 1ch; padding-left: 2ch; }
+.gt-guide-name { color: var(--command); }

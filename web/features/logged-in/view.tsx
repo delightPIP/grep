@@ -13,7 +13,7 @@ import type {
   SearchQuery,
   TerminalLine,
 } from "../../support/view-state";
-import { DockInput, Line, Prompt, StatusBar, Window, type StatusItem } from "../../ui/grep";
+import { Banner, DockInput, Line, Prompt, StatusBar, Window, type StatusItem } from "../../ui/grep";
 
 export type LoggedInViewProps = LoggedInState & {
   onInputChange: (text: string) => void;
@@ -419,6 +419,60 @@ function HandedOffLines({ result }: { result: HandoffResult }) {
   );
 }
 
+/** commands 6절 첫 화면(자료 0건). 명령 13줄 표는 보이지 않는다. */
+function WelcomeLines() {
+  return (
+    <>
+      <Banner lead="저장해 둔 링크·캡처·PDF를 찾아 AI 도구에 붙여 넣을 글로 복사" tagline="담기 → 찾기 → 넘기기" />
+      <Line tone="info">자료 0건</Line>
+      {/* shortcut: 샘플 저장(ARC-010)은 서버·명령이 없어 칩 대신 글자로만 둔다. 샘플 저장이 들어오면 칩으로. */}
+      <Plain>→ 샘플 8건으로 해 보기 또는 아래에 링크 붙여 넣기</Plain>
+      <Line tone="info">
+        {"명령 전체: "}
+        <CommandChip command="도움말" />
+      </Line>
+    </>
+  );
+}
+
+/** commands 2절 `도움말` 화면. 명령 13줄(한글·영문·뜻). */
+const GUIDE_ROWS: ReadonlyArray<readonly [string, string, string]> = [
+  ["담기", "keep", "자료 저장"],
+  ["최근", "recent", "최근 자료 목록"],
+  ["찾기", "seek", "검색"],
+  ["고르기", "pick", "번호로 선택"],
+  ["넘기기", "handoff", "AI 도구용 글 복사"],
+  ["묶음", "pack", "선택에 이름 붙이기"],
+  ["고치기", "revise", "제목·요약 수정"],
+  ["버리기", "drop", "삭제"],
+  ["가져오기", "bring", "북마크 파일 가져오기"],
+  ["연결", "plug", "AI 도구 연결"],
+  ["로그아웃", "signout", "로그아웃"],
+  ["도움말", "guide", "명령 목록"],
+  ["설명", "about", "명령 설명"],
+];
+
+function GuideLines() {
+  return (
+    <>
+      <Plain>저장: 링크·글 붙여 넣기, 파일 끌어다 놓기. 명령: 한글·영문 같음</Plain>
+      {GUIDE_ROWS.map(([name, english, meaning]) => (
+        <div key={name} className="gt-line gt-guide-row">
+          <span className="gt-guide-name">{name}</span>
+          <span className="gt-hint">{english}</span>
+          <span>{meaning}</span>
+        </div>
+      ))}
+      <Plain>
+        {"→ 예: "}
+        <CommandChip command="찾기 결제 | 넘기기" />
+        {" · 자세히: "}
+        <CommandChip command="설명 찾기" />
+      </Plain>
+    </>
+  );
+}
+
 type OutputLineProps = { line: TerminalLine; failed: boolean; onMoreRequested?: () => void };
 
 function OutputLine({ line, failed, onMoreRequested }: OutputLineProps) {
@@ -466,6 +520,10 @@ function OutputLine({ line, failed, onMoreRequested }: OutputLineProps) {
       return <Line tone="error">{`잘못된 번호: ${line.input}  예: ${PICK_EXAMPLE}`}</Line>;
     case "handedOff":
       return <HandedOffLines result={line.result} />;
+    case "welcome":
+      return <WelcomeLines />;
+    case "guide":
+      return <GuideLines />;
     case "handoffConfirm":
       return <HandoffConfirmLines total={line.total} />;
     case "cancelled":
