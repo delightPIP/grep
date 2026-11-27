@@ -45,6 +45,22 @@ paths:
         - $ref: "#/components/parameters/Limit"
         - $ref: "#/components/parameters/SavedFrom"
         - $ref: "#/components/parameters/SavedTo"
+        - name: kind
+          in: query
+          description: 자동 묶음 형식(ARC-007 값). image는 이미지 파일, file은 그 밖의 파일
+          schema:
+            type: string
+            enum: [link, text, image, file]
+        - name: source
+          in: query
+          description: 자동 묶음 출처. 링크 호스트, 또는 링크가 아닌 자료 전부를 뜻하는 `direct`(`직접 넣음`)
+          schema:
+            type: string
+        - name: tag
+          in: query
+          description: 자동 묶음 태그(`#` 없이, 정확히 일치)
+          schema:
+            type: string
       responses:
         "200":
           description: 자료 한 쪽
@@ -278,6 +294,22 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
   /items/{number}:
+    get:
+      operationId: getItemDetail
+      summary: 자세히 보기(`열기`, ARC-011). 휴지통·없는 번호는 `not_found`
+      parameters:
+        - $ref: "#/components/parameters/ItemNumber"
+      responses:
+        "200":
+          description: 자료 하나
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
     patch:
       operationId: reviseItem
       summary: 고치기(commands 3절, ARC-002 규칙 2·3, ARC-004)
@@ -355,6 +387,287 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
+  /groups:
+    get:
+      operationId: listAutoGroups
+      summary: 보관함 자동 묶음(ARC-007). 형식·출처·날짜·태그별 건수. 0건 묶음은 빼고, 휴지통 자료는 세지 않는다
+      parameters:
+        - name: tz
+          in: query
+          description: 날짜 묶음(오늘·이번 주·이번 달·그 전)을 나눌 기기 시간대(IANA, 예 Asia/Seoul). 없으면 Asia/Seoul
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 자동 묶음 건수
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutoGroups"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /bundles:
+    get:
+      operationId: listBundles
+      summary: 묶음 목록(`묶음`, ARC-003 규칙 18). 최근에 바뀐 순, 0건 묶음 포함
+      responses:
+        "200":
+          description: 묶음 목록
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BundleList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /bundles/{name}:
+    get:
+      operationId: getBundle
+      summary: 묶음 보기(`묶음 <이름>`, ARC-003 규칙 20). 자료 번호 큰 순, 휴지통 자료는 빼고 센다(규칙 25)
+      parameters:
+        - $ref: "#/components/parameters/BundleName"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: 묶음 안 자료 한 쪽
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BundlePage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteBundle
+      summary: 묶음 지우기(규칙 23). 묶음만 지우고 자료는 남긴다. 확인은 클라이언트가 먼저 받는다
+      parameters:
+        - $ref: "#/components/parameters/BundleName"
+      responses:
+        "204":
+          description: 지웠다
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /bundles/{name}/items:
+    post:
+      operationId: addToBundle
+      summary: 묶음에 넣기(`묶음 <이름>` + 선택, 규칙 19·21). 없는 이름이면 만든다. 이미 있는 자료는 한 번만 둔다
+      description: |
+        이름은 서버가 판정한다(ARC-003 값: 띄어쓰기 없이 1~20자, 한글·영문·숫자·`-`·`_`, 숫자만·`#` 시작·`빼기`·`지우기` 금지, 영문 대소문자 무시).
+        번호 중 하나라도 없거나 휴지통이면 아무것도 넣지 않고 `not_found`(ARC-001 규칙 10).
+      parameters:
+        - $ref: "#/components/parameters/BundleName"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NumbersRequest"
+      responses:
+        "200":
+          description: 넣은 뒤 묶음 건수
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BundleAddResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /bundles/{name}/items/remove:
+    post:
+      operationId: removeFromBundle
+      summary: 묶음에서 빼기(`묶음 <이름> 빼기 <번호…>`, 규칙 22). 자료는 지우지 않는다
+      description: 묶음에 없는 번호가 하나라도 있으면 아무것도 빼지 않고 `not_in_bundle`과 그 번호들(`✗ 묶음에 없음`)
+      parameters:
+        - $ref: "#/components/parameters/BundleName"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NumbersRequest"
+      responses:
+        "200":
+          description: 뺀 뒤 남은 건수
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CountResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /saved-searches:
+    get:
+      operationId: listSavedSearches
+      summary: 찾아둔 목록(`찾아두기`, ARC-012). 만든 순 최신부터, 0건 포함, 건수는 지금 다시 센 값
+      responses:
+        "200":
+          description: 찾아둔 목록
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavedSearchList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    put:
+      operationId: saveSearch
+      summary: 찾아두기(`찾아두기 <검색어>`). 같은 검색어(공백 정리 뒤)가 있으면 200, 새로 만들면 201
+      description: |
+        검색어는 1~40자(ARC-012 값). 시점 낱말은 클라이언트가 먼저 거른다(규칙 4). 결과는 같은 검색어로 `GET /items/search`를 부른다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SavedSearchRequest"
+      responses:
+        "201":
+          description: 새로 찾아뒀다
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavedSearch"
+        "200":
+          description: 이미 찾아뒀다(`! 이미 찾아둠`)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavedSearch"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    delete:
+      operationId: deleteSavedSearch
+      summary: 찾아둔 것 지우기(`찾아두기 <검색어> 지우기`, 규칙 7). 자료는 남는다. 확인은 클라이언트가 먼저 받는다
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: 지웠다
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /connections:
+    get:
+      operationId: listConnections
+      summary: AI 도구 연결 목록과 연결 주소(`연결`, ACC-002 규칙 7·10)
+      responses:
+        "200":
+          description: 연결 목록
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectionList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /connections/{number}:
+    delete:
+      operationId: endConnection
+      summary: 연결 끊기(`연결 끊기 <번호>`, ACC-002 규칙 6·8·9). 다음 요청부터 거부한다. 확인은 클라이언트가 먼저 받는다
+      parameters:
+        - name: number
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: 끊었거나(`ended`) 이미 끊긴 연결(`alreadyEnded`)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EndConnectionResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /connections/revoke-all:
+    post:
+      operationId: endAllConnections
+      summary: 모든 AI 도구 연결 끊기(ACC-002 규칙 4). `로그아웃 모든기기` 확인 뒤 클라이언트가 Supabase 전역 로그아웃 전에 부른다
+      responses:
+        "200":
+          description: 끊은 연결 수
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CountResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /connections/notices:
+    post:
+      operationId: takeConnectionNotices
+      summary: 사용자가 모르는 사이 끊긴 연결(만료 등)을 한 번만 돌려주고 본 것으로 표시한다(ACC-002 규칙 11). 그렙을 열 때 부른다
+      responses:
+        "200":
+          description: 알릴 끊긴 연결
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectionNotices"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /imports:
+    post:
+      operationId: startImport
+      summary: 북마크 가져오기 시작(`가져오기`, F8). 뒤에서 진행한다
+      description: |
+        브라우저에서 내보낸 북마크 HTML을 글로 보낸다. 한 번에 200건까지 가져오고(발표 전 임시값, 공통 열린 질문) 넘는 링크는 `overLimit`으로 센다.
+        같은 링크는 건너뛴다(COM-001). 가져온 자료는 처리 작업을 만들지 않고, 처음 열거나 넘길 때 요약한다(user-flow 10절, ADR-BCK-008).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportRequest"
+      responses:
+        "202":
+          description: 시작했다
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportStatus"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /imports/{id}:
+    get:
+      operationId: getImport
+      summary: 가져오기 진행(`· 가져오는 중  N / M건`)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: 진행 상태
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportStatus"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /handoff:
     post:
       operationId: createHandoff
@@ -363,6 +676,7 @@ paths:
         고른 순서대로 넘길 글을 만든다. 처리 중 자료는 요약을 기다리지 않는다(05 H-03).
         요약이 없으면 지어내지 않고 없는 이유를 쓴다(ARC-004 규칙 6).
         번호 중 하나라도 없거나 휴지통에 있으면 아무것도 만들지 않고 `not_found`로 답한다(ARC-001 규칙 10).
+        `bundle`을 주면 그 묶음의 자료(번호 큰 순)를 넘기고, 휴지통·영구 삭제로 빠진 수를 `removedCount`로 준다(`! 빠진 자료 N건`, ARC-003 사용자 문구). 여는 줄에 `묶음="<이름>"`을 더한다.
       requestBody:
         required: true
         content:
@@ -399,6 +713,21 @@ components:
         minimum: 1
         maximum: 50
         default: 10
+    ItemNumber:
+      name: number
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    BundleName:
+      name: name
+      in: path
+      required: true
+      description: 묶음 이름(URL 인코딩). 영문 대소문자는 가리지 않는다
+      schema:
+        type: string
     SavedFrom:
       name: from
       in: query
@@ -495,12 +824,18 @@ components:
             - file_too_large
             - unsupported_format
             - not_found
+            - invalid_bundle_name
+            - not_in_bundle
+        reason:
+          type: string
+          enum: [format, reserved]
+          description: "`invalid_bundle_name`일 때. format = 글자·길이 규칙, reserved = 숫자만·`#` 시작·`빼기`·`지우기`"
         numbers:
           type: array
           items:
             type: integer
             format: int64
-          description: "`not_found`일 때 없는 번호들"
+          description: "`not_found`·`not_in_bundle`일 때 그 번호들"
         fileName:
           type: string
           description: "`file_too_large`일 때"
@@ -693,6 +1028,248 @@ components:
           type: integer
           format: int64
           description: 20MB(COM-004 규칙 7·8)
+    ItemDetail:
+      type: object
+      description: 자세히 보기(ARC-011 규칙 6). 문구와 차례는 클라이언트가 정책대로 그린다
+      required: [item, handoffSummary, allTags, bundles, bodyLength, body, bodyFromImage, originalUrl, previewUrl]
+      properties:
+        item:
+          $ref: "#/components/schemas/ItemSummary"
+        handoffSummary:
+          type: [string, "null"]
+          description: 넘기기용 요약 또는 직접 고친 요약(`summarySource`로 이름표). 없으면 null
+        allTags:
+          type: array
+          items:
+            type: string
+          description: 태그 전부(목록은 앞 3개, ARC-002 규칙 4)
+        bundles:
+          type: array
+          items:
+            type: string
+          description: 이 자료가 든 묶음 이름들. 없으면 빈 배열(`묶음  없음`)
+        bodyLength:
+          type: integer
+          minimum: 0
+          description: 본문 글자 수(`본문 3,420자`)
+        body:
+          type: [string, "null"]
+          description: "본문 텍스트(펼치기용, 앞 2만 자). 본문이 없으면 null(`· 본문 없음: <이유>`)"
+        bodyFromImage:
+          type: boolean
+          description: 이미지에서 읽은 글자면 true(`본문 (이미지에서 읽음)`)
+        originalUrl:
+          type: [string, "null"]
+          format: uri
+          description: 파일 원본을 여는 서명 URL(유효 10분, ARC-011 비고). 링크·글은 null
+        previewUrl:
+          type: [string, "null"]
+          format: uri
+          description: 이미지 미리보기 서명 URL(유효 10분). 이미지가 아니면 null. PDF 첫 쪽 그림은 아직 없다
+    AutoGroups:
+      type: object
+      required: [kinds, sources, periods, tags]
+      properties:
+        kinds:
+          type: array
+          items:
+            $ref: "#/components/schemas/GroupCount"
+        sources:
+          type: array
+          items:
+            $ref: "#/components/schemas/GroupCount"
+        periods:
+          type: array
+          description: key는 today, thisWeek, thisMonth, earlier
+          items:
+            $ref: "#/components/schemas/GroupCount"
+        tags:
+          type: array
+          items:
+            $ref: "#/components/schemas/GroupCount"
+    GroupCount:
+      type: object
+      required: [key, count]
+      properties:
+        key:
+          type: string
+        count:
+          type: integer
+          minimum: 1
+    BundleSummary:
+      type: object
+      required: [name, count, updatedAt]
+      properties:
+        name:
+          type: string
+        count:
+          type: integer
+          minimum: 0
+          description: 휴지통 밖 자료 수
+        updatedAt:
+          type: string
+          format: date-time
+    BundleList:
+      type: object
+      required: [bundles]
+      properties:
+        bundles:
+          type: array
+          items:
+            $ref: "#/components/schemas/BundleSummary"
+    BundlePage:
+      type: object
+      required: [name, total, items, nextCursor]
+      properties:
+        name:
+          type: string
+        total:
+          type: integer
+          minimum: 0
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ItemSummary"
+        nextCursor:
+          type: [string, "null"]
+    BundleAddResult:
+      type: object
+      required: [name, count, alreadyCount]
+      properties:
+        name:
+          type: string
+          description: 저장된 표기(처음 만든 대로)
+        count:
+          type: integer
+          minimum: 0
+          description: "넣은 뒤 묶음 건수(`✓ 묶음 <이름>: N건`)"
+        alreadyCount:
+          type: integer
+          minimum: 0
+          description: 요청 중 이미 있던 자료 수(`(이미 있음 M건)`)
+    SavedSearchRequest:
+      type: object
+      required: [query]
+      properties:
+        query:
+          type: string
+          minLength: 1
+          maxLength: 40
+    SavedSearch:
+      type: object
+      required: [query, count]
+      properties:
+        query:
+          type: string
+          description: 공백 정리 뒤 저장된 검색어
+        count:
+          type: integer
+          minimum: 0
+    SavedSearchList:
+      type: object
+      required: [searches]
+      properties:
+        searches:
+          type: array
+          items:
+            $ref: "#/components/schemas/SavedSearch"
+    Connection:
+      type: object
+      required: [number, client, connectedAt, lastReadAt]
+      properties:
+        number:
+          type: integer
+          minimum: 1
+          description: 연결 번호(사용자별, 끊기에 쓴다)
+        client:
+          type: string
+          description: AI 도구 이름(OAuth 클라이언트 등록 이름)
+        connectedAt:
+          type: string
+          format: date-time
+        lastReadAt:
+          type: [string, "null"]
+          format: date-time
+    ConnectionList:
+      type: object
+      required: [mcpUrl, connections]
+      properties:
+        mcpUrl:
+          type: string
+          format: uri
+          description: "`· 연결 주소  https://<그렙 주소>/mcp`"
+        connections:
+          type: array
+          items:
+            $ref: "#/components/schemas/Connection"
+    EndConnectionResult:
+      type: object
+      required: [result, client]
+      properties:
+        result:
+          type: string
+          enum: [ended, alreadyEnded]
+        client:
+          type: string
+    ConnectionNotices:
+      type: object
+      required: [ended]
+      properties:
+        ended:
+          type: array
+          items:
+            type: object
+            required: [client, reason]
+            properties:
+              client:
+                type: string
+              reason:
+                type: string
+                enum: [expired, revoked]
+                description: expired = 토큰 만료, revoked = 다른 기기에서 끊음·모든 기기 로그아웃
+    ImportRequest:
+      type: object
+      required: [html]
+      properties:
+        html:
+          type: string
+          minLength: 1
+          description: 브라우저가 내보낸 북마크 HTML(Netscape 형식) 전체
+    ImportStatus:
+      type: object
+      required: [id, state, total, done, saved, skipped, failed, overLimit, failedUrls]
+      properties:
+        id:
+          type: string
+          format: uuid
+        state:
+          type: string
+          enum: [running, finished]
+        total:
+          type: integer
+          minimum: 0
+          description: 가져올 링크 수(200 이하)
+        done:
+          type: integer
+          minimum: 0
+        saved:
+          type: integer
+          minimum: 0
+        skipped:
+          type: integer
+          minimum: 0
+          description: 이미 저장됨
+        failed:
+          type: integer
+          minimum: 0
+        overLimit:
+          type: integer
+          minimum: 0
+          description: 200건을 넘어 가져오지 않은 링크 수
+        failedUrls:
+          type: array
+          items:
+            type: string
     NumbersRequest:
       type: object
       required: [numbers]
@@ -801,8 +1378,11 @@ components:
           description: 방식. pick = 고른 자료, pipe = `찾기 … | 넘기기`
     HandoffRequest:
       type: object
-      required: [numbers]
+      description: "`numbers`와 `bundle` 중 하나만 준다"
       properties:
+        bundle:
+          type: string
+          description: 묶음 이름(`넘기기 <이름>`)
         numbers:
           type: array
           minItems: 1
@@ -838,3 +1418,10 @@ components:
           type: integer
           minimum: 0
           description: "`! 요약 없음 N건`"
+        bundle:
+          type: [string, "null"]
+          description: 묶음으로 넘겼으면 그 이름
+        removedCount:
+          type: integer
+          minimum: 0
+          description: 묶음으로 넘길 때 휴지통·영구 삭제로 빠진 자료 수. 묶음이 아니면 0
