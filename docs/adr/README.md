@@ -16,6 +16,7 @@
 | BCK | 백엔드 | `backend/` |
 | WEB | 웹 | `web/` |
 | IOS | iOS | `ios/` |
+| AND | Android | `android/` |
 
 플랫폼이 정해지면 이 표에 행을 추가하고(예: 웹 `WEB`, 백엔드 `BCK`) 같은 이름의 하위 폴더를 만든다.
 
@@ -37,7 +38,8 @@
 | [ADR-BCK-006](backend/ADR-BCK-006-supabase-without-lock-in.md) | DB, 인증, 파일 저장소는 Supabase를 쓰고, Supabase 전용 기능에는 묶이지 않는다 | 채택 | 2026-11-25 |
 | [ADR-WEB-007](web/ADR-WEB-007-react-views-swift-core-tauri.md) | 웹 클라이언트는 React 뷰와 carti-RIBs-Swift 공유 코어로 만들고, 데스크톱은 Tauri로 감싼다 | 채택 | 2026-11-25 |
 | [ADR-BCK-008](backend/ADR-BCK-008-server-small-llm-summary.md) | 요약은 서버 처리 워커에서 소형 LLM으로 만들고, 북마크로 가져온 자료는 처음 열거나 넘길 때 만든다 | 일부 대체됨 (결정 4 → ADR-BCK-014) | 2026-11-25 |
-| [ADR-IOS-009](ios/ADR-IOS-009-share-sheet.md) | iOS에서 공유로 받기는 네이티브 공유 확장으로, 보내기는 시스템 공유 시트로 한다 | 제안 (개발자 확인 대기) | 2026-11-25 |
+| [ADR-IOS-009](ios/ADR-IOS-009-share-sheet.md) | iOS에서 공유로 받기는 네이티브 공유 확장으로, 보내기는 시스템 공유 시트로 한다 | 채택 | 2026-11-25 |
+| [ADR-AND-001](android/ADR-AND-001-share-intent-receiver.md) | Android에서 공유로 받기는 `ACTION_SEND` 인텐트 필터를 둔 투명 액티비티로 한다 | 채택 | 2026-11-28 |
 | [ADR-0010](ADR-0010-monorepo-top-level-folders.md) | 앱 코드는 이 저장소에 두고 계약·서버·공유 코어·플랫폼별 앱을 최상위 폴더로 나눈다 | 채택 | 2026-11-26 |
 | [ADR-0011](ADR-0011-free-tier-deploy-portable.md) | 데모 단계 배포는 Render 무료(서버)·Cloudflare Pages(웹)·Supabase로 하고, 옮기기 쉽게 만든다 | 채택 | 2026-11-26 |
 | [ADR-WEB-012](web/ADR-WEB-012-popup-login-broadcast-channel.md) | 웹 로그인은 팝업으로 하고, 결과는 콜백 페이지가 BroadcastChannel로 넘긴다 | 대체됨 (→ ADR-WEB-013) | 2026-11-26 |
