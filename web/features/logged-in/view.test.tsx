@@ -701,6 +701,158 @@ describe("LoggedInView", () => {
     });
   });
 
+  describe("고르기와 칩·번호 누르기(#62, ARC-001·commands 6절)", () => {
+    const PICK = { kind: "prompt", text: "고르기 131 97" } as const;
+    const PICKED = [
+      { number: 131, title: "결제위젯 연동 가이드" },
+      { number: 97, title: "PG사 수수료 비교 정리.pdf" },
+    ];
+
+    it("두건을골랐을때_화면을그리면_선택N건과제목과다음명령을보이는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [PICK, { kind: "picked", items: PICKED }];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown.slice(1)).toEqual([
+        "✓ 선택 2건  결제위젯 연동 가이드 · PG사 수수료 비교 정리.pdf",
+        "→ 넘기기 또는 묶음 <이름>",
+      ]);
+    });
+
+    it("고른뒤일때_넘기기칩을누르면_입력줄에넘기기를찍기만하고입력줄로돌아가는지", () => {
+      // given
+      const { onInputChange, onSubmit, input } = renderView({ lines: [PICK, { kind: "picked", items: PICKED }] });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "넘기기" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("넘기기");
+      expect(onSubmit).not.toHaveBeenCalled();
+      expect(document.activeElement).toBe(input);
+    });
+
+    it("없는번호가섞였을때_화면을그리면_없는번호를쉼표로이어보이는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [PICK, { kind: "notFound", numbers: [57, 58] }];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown.slice(1)).toEqual(["✗ 없는 번호: 57, 58"]);
+    });
+
+    it("번호가양의정수가아닐때_화면을그리면_잘못된번호와예를보이는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [PICK, { kind: "invalidNumber", input: "0" }];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown.slice(1)).toEqual(["✗ 잘못된 번호: 0  예: 고르기 131 140"]);
+    });
+
+    it("번호를빠뜨렸을때_화면을그리면_번호없음과예를보이는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [
+        { kind: "prompt", text: "고르기" },
+        { kind: "missingArgument", command: "pick" },
+      ];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown.slice(1)).toEqual(["✗ 번호 없음  예: 고르기 131"]);
+    });
+
+    it("선택이있을때_화면을그리면_상태줄자료다음에선택N을보이는지", () => {
+      // given
+      // when
+      const { container } = renderView({ itemCount: 131, selection: PICKED, processingCount: 1 });
+
+      // then
+      expect(container.querySelector(".gt-status")!.textContent).toContain("자료 131· 선택 2· 요약 생성 중 1");
+    });
+
+    it("선택이없을때_화면을그리면_상태줄에선택을숨기는지", () => {
+      // given
+      // when
+      const { container } = renderView({ itemCount: 131, selection: [] });
+
+      // then
+      expect(container.querySelector(".gt-status")!.textContent).not.toContain("선택");
+    });
+
+    it("선택이있을때_화면을그리면_입력줄위에선택줄을보이는지", () => {
+      // given
+      // when
+      const { container } = renderView({ selection: PICKED });
+
+      // then
+      expect(container.querySelector(".gt-selection")!.textContent).toBe(
+        "선택 2  결제위젯 연동 가이드 · PG사 수수료 비교 정리.pdf",
+      );
+    });
+
+    it("선택이없을때_화면을그리면_선택줄이없는지", () => {
+      // given
+      // when
+      const { container } = renderView({ selection: [] });
+
+      // then
+      expect(container.querySelector(".gt-selection")).toBeNull();
+    });
+
+    it("고른자료가목록에있을때_화면을그리면_그행번호앞에표시를다는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [
+        { kind: "prompt", text: "최근" },
+        { kind: "recentList", items: [item({ number: 131 }), item({ number: 130 })], hasMore: false },
+      ];
+
+      // when
+      const { container } = renderView({ lines, selection: [{ number: 131, title: "t" }] });
+
+      // then
+      const numbers = Array.from(container.querySelectorAll(".gt-row-num"), (cell) => cell.textContent);
+      expect(numbers).toEqual(["▸131", "130"]);
+    });
+
+    it("목록이있을때_행번호를누르면_입력줄에고르기번호를찍기만하는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [
+        { kind: "prompt", text: "최근" },
+        { kind: "recentList", items: [item({ number: 131 })], hasMore: false },
+      ];
+      const { onInputChange, onSubmit, input } = renderView({ lines });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "131" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("고르기 131");
+      expect(onSubmit).not.toHaveBeenCalled();
+      expect(document.activeElement).toBe(input);
+    });
+
+    it("이미저장된자료일때_고르기칩을누르면_입력줄에고르기번호를찍는지", () => {
+      // given
+      const { onInputChange } = renderView({ lines: [KEEP, { kind: "alreadySaved", item: item() }] });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "고르기 131" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("고르기 131");
+    });
+  });
+
   describe("상태줄·연결(#60, ARC-005·COM-010)", () => {
     it("처리중인자료가있을때_화면을그리면_상태줄에요약생성중N을보이는지", () => {
       // given

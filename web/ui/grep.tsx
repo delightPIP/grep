@@ -1,7 +1,7 @@
 // 그렙 디자인 시스템 컴포넌트 중 #31 화면에 쓰는 것. 시안 아티팩트 project/ds/grep/components/bundle.js
 // (https://claude.ai/artifact/J6XT7UcSDvuPC2quoSsaRm)의 마크업과 클래스 이름을 그대로 옮겼다.
 // 순수 뷰 부품이다. 상태를 갖지 않고 Swift를 모른다.
-import type { ChangeEvent, KeyboardEvent, ReactNode } from "react";
+import type { ChangeEvent, KeyboardEvent, ReactNode, Ref } from "react";
 import "../styles/grep.css";
 
 export type Tone = "ok" | "info" | "warn" | "error";
@@ -95,10 +95,12 @@ export type DockInputProps = {
   placeholder: string;
   onChange: (text: string) => void;
   onSubmit: (text: string) => void;
+  /** 칩을 눌러 명령을 찍은 뒤 입력줄로 돌아올 때 쓴다(엔터로 실행). */
+  inputRef?: Ref<HTMLInputElement>;
 };
 
 /** 화면 아래 고정 입력줄(시안 Input dock). */
-export function DockInput({ value, placeholder, onChange, onSubmit }: DockInputProps) {
+export function DockInput({ value, placeholder, onChange, onSubmit, inputRef }: DockInputProps) {
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     // 한글 조합을 끝내는 엔터는 제출이 아니다.
     if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
@@ -111,6 +113,7 @@ export function DockInput({ value, placeholder, onChange, onSubmit }: DockInputP
         <div className="gt-input">
           <PromptHead />
           <input
+            ref={inputRef}
             className="gt-input-field"
             type="text"
             aria-label="명령 입력"
