@@ -82,6 +82,11 @@ const COMMAND_LABEL: Record<CommandName, string> = {
   drop: "버리기",
   revive: "되살리기",
   bin: "휴지통",
+  pack: "묶음",
+  peek: "열기",
+  gather: "찾아두기",
+  bring: "가져오기",
+  plug: "연결",
 };
 
 /** COM-010·COM-008 이유 낱말. */

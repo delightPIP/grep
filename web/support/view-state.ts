@@ -39,7 +39,13 @@ export type CommandName =
   | "revise"
   | "drop"
   | "revive"
-  | "bin";
+  | "bin"
+  /** 계약 2: `묶음`(pack), `열기`(peek), `찾아두기`(gather), `가져오기`(bring), `연결`(plug) */
+  | "pack"
+  | "peek"
+  | "gather"
+  | "bring"
+  | "plug";
 
 /** ARC-005 처리 상태 다섯 가지. */
 export type ItemStatus = "received" | "processing" | "ready" | "blocked" | "failed";
@@ -82,6 +88,29 @@ export type TrashEntry = { item: ItemSummary; trashedAt: string; daysLeft: numbe
  */
 export type Period = { label: string; from: string; to: string };
 
+/** 자세히 보기(api `ItemDetail`, ARC-011 규칙 6). 차례와 문구는 뷰가 정책대로 그린다. */
+export type ItemDetail = {
+  item: ItemSummary;
+  /** 넘기기용 요약 또는 직접 고친 요약. 이름표는 item.summarySource */
+  handoffSummary: string | null;
+  allTags: string[];
+  /** 든 묶음 이름. 비면 `묶음  없음` */
+  bundles: string[];
+  bodyLength: number;
+  /** 펼치기용 본문(앞 2만 자). null이면 `· 본문 없음: <이유>`(item.blockedReason·status) */
+  body: string | null;
+  bodyFromImage: boolean;
+  /** 파일 원본 서명 URL(10분). `원본 열기` */
+  originalUrl: string | null;
+  /** 이미지 미리보기 서명 URL */
+  previewUrl: string | null;
+};
+
+export type BundleEntry = { name: string; count: number };
+export type SavedSearchEntry = { query: string; count: number };
+/** `<번호>  <AI 도구>  연결 <날짜>  읽음 <날짜>`. 날짜는 RFC 3339, lastReadAt은 없으면 null */
+export type ConnectionEntry = { number: number; client: string; connectedAt: string; lastReadAt: string | null };
+
 /** `고치기 <번호>` 편집 중인 자료(화면 W24). 출력 안 두 칸, Enter 저장·Esc 취소. */
 export type Revising = { number: number; title: string; summary: string };
 
@@ -90,6 +119,10 @@ export type SearchQuery = { text: string; words: string; tags: string[] };
 
 export type HandoffResult = {
   items: ItemRef[];
+  /** `넘기기 <묶음>`이면 그 이름(계약 2). 아니면 없음 또는 null */
+  bundle?: string | null;
+  /** 묶음에서 휴지통·영구 삭제로 빠진 수 `! 빠진 자료 N건 (삭제됨)` */
+  removedCount?: number;
   /** 줄바꿈 포함 글자 수 */
   charCount: number;
   missingSummaryCount: number;
@@ -162,7 +195,45 @@ export type TerminalLine =
   | { kind: "unpicked"; items: ItemRef[]; remaining: number }
   | { kind: "pickCleared"; count: number }
   // #111 로그아웃 모든기기(ACC-002 규칙 4): 확인 뒤 Supabase 전역 로그아웃. 다른 기기는 접근 토큰 만료 때(최대 1시간)
-  | { kind: "signOutEverywhereConfirm" };
+  /** connectionCount: 끊길 AI 도구 연결 수(`· AI 도구 연결 N개`, 계약 2부터). 모르면 null */
+  | { kind: "signOutEverywhereConfirm"; connectionCount?: number | null }
+  // 계약 2 묶음(ARC-003 사용자 문구)
+  | { kind: "bundleList"; bundles: BundleEntry[] }
+  | { kind: "bundleAdded"; name: string; count: number; alreadyCount: number }
+  | { kind: "bundleView"; name: string; total: number; items: ItemSummary[]; hasMore: boolean }
+  | { kind: "bundleNotFound"; name: string }
+  | { kind: "bundleUnpicked"; name: string; remaining: number }
+  | { kind: "notInBundle"; name: string; numbers: number[] }
+  | { kind: "bundleDeleteConfirm"; name: string; itemCount: number }
+  | { kind: "bundleDeleted"; name: string }
+  /** format = `✗ 묶음 이름: 띄어쓰기 없이 1~20자 …`, reserved = `✗ 묶음 이름: 숫자만 · #시작 · 빼기 · 지우기 불가` */
+  | { kind: "bundleNameInvalid"; reason: "format" | "reserved" }
+  /** `폴더`·`mkdir` 입력 안내(ARC-007 규칙 11) */
+  | { kind: "folderHint" }
+  // 계약 2 자세히 보기(ARC-011)
+  | { kind: "itemDetail"; detail: ItemDetail }
+  /** `✗ 번호 하나만  예: <명령> 131` */
+  | { kind: "oneNumberOnly"; command: CommandName }
+  // 계약 2 찾아두기(ARC-012 사용자 문구). 결과 목록은 searchResult 줄이 이어서 온다
+  | { kind: "searchSaved"; query: string; total: number; already: boolean }
+  | { kind: "savedSearchList"; searches: SavedSearchEntry[] }
+  /** `✗ 시점은 찾아두지 않음: <시점>` 다음 줄 `→ 찾아두기 <검색어>` */
+  | { kind: "savedSearchPeriod"; period: string; suggestion: string }
+  | { kind: "savedSearchTooLong" }
+  | { kind: "savedSearchDeleteConfirm"; query: string }
+  | { kind: "savedSearchDeleted"; query: string }
+  | { kind: "savedSearchNotFound"; query: string }
+  // 계약 2 AI 도구 연결(ACC-002 사용자 문구)
+  | { kind: "connectionList"; mcpUrl: string; connections: ConnectionEntry[] }
+  | { kind: "disconnectConfirm"; number: number; client: string }
+  | { kind: "disconnected"; client: string; already: boolean }
+  | { kind: "connectionNotFound"; number: number }
+  /** 그렙을 열 때 한 번(ACC-002 규칙 11) `! 연결 끊김: <AI 도구> (<이유>)` */
+  | { kind: "connectionEnded"; client: string; reason: "expired" | "revoked" }
+  // 계약 2 북마크 가져오기(commands 6절)
+  | { kind: "importPrompt" }
+  | { kind: "importProgress"; done: number; total: number }
+  | { kind: "importFinished"; saved: number; skipped: number; failed: number; overLimit: number; failedUrls: string[] };
 
 /** 터미널 화면. */
 export type LoggedInState = {
