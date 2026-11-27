@@ -105,5 +105,6 @@
 | 101 | 2026-11-27 | [#69 데모 시드 도구](101-issue-69-demo-seed-tool.md) |
 | 102 | 2026-11-27 | [데모 통합: 시드 실측, 시드 도구 수정, 실행 절차](102-demo-integration-seed-run.md) |
 | 103 | 2026-11-27 | [#79 Android 1단계 뼈대(Gradle·Swift .so·swift-java·플랫폼 포트·로그인 화면) 구현](103-issue-79-android-skeleton-logged-out.md) |
+| 104 | 2026-11-27 | [웹 피처 01~10 통합: 계약 고정, 세 갈래 병렬, 실측](104-web-features-01-10-integration.md) |
 
 새 항목 파일을 만들 때 이 표에 한 줄을 추가한다. 파일명은 `NNN-<영문-슬러그>.md`이고 NNN은 다음 번호다.
