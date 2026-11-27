@@ -2032,6 +2032,7 @@ describe("LoggedInView", () => {
         bodyLength: 3420,
         body: "결제위젯 본문",
         bodyFromImage: false,
+        url: "https://docs.tosspayments.com/guides/widget",
         originalUrl: null,
         previewUrl: null,
         ...overrides,
@@ -2142,6 +2143,37 @@ describe("LoggedInView", () => {
       const original = screen.getByRole("link", { name: "원본 열기" });
       expect(original.getAttribute("href")).toBe("https://storage.example/original.png");
       expect(original.getAttribute("target")).toBe("_blank");
+    });
+
+    it("링크자료를열었을때_출처호스트를보면_원래주소를새탭으로여는링크인지", () => {
+      // given
+      // when
+      renderView({ lines: [{ kind: "itemDetail", detail: detail() }] });
+
+      // then
+      const source = screen.getByRole("link", { name: "docs.tosspayments.com" });
+      expect(source.getAttribute("href")).toBe("https://docs.tosspayments.com/guides/widget");
+      expect(source.getAttribute("target")).toBe("_blank");
+      expect(source.getAttribute("rel")).toBe("noopener noreferrer");
+    });
+
+    it("링크주소가웹주소가아닐때_화면을그리면_출처를링크로만들지않는지", () => {
+      // given
+      // when
+      renderView({ lines: [{ kind: "itemDetail", detail: detail({ url: "javascript:alert(1)" }) }] });
+
+      // then
+      expect(screen.queryByRole("link", { name: "docs.tosspayments.com" })).toBeNull();
+    });
+
+    it("링크주소가없을때_화면을그리면_출처호스트를글자로만보이는지", () => {
+      // given
+      // when
+      renderView({ lines: [{ kind: "itemDetail", detail: detail({ url: null }) }] });
+
+      // then
+      expect(screen.queryByRole("link", { name: "docs.tosspayments.com" })).toBeNull();
+      expect(screen.getByText("docs.tosspayments.com")).toBeTruthy();
     });
 
     it("PDF자료를열었을때_화면을그리면_출처형식을대문자로보이는지", () => {

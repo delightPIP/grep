@@ -91,6 +91,8 @@ export type Period = { label: string; from: string; to: string };
 /** 자세히 보기(api `ItemDetail`, ARC-011 규칙 6). 차례와 문구는 뷰가 정책대로 그린다. */
 export type ItemDetail = {
   item: ItemSummary;
+  /** 링크 자료의 원래 주소(추적 꼬리표를 뺀 사람용 주소, 넘길 글 출처 칸과 같은 값). 링크가 아니면 null. 출처 호스트를 누르면 새 탭으로 연다(ARC-011 규칙 6-2, 통합 승인) */
+  url: string | null;
   /** 넘기기용 요약 또는 직접 고친 요약. 이름표는 item.summarySource */
   handoffSummary: string | null;
   allTags: string[];

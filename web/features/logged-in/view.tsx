@@ -828,10 +828,28 @@ function statusText(item: ItemSummary): { tone: "hint" | "warn"; text: string } 
   };
 }
 
-/**
- * ARC-011 규칙 6-2 출처. 링크는 호스트, 아니면 `직접 넣음 · <형식>`(ARC-007 형식 값). 이미지는 미리보기 URL이 있는 파일이다(계약).
- * shortcut: 계약에 링크 주소가 없어 호스트를 눌러 원래 페이지를 여는 동작은 뺐다. ItemDetail에 주소가 생기면 링크로.
- */
+/** 새 탭으로 열 주소. http·https만 링크로 만든다(`javascript:` 같은 주소를 막는다). */
+function isWebUrl(url: string): boolean {
+  try {
+    const { protocol } = new URL(url);
+    return protocol === "http:" || protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+/** ARC-011 규칙 6-2 출처 칸. 링크 자료는 호스트를 누르면 원래 주소를 새 탭으로 연다. */
+function DetailSource({ detail }: { detail: ItemDetail }) {
+  const text = detailSource(detail);
+  if (detail.item.kind !== "link" || detail.url === null || !isWebUrl(detail.url)) return <>{text}</>;
+  return (
+    <a className="gt-chip" href={detail.url} target="_blank" rel="noopener noreferrer">
+      {text}
+    </a>
+  );
+}
+
+/** ARC-011 규칙 6-2 출처 글. 링크는 호스트, 아니면 `직접 넣음 · <형식>`(ARC-007 형식 값). 이미지는 미리보기 URL이 있는 파일이다(계약). */
 function detailSource(detail: ItemDetail): string {
   const { item } = detail;
   if (item.kind === "link") return item.source ?? "";
@@ -925,7 +943,9 @@ function ItemDetailLines({ detail }: { detail: ItemDetail }) {
         <NumberCell number={item.number} />
         <b>{item.title}</b>
       </div>
-      <DetailRow label="출처">{detailSource(detail)}</DetailRow>
+      <DetailRow label="출처">
+        <DetailSource detail={detail} />
+      </DetailRow>
       <DetailRow label="저장">{savedAtText(item.savedAt)}</DetailRow>
       {status !== null && (
         <DetailRow label="상태" tone={status.tone}>
