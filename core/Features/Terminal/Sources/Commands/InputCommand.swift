@@ -35,6 +35,8 @@ struct InputCommand: Equatable {
         "도움말": .guide, "guide": .guide,
         "설명": .about, "about": .about,
         "로그아웃": .signOut, "signout": .signOut,
+        "버리기": .drop, "drop": .drop,
+        "되살리기": .revive, "revive": .revive,
     ]
 }
 

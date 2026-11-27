@@ -198,6 +198,10 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             seek(SeekCommand.parse(command.argument), typed: text)
         case .pick:
             pick(PickCommand.parse(command.argument), typed: text)
+        case .drop:
+            dropItems(command.argument, typed: text)
+        case .revive:
+            reviveItems(command.argument, typed: text)
         case .guide:
             update(viewState.appending(lines: [.prompt(text), .guide]).with(input: ""))
         case .about:
