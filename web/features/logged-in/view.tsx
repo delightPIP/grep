@@ -1,9 +1,11 @@
 // 터미널 화면. 순수 뷰: 받은 상태만 그리고, 입력은 onInputChange·onSubmit·onPaste·onFilesDrop으로만 알린다.
 // 배치는 시안 Main·Errors·Logout ③ 아트보드, 출력 비우기(로그아웃·다른 계정 로그인, COM-009)는 코어가 lines로 내려준다.
-import { useState, type ClipboardEvent, type DragEvent, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ClipboardEvent, type DragEvent, type ReactNode } from "react";
 import type {
   CommandFailure,
   CommandName,
+  HandoffResult,
+  ItemRef,
   ItemSummary,
   LoggedInState,
   SaveFailure,
@@ -11,7 +13,7 @@ import type {
   SearchQuery,
   TerminalLine,
 } from "../../support/view-state";
-import { DockInput, Line, Prompt, StatusBar, Window, type StatusItem } from "../../ui/grep";
+import { Banner, DockInput, Line, Prompt, StatusBar, Window, type StatusItem } from "../../ui/grep";
 
 export type LoggedInViewProps = LoggedInState & {
   onInputChange: (text: string) => void;
@@ -63,6 +65,39 @@ const COMMAND_FAILURE_LABEL: Record<CommandFailure, string> = {
 /** commands 6절 글 저장: `<첫 줄, 24자까지>` */
 const TEXT_TITLE_LIMIT = 24;
 const BYTES_PER_MB = 1024 * 1024;
+
+/** ARC-001 사용자 문구의 예 */
+const PICK_EXAMPLE = "고르기 131 140";
+
+/**
+ * 출력 안의 명령 칩·자료 번호가 쓰는 것(commands 6절 출력 원칙).
+ * insert: 누르면 그 명령을 입력줄에 찍기만 한다(엔터로 실행). selected: 목록 행 `▸` 표시용 고른 번호.
+ */
+type TerminalChips = { insert: (command: string) => void; selected: ReadonlySet<number> };
+const ChipContext = createContext<TerminalChips>({ insert: () => {}, selected: new Set() });
+
+/** 명령 칩. 누르면 입력줄에 찍힌다. 화면 칩(`더 보기`·`펼치기`)과 달리 바로 실행하지 않는다. */
+function CommandChip({ command, children }: { command: string; children?: ReactNode }) {
+  const { insert } = useContext(ChipContext);
+  return (
+    <button type="button" className="gt-chip" onClick={() => insert(command)}>
+      {children ?? command}
+    </button>
+  );
+}
+
+/** 자료 번호 칸. 누르면 `고르기 <번호>`가 입력줄에 찍히고, 고른 자료면 앞에 `▸`(commands 6절). */
+function NumberCell({ number }: { number: number }) {
+  const { insert, selected } = useContext(ChipContext);
+  return (
+    <span className="gt-row-num">
+      {selected.has(number) && <span aria-label="선택됨">▸</span>}
+      <button type="button" className="gt-num-chip" onClick={() => insert(`고르기 ${number}`)}>
+        {number}
+      </button>
+    </span>
+  );
+}
 
 /** 명령 한 번 = 블록 하나(디자인 시스템 1절 원칙 2). 입력줄(prompt)마다 새 블록을 연다. */
 function toBlocks(lines: TerminalLine[]): TerminalLine[][] {
@@ -145,7 +180,10 @@ function AlreadySavedLines({ item }: { item: ItemSummary }) {
     <>
       <Line tone="warn">이미 저장됨 → {item.number}번 (새로 만들지 않음)</Line>
       <ListRow item={item} />
-      <Plain>→ 고르기 {item.number}</Plain>
+      <Plain>
+        {"→ "}
+        <CommandChip command={`고르기 ${item.number}`} />
+      </Plain>
     </>
   );
 }
@@ -192,7 +230,7 @@ function ListRow({ item }: { item: ItemSummary }) {
   return (
     <>
       <div className="gt-line gt-row">
-        <span className="gt-row-num">{item.number}</span>
+        <NumberCell number={item.number} />
         <span>{item.kind === "text" ? textTitle(item.title) : item.title}</span>
         {item.source && <span className="gt-row-meta">{item.source}</span>}
         <span className="gt-row-meta">{savedAtText(item.savedAt)}</span>
@@ -262,6 +300,179 @@ function CommandFailedLines({ command, reason, retry }: { command: CommandName; 
   );
 }
 
+const titles = (items: ItemRef[]) => items.map((ref) => ref.title).join(" · ");
+
+/** commands 6절 고르기. */
+function PickedLines({ items }: { items: ItemRef[] }) {
+  return (
+    <>
+      <Line tone="ok">{`선택 ${items.length}건  ${titles(items)}`}</Line>
+      <Plain>
+        {"→ "}
+        <CommandChip command="넘기기" />
+        {/* shortcut: `묶음`은 데모 범위 명령이 아니어서 칩 대신 글자로만 둔다. 묶음이 들어오면 칩으로. */}
+        {" 또는 묶음 <이름>"}
+      </Plain>
+    </>
+  );
+}
+
+const charCountText = (count: number) => `${count.toLocaleString("ko-KR")}자`;
+
+/** 넘긴 자료마다 `<번호>  <제목>` 한 줄. */
+function ItemRefRows({ items }: { items: ItemRef[] }) {
+  return (
+    <>
+      {items.map((ref) => (
+        <div key={ref.number} className="gt-line gt-row">
+          <NumberCell number={ref.number} />
+          <span>{ref.title}</span>
+        </div>
+      ))}
+    </>
+  );
+}
+
+/**
+ * 넘긴 글 전체. 터미널 글꼴이 아닌 읽기 글꼴로 줄바꿈을 그대로 보인다(시안 Handoff).
+ * selectAll: 클립보드 거부 때 전체를 선택해 둔다(COM-008 규칙 6). 입력줄에 초점이 있으면 복사 키가 입력줄을 복사하므로 미리보기로 초점을 옮긴다.
+ */
+function Preview({ text, selectAll = false }: { text: string; selectAll?: boolean }) {
+  const ref = useRef<HTMLPreElement>(null);
+  useEffect(() => {
+    const preview = ref.current;
+    if (!selectAll || preview === null) return;
+    preview.focus();
+    window.getSelection()?.selectAllChildren(preview);
+  }, [selectAll]);
+  return (
+    <pre ref={ref} className="gt-preview" tabIndex={selectAll ? -1 : undefined}>
+      {text}
+    </pre>
+  );
+}
+
+/** COM-008 값: 6건부터 묻고, 11건부터 `앞10`을 더한다. */
+const HANDOFF_DIRECT_LIMIT = 5;
+const HANDOFF_FIRST_LIMIT = 10;
+
+/** COM-008 확인 질문. 답 낱말은 명령 칩처럼 입력줄에 찍기만 한다(엔터로 답, COM-007). */
+function HandoffConfirmLines({ total }: { total: number }) {
+  return (
+    <>
+      <Line tone="warn">{`${total}건: 바로 복사 안 함 (${HANDOFF_DIRECT_LIMIT}건 초과)`}</Line>
+      <Plain>
+        {"→ "}
+        {total > HANDOFF_FIRST_LIMIT && (
+          <>
+            <CommandChip command={`앞${HANDOFF_FIRST_LIMIT}`} />
+            {`: 앞 ${HANDOFF_FIRST_LIMIT}건만 · `}
+          </>
+        )}
+        <CommandChip command="전부" />
+        {`: ${total}건 전부 · 취소: 그 외 입력`}
+      </Plain>
+    </>
+  );
+}
+
+/** COM-008 값: 직접 복사 키. 터치 기기 문구는 AI 제안(PO 확인 전). */
+function copyKeyHint(): string {
+  if (typeof window.matchMedia === "function" && window.matchMedia("(hover: none) and (pointer: coarse)").matches) {
+    return "길게 눌러 복사";
+  }
+  return /mac|iphone|ipad/i.test(navigator.platform) ? "⌘C" : "Ctrl+C";
+}
+
+/** COM-008 넘기기 실패. 선택은 풀지 않는다(코어). 클립보드 거부만 펼친 미리보기와 직접 복사 키를 보인다. */
+function HandoffFailedLines({ reason, preview }: { reason: CommandFailure; preview: string | null }) {
+  const isDenied = reason === "clipboardDenied";
+  return (
+    <>
+      <Line tone="error">{`복사 안 됨: ${COMMAND_FAILURE_LABEL[reason]}  선택은 남겨 둠`}</Line>
+      {isDenied && preview !== null && <Preview text={preview} selectAll />}
+      <Plain>
+        {isDenied ? `→ 직접 복사: ${copyKeyHint()} · 다시: ` : "→ "}
+        <CommandChip command="넘기기" />
+      </Plain>
+    </>
+  );
+}
+
+/** commands 6절 넘기기, 넘길 글 형식 3절. `펼치기`는 화면 칩이라 누르면 바로 펼친다. */
+function HandedOffLines({ result }: { result: HandoffResult }) {
+  const [isExpanded, setExpanded] = useState(false);
+  return (
+    <>
+      <Line tone="ok">{`복사됨  ${result.items.length}건 · ${charCountText(result.charCount)} (제목·출처·저장 시각·요약)`}</Line>
+      <ItemRefRows items={result.items} />
+      {result.missingSummaryCount > 0 && <Line tone="warn">{`요약 없음 ${result.missingSummaryCount}건`}</Line>}
+      <Line tone="info">
+        {"미리보기: "}
+        <button type="button" className="gt-chip" aria-expanded={isExpanded} onClick={() => setExpanded(!isExpanded)}>
+          {isExpanded ? "접기" : "펼치기"}
+        </button>
+      </Line>
+      {isExpanded && <Preview text={result.text} />}
+      <Line tone="info">클립보드에 있음 → AI 도구 입력창에 붙여 넣기</Line>
+    </>
+  );
+}
+
+/** commands 6절 첫 화면(자료 0건). 명령 13줄 표는 보이지 않는다. */
+function WelcomeLines() {
+  return (
+    <>
+      <Banner lead="저장해 둔 링크·캡처·PDF를 찾아 AI 도구에 붙여 넣을 글로 복사" tagline="담기 → 찾기 → 넘기기" />
+      <Line tone="info">자료 0건</Line>
+      {/* shortcut: 샘플 저장(ARC-010)은 서버·명령이 없어 칩 대신 글자로만 둔다. 샘플 저장이 들어오면 칩으로. */}
+      <Plain>→ 샘플 8건으로 해 보기 또는 아래에 링크 붙여 넣기</Plain>
+      <Line tone="info">
+        {"명령 전체: "}
+        <CommandChip command="도움말" />
+      </Line>
+    </>
+  );
+}
+
+/** commands 2절 `도움말` 화면. 명령 13줄(한글·영문·뜻). */
+const GUIDE_ROWS: ReadonlyArray<readonly [string, string, string]> = [
+  ["담기", "keep", "자료 저장"],
+  ["최근", "recent", "최근 자료 목록"],
+  ["찾기", "seek", "검색"],
+  ["고르기", "pick", "번호로 선택"],
+  ["넘기기", "handoff", "AI 도구용 글 복사"],
+  ["묶음", "pack", "선택에 이름 붙이기"],
+  ["고치기", "revise", "제목·요약 수정"],
+  ["버리기", "drop", "삭제"],
+  ["가져오기", "bring", "북마크 파일 가져오기"],
+  ["연결", "plug", "AI 도구 연결"],
+  ["로그아웃", "signout", "로그아웃"],
+  ["도움말", "guide", "명령 목록"],
+  ["설명", "about", "명령 설명"],
+];
+
+function GuideLines() {
+  return (
+    <>
+      <Plain>저장: 링크·글 붙여 넣기, 파일 끌어다 놓기. 명령: 한글·영문 같음</Plain>
+      {GUIDE_ROWS.map(([name, english, meaning]) => (
+        <div key={name} className="gt-line gt-guide-row">
+          <span className="gt-guide-name">{name}</span>
+          <span className="gt-hint">{english}</span>
+          <span>{meaning}</span>
+        </div>
+      ))}
+      <Plain>
+        {"→ 예: "}
+        <CommandChip command="찾기 결제 | 넘기기" />
+        {" · 자세히: "}
+        <CommandChip command="설명 찾기" />
+      </Plain>
+    </>
+  );
+}
+
 type OutputLineProps = { line: TerminalLine; failed: boolean; onMoreRequested?: () => void };
 
 function OutputLine({ line, failed, onMoreRequested }: OutputLineProps) {
@@ -279,6 +490,8 @@ function OutputLine({ line, failed, onMoreRequested }: OutputLineProps) {
       if (line.command === "keep") return <Line tone="error">저장할 것 없음  예: 담기 https://…</Line>;
       // commands 6절 "빠진 인자".
       if (line.command === "seek") return <Line tone="error">검색어 없음  예: 찾기 결제</Line>;
+      // ARC-001 사용자 문구.
+      if (line.command === "pick") return <Line tone="error">번호 없음  예: 고르기 131</Line>;
       return null;
     case "missingTag":
       // ARC-002 사용자 문구.
@@ -299,6 +512,25 @@ function OutputLine({ line, failed, onMoreRequested }: OutputLineProps) {
       );
     case "noResults":
       return <NoResultsLines query={line.query} recent={line.recent} />;
+    case "picked":
+      return <PickedLines items={line.items} />;
+    case "notFound":
+      return <Line tone="error">{`없는 번호: ${line.numbers.join(", ")}`}</Line>;
+    case "invalidNumber":
+      return <Line tone="error">{`잘못된 번호: ${line.input}  예: ${PICK_EXAMPLE}`}</Line>;
+    case "handedOff":
+      return <HandedOffLines result={line.result} />;
+    case "welcome":
+      return <WelcomeLines />;
+    case "guide":
+      return <GuideLines />;
+    case "handoffConfirm":
+      return <HandoffConfirmLines total={line.total} />;
+    case "cancelled":
+      // COM-007 사용자 문구.
+      return <Line tone="info">취소됨</Line>;
+    case "handoffFailed":
+      return <HandoffFailedLines reason={line.reason} preview={line.preview} />;
     case "commandFailed":
       return <CommandFailedLines command={line.command} reason={line.reason} retry={line.retry} />;
     case "reconnected":
@@ -330,10 +562,17 @@ function DropGuide() {
   );
 }
 
-/** 상태줄 `자료 131 · 요약 생성 중 1 · 연결 끊김`(commands 6절, ARC-005, COM-010). `선택`·`묶음` 칸은 그 명령 이슈에서. */
-function statusItems(itemCount: number | null, processingCount: number, isOffline: boolean): StatusItem[] {
+/** 입력줄 바로 위 `선택 2  <제목> · <제목>`(commands 6절 고르기). 선택이 없으면 없다. */
+function SelectionLine({ selection }: { selection: ItemRef[] }) {
+  if (selection.length === 0) return null;
+  return <div className="gt-selection">{`선택 ${selection.length}  ${titles(selection)}`}</div>;
+}
+
+/** 상태줄 `자료 131 · 선택 2 · 요약 생성 중 1 · 연결 끊김`(commands 6절, ARC-005, COM-010). `묶음` 칸은 그 명령 이슈에서. */
+function statusItems(itemCount: number | null, selectionCount: number, processingCount: number, isOffline: boolean): StatusItem[] {
   return [
     { label: "자료", value: itemCount },
+    ...(selectionCount > 0 ? [{ label: "선택", value: selectionCount }] : []),
     ...(processingCount > 0 ? [{ label: "요약 생성 중", value: processingCount }] : []),
     ...(isOffline ? [{ label: "연결 끊김", value: null }] : []),
   ];
@@ -345,6 +584,7 @@ export function LoggedInView({
   itemCount,
   lines,
   input,
+  selection,
   processingCount,
   isOffline,
   onInputChange,
@@ -354,6 +594,15 @@ export function LoggedInView({
   onMoreRequested,
 }: LoggedInViewProps) {
   const [isDragging, setDragging] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  // 명령 칩·번호는 입력줄에 찍기만 한다(commands 6절, 2026-11-26 PO 결정). 눌린 버튼에 초점이 남으면 엔터가 버튼을 다시 누르므로 입력줄로 돌려보낸다.
+  const chips: TerminalChips = {
+    insert: (command) => {
+      onInputChange(command);
+      inputRef.current?.focus();
+    },
+    selected: new Set(selection.map((ref) => ref.number)),
+  };
 
   function handlePaste(event: ClipboardEvent) {
     // 명령을 치던 중이면 보통 붙여 넣기다(검색어 등).
@@ -396,12 +645,16 @@ export function LoggedInView({
     >
       <Window
         title={windowTitle(lines)}
-        status={<StatusBar items={statusItems(itemCount, processingCount, isOffline)} hint={HELP_HINT} />}
+        status={<StatusBar items={statusItems(itemCount, selection.length, processingCount, isOffline)} hint={HELP_HINT} />}
       >
-        {toBlocks(lines).map((block, index) => (
-          <Block key={index} lines={block} onMoreRequested={onMoreRequested} />
-        ))}
+        <ChipContext.Provider value={chips}>
+          {toBlocks(lines).map((block, index) => (
+            <Block key={index} lines={block} onMoreRequested={onMoreRequested} />
+          ))}
+        </ChipContext.Provider>
+        <SelectionLine selection={selection} />
         <DockInput
+          inputRef={inputRef}
           value={input}
           placeholder="링크 붙여 넣기 또는 명령"
           onChange={onInputChange}

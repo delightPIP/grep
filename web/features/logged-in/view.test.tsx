@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ItemSummary, LoggedInState } from "../../support/view-state";
+import type { CommandFailure, ItemSummary, LoggedInState } from "../../support/view-state";
 import { LoggedInView } from "./view";
 
 afterEach(cleanup);
@@ -698,6 +698,458 @@ describe("LoggedInView", () => {
 
       // then
       expect(shown.slice(1)).toEqual(['· 0건: "결제"']);
+    });
+  });
+
+  describe("고르기와 칩·번호 누르기(#62, ARC-001·commands 6절)", () => {
+    const PICK = { kind: "prompt", text: "고르기 131 97" } as const;
+    const PICKED = [
+      { number: 131, title: "결제위젯 연동 가이드" },
+      { number: 97, title: "PG사 수수료 비교 정리.pdf" },
+    ];
+
+    it("두건을골랐을때_화면을그리면_선택N건과제목과다음명령을보이는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [PICK, { kind: "picked", items: PICKED }];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown.slice(1)).toEqual([
+        "✓ 선택 2건  결제위젯 연동 가이드 · PG사 수수료 비교 정리.pdf",
+        "→ 넘기기 또는 묶음 <이름>",
+      ]);
+    });
+
+    it("고른뒤일때_넘기기칩을누르면_입력줄에넘기기를찍기만하고입력줄로돌아가는지", () => {
+      // given
+      const { onInputChange, onSubmit, input } = renderView({ lines: [PICK, { kind: "picked", items: PICKED }] });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "넘기기" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("넘기기");
+      expect(onSubmit).not.toHaveBeenCalled();
+      expect(document.activeElement).toBe(input);
+    });
+
+    it("없는번호가섞였을때_화면을그리면_없는번호를쉼표로이어보이는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [PICK, { kind: "notFound", numbers: [57, 58] }];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown.slice(1)).toEqual(["✗ 없는 번호: 57, 58"]);
+    });
+
+    it("번호가양의정수가아닐때_화면을그리면_잘못된번호와예를보이는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [PICK, { kind: "invalidNumber", input: "0" }];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown.slice(1)).toEqual(["✗ 잘못된 번호: 0  예: 고르기 131 140"]);
+    });
+
+    it("번호를빠뜨렸을때_화면을그리면_번호없음과예를보이는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [
+        { kind: "prompt", text: "고르기" },
+        { kind: "missingArgument", command: "pick" },
+      ];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown.slice(1)).toEqual(["✗ 번호 없음  예: 고르기 131"]);
+    });
+
+    it("선택이있을때_화면을그리면_상태줄자료다음에선택N을보이는지", () => {
+      // given
+      // when
+      const { container } = renderView({ itemCount: 131, selection: PICKED, processingCount: 1 });
+
+      // then
+      expect(container.querySelector(".gt-status")!.textContent).toContain("자료 131· 선택 2· 요약 생성 중 1");
+    });
+
+    it("선택이없을때_화면을그리면_상태줄에선택을숨기는지", () => {
+      // given
+      // when
+      const { container } = renderView({ itemCount: 131, selection: [] });
+
+      // then
+      expect(container.querySelector(".gt-status")!.textContent).not.toContain("선택");
+    });
+
+    it("선택이있을때_화면을그리면_입력줄위에선택줄을보이는지", () => {
+      // given
+      // when
+      const { container } = renderView({ selection: PICKED });
+
+      // then
+      expect(container.querySelector(".gt-selection")!.textContent).toBe(
+        "선택 2  결제위젯 연동 가이드 · PG사 수수료 비교 정리.pdf",
+      );
+    });
+
+    it("선택이없을때_화면을그리면_선택줄이없는지", () => {
+      // given
+      // when
+      const { container } = renderView({ selection: [] });
+
+      // then
+      expect(container.querySelector(".gt-selection")).toBeNull();
+    });
+
+    it("고른자료가목록에있을때_화면을그리면_그행번호앞에표시를다는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [
+        { kind: "prompt", text: "최근" },
+        { kind: "recentList", items: [item({ number: 131 }), item({ number: 130 })], hasMore: false },
+      ];
+
+      // when
+      const { container } = renderView({ lines, selection: [{ number: 131, title: "t" }] });
+
+      // then
+      const numbers = Array.from(container.querySelectorAll(".gt-row-num"), (cell) => cell.textContent);
+      expect(numbers).toEqual(["▸131", "130"]);
+    });
+
+    it("목록이있을때_행번호를누르면_입력줄에고르기번호를찍기만하는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [
+        { kind: "prompt", text: "최근" },
+        { kind: "recentList", items: [item({ number: 131 })], hasMore: false },
+      ];
+      const { onInputChange, onSubmit, input } = renderView({ lines });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "131" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("고르기 131");
+      expect(onSubmit).not.toHaveBeenCalled();
+      expect(document.activeElement).toBe(input);
+    });
+
+    it("이미저장된자료일때_고르기칩을누르면_입력줄에고르기번호를찍는지", () => {
+      // given
+      const { onInputChange } = renderView({ lines: [KEEP, { kind: "alreadySaved", item: item() }] });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "고르기 131" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("고르기 131");
+    });
+  });
+
+  describe("넘기기 결과(#64, commands 6절·넘길 글 형식 3절)", () => {
+    const HANDOFF = { kind: "prompt", text: "넘기기" } as const;
+    const TEXT = "[그렙 · 자료 2건]\n\n131. 결제위젯 연동 가이드";
+
+    function handedOff(missingSummaryCount = 0): LoggedInState["lines"] {
+      return [
+        HANDOFF,
+        {
+          kind: "handedOff",
+          result: {
+            items: [
+              { number: 131, title: "결제위젯 연동 가이드" },
+              { number: 97, title: "PG사 수수료 비교 정리.pdf" },
+            ],
+            charCount: 1240,
+            missingSummaryCount,
+            text: TEXT,
+          },
+        },
+      ];
+    }
+
+    it("두건을넘겼을때_화면을그리면_복사됨건수글자수와자료줄과미리보기와붙여넣기안내를보이는지", () => {
+      // given
+      // when
+      const shown = shownOutput(handedOff());
+
+      // then
+      expect(shown.slice(1)).toEqual([
+        "✓ 복사됨  2건 · 1,240자 (제목·출처·저장 시각·요약)",
+        "131 결제위젯 연동 가이드",
+        "97 PG사 수수료 비교 정리.pdf",
+        "· 미리보기: 펼치기",
+        "· 클립보드에 있음 → AI 도구 입력창에 붙여 넣기",
+      ]);
+    });
+
+    it("요약없는자료가있을때_화면을그리면_자료줄다음미리보기앞에요약없음N건을보이는지", () => {
+      // given
+      // when
+      const shown = shownOutput(handedOff(1));
+
+      // then
+      expect(shown.slice(4, 6)).toEqual(["! 요약 없음 1건", "· 미리보기: 펼치기"]);
+    });
+
+    it("넘긴뒤일때_펼치기를누르면_입력줄을건드리지않고넘긴글전체와접기를보이는지", () => {
+      // given
+      const { container, onInputChange } = renderView({ lines: handedOff() });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "펼치기" }));
+
+      // then
+      expect(container.querySelector(".gt-preview")!.textContent).toBe(TEXT);
+      expect(screen.getByRole("button", { name: "접기" })).toBeTruthy();
+      expect(onInputChange).not.toHaveBeenCalled();
+    });
+
+    it("미리보기를펼쳤을때_접기를누르면_넘긴글을숨기는지", () => {
+      // given
+      const { container } = renderView({ lines: handedOff() });
+      fireEvent.click(screen.getByRole("button", { name: "펼치기" }));
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "접기" }));
+
+      // then
+      expect(container.querySelector(".gt-preview")).toBeNull();
+    });
+
+    it("넘긴뒤일때_자료번호를누르면_입력줄에고르기번호를찍는지", () => {
+      // given
+      const { onInputChange } = renderView({ lines: handedOff() });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "97" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("고르기 97");
+    });
+  });
+
+  describe("넘기기 실패(#65, COM-008)", () => {
+    const HANDOFF = { kind: "prompt", text: "넘기기" } as const;
+    const TEXT = "[그렙 · 자료 2건]\n\n131. 결제위젯 연동 가이드";
+    const originalPlatform = navigator.platform;
+
+    afterEach(() => {
+      Object.defineProperty(navigator, "platform", { value: originalPlatform, configurable: true });
+    });
+
+    function failed(reason: CommandFailure, preview: string | null = null): LoggedInState["lines"] {
+      return [HANDOFF, { kind: "handoffFailed", reason, preview }];
+    }
+
+    it.each([
+      ["disconnected", "연결 끊김"],
+      ["timedOut", "응답 없음"],
+      ["serverError", "서버 오류"],
+    ] as const)("%s로실패했을때_화면을그리면_복사안됨이유와선택남김과넘기기만안내하는지", (reason, label) => {
+      // given
+      // when
+      const shown = shownOutput(failed(reason));
+
+      // then
+      expect(shown.slice(1)).toEqual([`✗ 복사 안 됨: ${label}  선택은 남겨 둠`, "→ 넘기기"]);
+    });
+
+    it("서버오류로실패했을때_넘기기칩을누르면_입력줄에넘기기를찍는지", () => {
+      // given
+      const { onInputChange } = renderView({ lines: failed("serverError") });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "넘기기" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("넘기기");
+    });
+
+    it("클립보드가거부됐을때_화면을그리면_펼친미리보기와직접복사키와다시넘기기를보이는지", () => {
+      // given
+      // when
+      const { container } = renderView({ lines: failed("clipboardDenied", TEXT) });
+
+      // then
+      expect(outputLines(container).slice(1).map(shownLine)).toEqual([
+        "✗ 복사 안 됨: 클립보드 거부  선택은 남겨 둠",
+        "→ 직접 복사: Ctrl+C · 다시: 넘기기",
+      ]);
+      expect(container.querySelector(".gt-preview")!.textContent).toBe(TEXT);
+    });
+
+    it("클립보드가거부됐을때_화면을그리면_미리보기전체를선택해두는지", () => {
+      // given
+      // when
+      renderView({ lines: failed("clipboardDenied", TEXT) });
+
+      // then
+      expect(window.getSelection()!.toString()).toBe(TEXT);
+    });
+
+    it("macOS에서클립보드가거부됐을때_화면을그리면_직접복사키를커맨드C로안내하는지", () => {
+      // given
+      Object.defineProperty(navigator, "platform", { value: "MacIntel", configurable: true });
+
+      // when
+      const shown = shownOutput(failed("clipboardDenied", TEXT));
+
+      // then
+      expect(shown[2]).toBe("→ 직접 복사: ⌘C · 다시: 넘기기");
+    });
+  });
+
+  describe("넘기기 확인 대기(#66, COM-007·COM-008)", () => {
+    function confirm(total: number): LoggedInState["lines"] {
+      return [{ kind: "prompt", text: "넘기기" }, { kind: "handoffConfirm", total }];
+    }
+
+    it("6건일때_화면을그리면_바로복사안함과전부만묻는지", () => {
+      // given
+      // when
+      const shown = shownOutput(confirm(6));
+
+      // then
+      expect(shown.slice(1)).toEqual(["! 6건: 바로 복사 안 함 (5건 초과)", "→ 전부: 6건 전부 · 취소: 그 외 입력"]);
+    });
+
+    it("10건일때_화면을그리면_앞10없이전부만묻는지", () => {
+      // given
+      // when
+      const shown = shownOutput(confirm(10));
+
+      // then
+      expect(shown[2]).toBe("→ 전부: 10건 전부 · 취소: 그 외 입력");
+    });
+
+    it("11건일때_화면을그리면_앞10과전부를묻는지", () => {
+      // given
+      // when
+      const shown = shownOutput(confirm(11));
+
+      // then
+      expect(shown.slice(1)).toEqual([
+        "! 11건: 바로 복사 안 함 (5건 초과)",
+        "→ 앞10: 앞 10건만 · 전부: 11건 전부 · 취소: 그 외 입력",
+      ]);
+    });
+
+    it("확인을기다릴때_앞10칩을누르면_입력줄에앞10을찍기만하는지", () => {
+      // given
+      const { onInputChange, onSubmit } = renderView({ lines: confirm(23) });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "앞10" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("앞10");
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+
+    it("확인을기다릴때_전부칩을누르면_입력줄에전부를찍는지", () => {
+      // given
+      const { onInputChange } = renderView({ lines: confirm(23) });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "전부" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("전부");
+    });
+
+    it("확인이취소됐을때_화면을그리면_취소됨한줄을보이는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [...confirm(23), { kind: "prompt", text: "" }, { kind: "cancelled" }];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown.at(-1)).toBe("· 취소됨");
+    });
+  });
+
+  describe("첫 화면·도움말(#67, commands 2절·6절)", () => {
+    it("자료가0건일때_첫화면을그리면_한문장과표어를보이는지", () => {
+      // given
+      // when
+      const { container } = renderView({ itemCount: 0, lines: [{ kind: "welcome" }] });
+
+      // then
+      const banner = container.querySelector(".gt-banner")!.textContent;
+      expect(banner).toContain("저장해 둔 링크·캡처·PDF를 찾아 AI 도구에 붙여 넣을 글로 복사");
+      expect(banner).toContain("담기 → 찾기 → 넘기기");
+    });
+
+    it("자료가0건일때_첫화면을그리면_자료0건과샘플안내와명령전체안내를보이고13줄표는없는지", () => {
+      // given
+      // when
+      const shown = shownOutput([{ kind: "welcome" }]);
+
+      // then
+      expect(shown).toEqual([
+        "· 자료 0건",
+        "→ 샘플 8건으로 해 보기 또는 아래에 링크 붙여 넣기",
+        "· 명령 전체: 도움말",
+      ]);
+    });
+
+    it("첫화면일때_도움말칩을누르면_입력줄에도움말을찍기만하는지", () => {
+      // given
+      const { onInputChange, onSubmit } = renderView({ lines: [{ kind: "welcome" }] });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "도움말" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("도움말");
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+
+    it("도움말을쳤을때_화면을그리면_안내줄과명령13줄과예시줄을보이는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [{ kind: "prompt", text: "도움말" }, { kind: "guide" }];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown.slice(1)).toEqual([
+        "저장: 링크·글 붙여 넣기, 파일 끌어다 놓기. 명령: 한글·영문 같음",
+        "담기 keep 자료 저장",
+        "최근 recent 최근 자료 목록",
+        "찾기 seek 검색",
+        "고르기 pick 번호로 선택",
+        "넘기기 handoff AI 도구용 글 복사",
+        "묶음 pack 선택에 이름 붙이기",
+        "고치기 revise 제목·요약 수정",
+        "버리기 drop 삭제",
+        "가져오기 bring 북마크 파일 가져오기",
+        "연결 plug AI 도구 연결",
+        "로그아웃 signout 로그아웃",
+        "도움말 guide 명령 목록",
+        "설명 about 명령 설명",
+        "→ 예: 찾기 결제 | 넘기기 · 자세히: 설명 찾기",
+      ]);
+    });
+
+    it("도움말을쳤을때_예시칩을누르면_입력줄에그명령을찍는지", () => {
+      // given
+      const { onInputChange } = renderView({ lines: [{ kind: "guide" }] });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "찾기 결제 | 넘기기" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("찾기 결제 | 넘기기");
     });
   });
 
