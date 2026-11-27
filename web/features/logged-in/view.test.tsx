@@ -375,6 +375,31 @@ describe("LoggedInView", () => {
       // then
       expect(shown[1]).toBe("✗ 저장할 것 없음  예: 담기 https://…");
     });
+
+    it("찾기만쳤을때_화면을그리면_검색어없음과예시를보이는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [
+        { kind: "prompt", text: "찾기" },
+        { kind: "missingArgument", command: "seek" },
+      ];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown[1]).toBe("✗ 검색어 없음  예: 찾기 결제");
+    });
+
+    it("태그이름없이샵만쳤을때_화면을그리면_태그없음과예시를보이는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [{ kind: "prompt", text: "찾기 #" }, { kind: "missingTag" }];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown[1]).toBe("✗ 태그 없음  예: 찾기 #결제");
+    });
   });
 
   describe("붙여 넣기·끌어다 놓기(#57)", () => {

@@ -276,7 +276,13 @@ function OutputLine({ line, failed, onMoreRequested }: OutputLineProps) {
       );
     case "missingArgument":
       // 다른 명령의 빠진 인자 문구는 그 명령의 실행 이슈에서 더한다.
-      return line.command === "keep" ? <Line tone="error">저장할 것 없음  예: 담기 https://…</Line> : null;
+      if (line.command === "keep") return <Line tone="error">저장할 것 없음  예: 담기 https://…</Line>;
+      // commands 6절 "빠진 인자".
+      if (line.command === "seek") return <Line tone="error">검색어 없음  예: 찾기 결제</Line>;
+      return null;
+    case "missingTag":
+      // ARC-002 사용자 문구.
+      return <Line tone="error">태그 없음  예: 찾기 #결제</Line>;
     case "saved":
       return <SavedLines item={line.item} />;
     case "alreadySaved":

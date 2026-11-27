@@ -6,11 +6,19 @@ import Foundation
 import FeatureTerminalInterface
 import GrepCore
 
-/// 자료 조회 API(api/openapi.yaml `listRecentItems`·`getItemStatuses`·`getHealth`). 응답 해석까지만 한다.
+/// 자료 조회 API(api/openapi.yaml `listRecentItems`·`searchItems`·`getItemStatuses`·`getHealth`). 응답 해석까지만 한다.
 enum BrowseAPI {
     enum PageOutcome: Equatable {
         /// `nextCursor`가 nil이면 마지막 쪽이다.
         case page(items: [ItemSummary], nextCursor: String?)
+        case sessionExpired
+        case failed(CommandFailure)
+        case cancelled
+    }
+
+    enum SearchOutcome: Equatable {
+        /// `total`은 조건에 맞는 전체 건수다. `nextCursor`가 nil이면 마지막 쪽이다.
+        case page(items: [ItemSummary], total: Int, nextCursor: String?)
         case sessionExpired
         case failed(CommandFailure)
         case cancelled
@@ -27,6 +35,7 @@ enum BrowseAPI {
     }
 
     private static let itemsPath = "/items"
+    private static let searchPath = "/items/search"
     private static let statusPath = "/items/status"
     private static let healthPath = "/health"
     private static let unauthorizedStatus = 401
@@ -37,6 +46,12 @@ enum BrowseAPI {
 
     private struct PageBody: Decodable {
         let items: [ItemSummary]
+        let nextCursor: String?
+    }
+
+    private struct SearchBody: Decodable {
+        let items: [ItemSummary]
+        let total: Int
         let nextCursor: String?
     }
 
@@ -70,6 +85,29 @@ enum BrowseAPI {
         case .body(let page): return .page(items: page.items, nextCursor: page.nextCursor)
         case .sessionExpired: return .sessionExpired
         // 명령 실패 이유는 COM-010의 셋뿐이다.
+        case .unauthorized: return .failed(.serverError)
+        case .failed(let reason): return .failed(reason)
+        case .cancelled: return .cancelled
+        }
+    }
+
+    /// 찾기 한 쪽. `q`는 검색어, `tag`는 `#` 없는 태그를 조건마다 한 번씩 준다(ARC-002 규칙 5~7).
+    @MainActor
+    static func search(
+        _ query: SearchQuery,
+        limit: Int,
+        cursor: String?,
+        transport: any HTTPTransport,
+        accessToken: String
+    ) async -> SearchOutcome {
+        let conditions = (query.words.isEmpty ? [] : ["q=\(percentEncoded(query.words))"])
+            + query.tags.map { "tag=\(percentEncoded($0))" }
+            + ["limit=\(limit)"]
+            + (cursor.map { ["cursor=\(percentEncoded($0))"] } ?? [])
+        let path = "\(searchPath)?\(conditions.joined(separator: "&"))"
+        switch await get(path, as: SearchBody.self, transport: transport, accessToken: accessToken) {
+        case .body(let page): return .page(items: page.items, total: page.total, nextCursor: page.nextCursor)
+        case .sessionExpired: return .sessionExpired
         case .unauthorized: return .failed(.serverError)
         case .failed(let reason): return .failed(reason)
         case .cancelled: return .cancelled

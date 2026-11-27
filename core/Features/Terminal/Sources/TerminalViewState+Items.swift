@@ -19,17 +19,24 @@ extension TerminalViewState {
         return next
     }
 
-    /// `index`의 목록 줄에 다음 쪽을 이어 붙인다. 그 줄이 목록이 아니면 그대로 둔다.
-    func extendingRecentList(at index: Int, with added: [ItemSummary], hasMore: Bool) -> TerminalViewState {
-        guard lines.indices.contains(index), case .recentList(let items, _) = lines[index] else { return self }
+    /// `index`의 목록 줄(`최근` 목록·찾기 결과)에 다음 쪽을 이어 붙인다. 그 줄이 목록이 아니면 그대로 둔다.
+    func extendingList(at index: Int, with added: [ItemSummary], hasMore: Bool) -> TerminalViewState {
+        guard lines.indices.contains(index) else { return self }
         var next = self
-        next.lines[index] = .recentList(items: items + added, hasMore: hasMore)
+        switch lines[index] {
+        case .recentList(let items, _):
+            next.lines[index] = .recentList(items: items + added, hasMore: hasMore)
+        case .searchResult(let query, let total, let items, _):
+            next.lines[index] = .searchResult(query: query, total: total, items: items + added, hasMore: hasMore)
+        default:
+            return self
+        }
         return next
     }
 
     /// `index`의 목록 줄에서 `→ 더 보기`를 뺀다.
-    func closingRecentList(at index: Int) -> TerminalViewState {
-        extendingRecentList(at: index, with: [], hasMore: false)
+    func closingList(at index: Int) -> TerminalViewState {
+        extendingList(at: index, with: [], hasMore: false)
     }
 }
 
