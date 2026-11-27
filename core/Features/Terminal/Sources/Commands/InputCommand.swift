@@ -16,8 +16,13 @@ struct InputCommand: Equatable {
             return nil
         }
         word = String(trimmed[..<end])
-        name = Self.names[word]
+        name = Self.name(for: word)
         argument = String(trimmed[end...]).trimmingWhitespace()
+    }
+
+    /// 한글·영문 명령 이름을 같게 본다. 아는 명령이 아니면 nil.
+    static func name(for word: String) -> CommandName? {
+        names[word]
     }
 
     /// commands 2절 표. `logout`·`login`은 받지 않는다(ACC-001 값).

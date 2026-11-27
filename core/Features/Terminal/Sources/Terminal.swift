@@ -31,7 +31,7 @@ public final class TerminalBuilder: Builder<any TerminalDependency>, TerminalBui
 }
 
 /// 터미널 화면. 입력줄의 명령을 해석한다. 자료 수와 되살릴 줄은 부모가 `TerminalHandle`로 넘긴다.
-/// 아는 명령은 `담기`·`최근`·`찾기`·`고르기`·`넘기기`·`로그아웃`이다. 붙여 넣기와 끌어다 놓기도 저장한다(#57). 나머지는 없는 명령으로 그린다.
+/// 아는 명령은 `담기`·`최근`·`찾기`·`고르기`·`넘기기`·`도움말`·`설명`·`로그아웃`이다. 붙여 넣기와 끌어다 놓기도 저장한다(#57). 나머지는 없는 명령으로 그린다.
 /// 처리 중 자료가 화면에 있으면 2초마다 상태를 묻고(ARC-005 규칙 10), 서버에 닿지 못하면 5초마다 다시 확인한다(COM-010).
 final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, TerminalPresentableListener, TerminalHandle {
 
@@ -125,8 +125,10 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
 
     var input: String { viewState.input }
 
+    /// 찍힌 줄이 없고 자료가 0건이면 첫 화면을 보인다. 1건 이상이면 상태줄과 입력줄만 둔다(COM-009 규칙 5).
     func showItemCount(_ itemCount: Int) {
-        update(viewState.with(itemCount: itemCount))
+        let counted = viewState.with(itemCount: itemCount)
+        update(itemCount == 0 && counted.lines.isEmpty ? counted.appending(lines: [.welcome]) : counted)
     }
 
     /// 서버가 세션 만료로 답했거나 토큰을 받지 못했다. 치던 줄을 들려 부모에게 알린다(ACC-001 규칙 7).
@@ -179,6 +181,10 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             seek(SeekCommand.parse(command.argument), typed: text)
         case .pick:
             pick(PickCommand.parse(command.argument), typed: text)
+        case .guide:
+            update(viewState.appending(lines: [.prompt(text), .guide]).with(input: ""))
+        case .about:
+            update(viewState.appending(lines: [.prompt(text), aboutLine(for: command.argument)]).with(input: ""))
         case .handoff where command.argument.isEmpty:
             handOffSelection(typed: text)
         // shortcut: `넘기기 <묶음 이름>`(F12)은 묶음이 데모 범위 밖이라 받지 않는다. 고른 자료를 대신 넘기지 않도록 없는 명령으로 알린다.
@@ -187,6 +193,12 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
         default:
             update(viewState.appending(lines: [.prompt(text), .unknownCommand(command.word)]).with(input: ""))
         }
+    }
+
+    /// `설명 <명령>`(commands 3절). 한글·영문 이름을 모두 받는다.
+    private func aboutLine(for argument: String) -> TerminalViewState.Line {
+        guard !argument.isEmpty else { return .missingArgument(.about) }
+        return InputCommand.name(for: argument).map { .about($0) } ?? .unknownCommand(argument)
     }
 
     /// 저장 요청. 친 줄은 바로 찍고 입력줄을 비운다. 실패하면 친 줄을 입력줄에 되돌린다(ARC-005 규칙 2).
