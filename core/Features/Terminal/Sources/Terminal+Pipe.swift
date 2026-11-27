@@ -47,14 +47,14 @@ extension TerminalInteractor {
         )
         guard !Task.isCancelled else { return }
         switch outcome {
-        case .page(let items, _, _, _) where items.isEmpty:
-            await showNoResults(for: query, period: period, typed: typed, accessToken: token)
-        case .page(let items, let total, _, _) where total <= PendingHandoff.instantLimit:
+        case .page(let items, _, _, _, let related) where items.isEmpty:
+            await showNoResults(for: query, period: period, related: related, typed: typed, accessToken: token)
+        case .page(let items, let total, _, _, _) where total <= PendingHandoff.instantLimit:
             await handOff(items.map(\.number), typed: typed, accessToken: token)
         // 기다리는 동안 다른 입력이 있었으면 그 입력이 이미 답이다. 묻자마자 취소한다(COM-007 규칙 1·3).
-        case .page(_, let total, _, _) where inputSequence != sequence:
+        case .page(_, let total, _, _, _) where inputSequence != sequence:
             update(viewState.appending(lines: [.handoffConfirm(total: total), .cancelled]))
-        case .page(let items, let total, let nextCursor, _):
+        case .page(let items, let total, let nextCursor, _, _):
             pendingHandoff = PendingHandoff(
                 query: query, total: total, firstPage: items.map(\.number), nextCursor: nextCursor
             )
@@ -81,7 +81,7 @@ extension TerminalInteractor {
                 )
                 guard !Task.isCancelled else { return }
                 switch outcome {
-                case .page(let items, _, let nextCursor, _):
+                case .page(let items, _, let nextCursor, _, _):
                     numbers += items.map(\.number)
                     cursor = nextCursor
                 case .failed(let reason):

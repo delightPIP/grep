@@ -130,9 +130,9 @@ extension TerminalInteractor {
         )
         guard !Task.isCancelled else { return }
         switch outcome {
-        case .page(let items, _, _, _) where items.isEmpty:
+        case .page(let items, _, _, _, _) where items.isEmpty:
             break
-        case .page(let items, let total, let nextCursor, let isSavedSearch):
+        case .page(let items, let total, let nextCursor, let isSavedSearch, _):
             showList(
                 .searchResult(
                     query: search, total: total, items: items, hasMore: nextCursor != nil,

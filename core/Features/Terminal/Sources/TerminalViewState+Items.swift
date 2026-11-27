@@ -62,7 +62,7 @@ extension TerminalViewState.Line {
         switch self {
         case .saved(let item), .alreadySaved(let item), .revised(let item), .tagsRemoved(let item, _): [item]
         case .recentList(let items, _, _, _), .searchResult(_, _, let items, _, _, _), .samplesSaved(_, _, let items): items
-        case .noResults(_, let recent, _): recent
+        case .noResults(_, let recent, _, let related): recent + related
         case .bundleView(_, _, let items, _): items
         default: []
         }
@@ -79,7 +79,8 @@ extension TerminalViewState.Line {
                 query: query, total: total, items: items.map(transform), hasMore: hasMore, period: period,
                 isSavedSearch: isSavedSearch
             )
-        case .noResults(let query, let recent, let period): .noResults(query: query, recent: recent.map(transform), period: period)
+        case .noResults(let query, let recent, let period, let related):
+            .noResults(query: query, recent: recent.map(transform), period: period, related: related.map(transform))
         case .revised(let item): .revised(transform(item))
         case .tagsRemoved(let item, let tags): .tagsRemoved(item: transform(item), tags: tags)
         case .samplesSaved(let first, let last, let items):

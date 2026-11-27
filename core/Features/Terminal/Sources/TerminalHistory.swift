@@ -252,6 +252,8 @@ private struct StoredLine: Codable {
     var importCounts: StoredImportCounts?
     var urls: [String]?
     var connections: [ConnectionEntry]?
+    /// 0건 줄의 뜻이 가까운 자료(#128). 그 전 기록에는 없다.
+    var related: [ItemSummary]?
 
     /// 아직 남기지 않는 줄(계약 2, 각 이슈에서 더한다)이면 nil.
     init?(_ line: TerminalViewState.Line) {
@@ -295,11 +297,12 @@ private struct StoredLine: Codable {
             self.hasMore = hasMore
             self.period = period
             flag = isSavedSearch
-        case .noResults(let query, let recent, let period):
+        case .noResults(let query, let recent, let period, let related):
             kind = .noResults
             self.query = StoredQuery(query)
             items = recent
             self.period = period
+            self.related = related
         case .picked(let refs):
             kind = .picked
             self.refs = refs.map(StoredRef.init)
@@ -495,7 +498,7 @@ private struct StoredLine: Codable {
             )
         case .noResults:
             guard let query, let items else { return nil }
-            return .noResults(query: query.query, recent: items, period: period)
+            return .noResults(query: query.query, recent: items, period: period, related: related ?? [])
         case .picked: return refs.map { .picked($0.map(\.ref)) }
         case .notFound: return numbers.map { .notFound(numbers: $0) }
         case .invalidNumber: return text.map { .invalidNumber($0) }

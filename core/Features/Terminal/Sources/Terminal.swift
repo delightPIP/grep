@@ -583,7 +583,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
                 transport: httpTransport, accessToken: accessToken
             )
             switch outcome {
-            case .page(let items, let total, let nextCursor, _): return .page(items: items, total: total, nextCursor: nextCursor)
+            case .page(let items, let total, let nextCursor, _, _): return .page(items: items, total: total, nextCursor: nextCursor)
             case .sessionExpired: return .sessionExpired
             case .failed(let reason): return .failed(reason)
             case .cancelled: return .cancelled
@@ -625,9 +625,9 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             )
             guard !Task.isCancelled else { return }
             switch outcome {
-            case .page(let items, _, _, _) where items.isEmpty:
-                await showNoResults(for: query, period: period, typed: typed, accessToken: token)
-            case .page(let items, let total, let nextCursor, let isSavedSearch):
+            case .page(let items, _, _, _, let related) where items.isEmpty:
+                await showNoResults(for: query, period: period, related: related, typed: typed, accessToken: token)
+            case .page(let items, let total, let nextCursor, let isSavedSearch, _):
                 showList(
                     .searchResult(
                         query: query, total: total, items: items, hasMore: nextCursor != nil, period: period,
@@ -647,16 +647,28 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     }
 
     /// `· 0건` 뒤에 붙일 최근 저장 자료를 받는다. 받지 못해도 찾기는 끝난 것이라 0건 줄은 찍는다.
-    func showNoResults(for query: SearchQuery, period: Period? = nil, typed: String, accessToken: String) async {
+    func showNoResults(
+        for query: SearchQuery,
+        period: Period? = nil,
+        related: [ItemSummary] = [],
+        typed: String,
+        accessToken: String
+    ) async {
         let outcome = await BrowseAPI.recent(
             limit: SeekCommand.noResultsRecentCount, cursor: nil, transport: httpTransport, accessToken: accessToken
         )
         guard !Task.isCancelled else { return }
         switch outcome {
         case .page(let items, _, _):
-            showList(.noResults(query: query, recent: items, period: period), nextCursor: nil, source: .search(query, period: period), typed: typed)
+            showList(
+                .noResults(query: query, recent: items, period: period, related: related),
+                nextCursor: nil, source: .search(query, period: period), typed: typed
+            )
         case .failed:
-            showList(.noResults(query: query, recent: [], period: period), nextCursor: nil, source: .search(query, period: period), typed: typed)
+            showList(
+                .noResults(query: query, recent: [], period: period, related: related),
+                nextCursor: nil, source: .search(query, period: period), typed: typed
+            )
         case .sessionExpired:
             restoreInput(typed)
             expire()

@@ -61,8 +61,16 @@ extension TerminalViewState.Line {
                     "isSavedSearch": isSavedSearch,
                 ]
             )
-        case .noResults(let query, let recent, let period):
-            line("noResults", ["query": query.bridgeValue, "recent": recent.map(\.bridgeValue), "period": period?.bridgeValue])
+        case .noResults(let query, let recent, let period, let related):
+            line(
+                "noResults",
+                [
+                    "query": query.bridgeValue,
+                    "recent": recent.map(\.bridgeValue),
+                    "period": period?.bridgeValue,
+                    "related": related.map(\.bridgeValue),
+                ]
+            )
         case .picked(let items): line("picked", ["items": items.map(\.bridgeValue)])
         case .notFound(let numbers): line("notFound", ["numbers": numbers])
         case .invalidNumber(let input): line("invalidNumber", ["input": input])

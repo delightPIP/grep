@@ -37,7 +37,8 @@ public struct TerminalViewState: Equatable, Sendable {
             isSavedSearch: Bool? = nil
         )
         /// `· 0건: "<검색어>"` 뒤에 `· 최근 저장 3건 (검색 결과 아님)` 머리줄과 그 자료들(commands 6절).
-        case noResults(query: SearchQuery, recent: [ItemSummary], period: Period? = nil)
+        /// `related`는 뜻이 가까운 자료(#128). 있으면 뷰가 `· 뜻이 가까운 자료 N건 (낱말은 다름)`을 그린다.
+        case noResults(query: SearchQuery, recent: [ItemSummary], period: Period? = nil, related: [ItemSummary] = [])
         /// `✓ 선택 N건  <제목> · <제목>` 뒤에 `→ 넘기기 또는 묶음 <이름>`.
         case picked([ItemRef])
         /// `✗ 없는 번호: <번호>`(여러 개면 쉼표, ARC-001 규칙 10).

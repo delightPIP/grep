@@ -206,7 +206,7 @@ public enum TerminalStateMapper {
                 items: items.map { mapRow($0, isPicked: pickedNumbers.contains($0.number)) },
                 hasMore: hasMore
             )]
-        case .noResults(let query, let recent, _):
+        case .noResults(let query, let recent, _, _):
             var result: [TerminalOutputBlockLine] = [
                 .status(tone: .info, boldPrefix: nil, body: #"0건: "\#(query.text)""#),
             ]

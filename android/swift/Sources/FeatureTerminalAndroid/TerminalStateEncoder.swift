@@ -183,7 +183,7 @@ private struct LineDTO: Encodable {
             self.total = total
             self.items = items.map(ItemSummaryDTO.init)
             self.hasMore = hasMore
-        case .noResults(let query, let recent, _):
+        case .noResults(let query, let recent, _, _):
             self.kind = "noResults"
             self.query = SearchQueryDTO(query)
             self.items = recent.map(ItemSummaryDTO.init)
