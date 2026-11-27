@@ -9,11 +9,11 @@ import java.net.URI
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 
-/** 메모리 스토리지. 클라이언트의 서명 URL PUT은 [put]으로 흉내 낸다. */
+/** 메모리 스토리지. 클라이언트의 서명 URL PUT도 [put]으로 흉내 낸다. */
 class FakeObjectStorage : ObjectStorage {
 	private val objects = ConcurrentHashMap<String, ByteArray>()
 
-	fun put(objectPath: String, bytes: ByteArray) {
+	override fun put(objectPath: String, bytes: ByteArray) {
 		objects[objectPath] = bytes
 	}
 

@@ -63,3 +63,17 @@ tasks.processResources {
 		into("db/migration")
 	}
 }
+
+// #69 데모 시드: ./gradlew seedDemo -Pemail=<계정 이메일> [-Pprovider=google]. 서버와 같은 DB·스토리지 환경변수를 쓴다.
+tasks.register<JavaExec>("seedDemo") {
+	group = "application"
+	description = "db/seed/demo/seed.json 34건을 지정한 계정에 넣는다(demo-seed 2절)."
+	classpath = sourceSets["main"].runtimeClasspath
+	mainClass = "com.unwrap.grep.features.demoseed.DemoSeedMainKt"
+	val email = providers.gradleProperty("email")
+	val provider = providers.gradleProperty("provider").orElse("google")
+	val seedDir = layout.projectDirectory.dir("../db/seed/demo").asFile.absolutePath
+	argumentProviders.add(CommandLineArgumentProvider {
+		listOf("--email=${email.getOrElse("")}", "--provider=${provider.get()}", "--seed-dir=$seedDir")
+	})
+}

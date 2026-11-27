@@ -8,6 +8,9 @@ interface ObjectStorage {
 	/** 클라이언트가 원본을 직접 올릴 서명 PUT URL. */
 	fun presignPut(objectPath: String, expiresIn: Duration): URI
 
+	/** 서버가 원본을 직접 올린다. 데모 시드 도구(#69)만 쓴다. 같은 경로면 덮어쓴다. */
+	fun put(objectPath: String, bytes: ByteArray)
+
 	/** 객체가 없으면 null. [maxBytes]를 넘으면 내용을 읽지 않고 크기만 준다. */
 	fun read(objectPath: String, maxBytes: Long): StoredObject?
 

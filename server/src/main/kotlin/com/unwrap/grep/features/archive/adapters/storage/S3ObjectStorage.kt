@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
+import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.S3Configuration
@@ -60,6 +61,10 @@ class S3ObjectStorage(
 			.putObjectRequest { it.bucket(bucket).key(objectPath) }
 			.build()
 		return presigner.presignPutObject(request).url().toURI()
+	}
+
+	override fun put(objectPath: String, bytes: ByteArray) {
+		client.putObject({ it.bucket(bucket).key(objectPath) }, RequestBody.fromBytes(bytes))
 	}
 
 	/** shortcut: 20MB까지 메모리로 읽는다. 상한을 크게 올리면 스트림으로 해시·판별하도록 바꾼다. */
