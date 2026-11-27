@@ -52,18 +52,19 @@
 - [백엔드 설계](../../planning/backend-design.md) 1절(저장, 텍스트 추출), 미해결 2번(Tika 한국어 추출 품질)
 - ADR-0001(서버가 최종 판정), ADR-BCK-005(이미지 글자 읽기는 서버 LLM 비전), COM-001(같은 파일 판정)
 - 2026-11-26 PO 결정(문서 PDF·md·txt·docx, 이미지 PNG·JPEG·WebP와 HEIC 변환)
-- 구현: 아직 없음
+- 구현: `server/src/main/kotlin/com/unwrap/grep/features/archive/domain/FileFormatDetector.kt`(내용 판별), `server/src/main/kotlin/com/unwrap/grep/features/archive/domain/SaveItemService.kt`(저장 때 판정·크기 확인), `server/src/main/kotlin/com/unwrap/grep/features/archive/domain/UploadService.kt`(업로드 자리 크기 확인, 받는 형식 목록)
 
 ## 검증 방법
 
 | 종류 | 확인할 것 |
 | :--- | :--- |
-| 자동 테스트 | 형식별로 저장되거나 막히는지. 확장자를 바꾼 파일이 내용대로 판정되는지. 받지 않는 형식이 섞인 여러 파일에서 나머지만 저장되는지. 구현 후 기입 |
-| 자동 테스트 | HEIC가 원본으로 보관되고 JPEG로 글자 읽기가 되는지. 암호 걸린 PDF가 "본문 못 가져옴"으로 저장되는지. 구현 후 기입 |
+| 자동 테스트 | 형식별로 저장되거나 막히는지. 확장자를 바꾼 파일이 내용대로 판정되는지. 받지 않는 형식이 섞인 여러 파일에서 나머지만 저장되는지. `FileFormatDetectorTest`, `SaveItemApiTest`, `UploadApiTest`(여러 파일은 항목마다 따로 저장 요청) |
+| 자동 테스트 | HEIC가 원본으로 보관되고 JPEG로 글자 읽기가 되는지. 암호 걸린 PDF가 "본문 못 가져옴"으로 저장되는지. 처리 단계(#59)에서 기입 |
 
 ## 비고
 
 - 형식 범위는 PRD 14절 4번에 따라 개발자가 확인해야 한다. docx는 Tika 한국어 추출 품질이 부족하면 이후(F10)로 뺄 수 있다.
+- 개발자 결정(2026-11-27): 20MB는 20 × 1024 × 1024 바이트로 센다. md와 txt는 내용으로 가릴 수 없어 UTF-8 글자 파일이면 이름이 `.md`·`.markdown`일 때 md, 그 밖은 txt로 둔다. 받지 않는 형식의 확장자는 내용에서 알아낸 것(gif, zip, xlsx, pptx, avif, mp4, mov)을 쓰고, 모르면 파일 이름의 확장자, 그것도 없으면 `bin`이다.
 - 서버 테스트 폴더가 정해지면 `Scripts/check-policy-acceptance.sh`에 이 정책의 형식 목록 규칙을 더한다.
 
 ## 이력
@@ -74,3 +75,4 @@
 | 2026-11-26 | 상태를 검토 중으로 바꿈. 개발자 확인 뒤 확정 |
 | 2026-11-26 | 크기 상한을 넘은 파일 문구 (PO 결정 2026-11-26, AI 제안 수용, 화면 체크리스트 10절) |
 | 2026-11-26 | 저장 실패 문구 꼴을 `✗ 저장 안 됨:`으로 ARC-005·COM-008에 맞춤(PO 결정, 흐름 점검표 X17) |
+| 2026-11-27 | 구현 위치·테스트 기입, 개발자 결정(20MB 단위, md·txt 구분)을 비고에 적음(#57, 규칙 변경 없음) |
