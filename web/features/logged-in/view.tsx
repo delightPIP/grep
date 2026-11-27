@@ -376,10 +376,54 @@ function SearchResultLines({ total, items, hasMore, onMoreRequested, period }: S
 }
 
 /** 0건 뒤 최근 자료는 검색 결과처럼 읽히지 않게 머리줄을 단다(commands 6절, ARC-002 사용자 문구). */
-function NoResultsLines({ query, recent }: { query: SearchQuery; recent: ItemSummary[] }) {
+/**
+ * commands 5절 없는 명령. 가까운 명령(F17)이 있으면 고친 입력을 묻고, 없으면 도움말로 안내한다.
+ * 제안 칩은 다른 명령 칩처럼 입력줄에 찍기만 한다. 엔터 한 번으로 제안을 실행하는 것은 코어가 맡는다(commands 5절 입력 받아 주기).
+ */
+function UnknownCommandLines({ name, suggestion }: { name: string; suggestion: string | null }) {
   return (
     <>
-      <Line tone="info">{`0건: "${query.text}"`}</Line>
+      <Line tone="error">
+        <b>없는 명령:</b> {name}
+      </Line>
+      <Plain>
+        {"→ "}
+        {suggestion === null ? (
+          <>
+            {"명령 목록: "}
+            <CommandChip command="도움말" />
+          </>
+        ) : (
+          <>
+            <CommandChip command={suggestion} />?
+          </>
+        )}
+      </Plain>
+    </>
+  );
+}
+
+/** 시점 낱말을 뺀 검색어(`결제 #위젯`). 시점이 붙은 찾기에서 query.text는 시점까지 친 그대로라 다시 만든다. */
+const queryWithoutPeriod = (query: SearchQuery) => [query.words, ...query.tags.map((tag) => `#${tag}`)].filter(Boolean).join(" ");
+
+type NoResultsLinesProps = { query: SearchQuery; recent: ItemSummary[]; period?: Period | null };
+
+function NoResultsLines({ query, recent, period }: NoResultsLinesProps) {
+  const bare = queryWithoutPeriod(query);
+  return (
+    <>
+      {period == null ? (
+        <Line tone="info">{`0건: "${query.text}"`}</Line>
+      ) : (
+        // commands 6절 시점을 붙인 결과: `· 0건: "결제" (지난달)` 뒤에 `→ 기간 없이: 찾기 결제`.
+        <>
+          <Line tone="info">{`0건: "${bare}" (${period.label})`}</Line>
+          <Plain>
+            {"→ 기간 없이: "}
+            <CommandChip command={`찾기 ${bare}`} />
+          </Plain>
+        </>
+      )}
       {recent.length > 0 && <Line tone="info">{`최근 저장 ${recent.length}건 (검색 결과 아님)`}</Line>}
       <ListLines items={recent} hasMore={false} />
     </>
@@ -705,11 +749,7 @@ function OutputLine({ line, failed, onMoreRequested }: OutputLineProps) {
     case "prompt":
       return <Prompt cmd={line.text} failed={failed} />;
     case "unknownCommand":
-      return (
-        <Line tone="error">
-          <b>없는 명령:</b> {line.name}
-        </Line>
-      );
+      return <UnknownCommandLines name={line.name} suggestion={line.suggestion ?? null} />;
     case "missingArgument":
       // 다른 명령의 빠진 인자 문구는 그 명령의 실행 이슈에서 더한다.
       if (line.command === "keep") return <Line tone="error">저장할 것 없음  예: 담기 https://…</Line>;
@@ -752,7 +792,7 @@ function OutputLine({ line, failed, onMoreRequested }: OutputLineProps) {
         />
       );
     case "noResults":
-      return <NoResultsLines query={line.query} recent={line.recent} />;
+      return <NoResultsLines query={line.query} recent={line.recent} period={line.period} />;
     case "picked":
       return <PickedLines items={line.items} />;
     case "notFound":

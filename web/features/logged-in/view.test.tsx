@@ -124,7 +124,7 @@ describe("LoggedInView", () => {
     const { container } = renderView({ lines });
 
     // then
-    expect(outputLines(container).map(shownLine)).toEqual(["그렙 ~ $ ㅁㄴㅇ", "✗ 없는 명령: ㅁㄴㅇ"]);
+    expect(outputLines(container).map(shownLine)).toEqual(["그렙 ~ $ ㅁㄴㅇ", "✗ 없는 명령: ㅁㄴㅇ", "→ 명령 목록: 도움말"]);
   });
 
   it("없는명령으로끝난입력줄이있을때_화면을그리면_프롬프트를실패색으로그리는지", () => {
@@ -1718,6 +1718,72 @@ describe("LoggedInView", () => {
 
       // then
       expect(shown[0]).toBe("23건 중 1건 · 지난달 (10/1~10/31)");
+    });
+  });
+
+  describe("오타 제안(#118, commands 5절)", () => {
+    it("가까운명령이있을때_화면을그리면_없는명령다음줄에고친입력을묻는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [
+        { kind: "prompt", text: "찻기 결제" },
+        { kind: "unknownCommand", name: "찻기", suggestion: "찾기 결제" },
+      ];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown.slice(1)).toEqual(["✗ 없는 명령: 찻기", "→ 찾기 결제?"]);
+    });
+
+    it("제안이떠있을때_제안칩을누르면_입력줄에고친입력을찍기만하는지", () => {
+      // given
+      const { onInputChange, onSubmit } = renderView({
+        lines: [{ kind: "unknownCommand", name: "찻기", suggestion: "찾기 결제" }],
+      });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "찾기 결제" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("찾기 결제");
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("시점을 붙인 찾기 0건(#114, commands 6절)", () => {
+    const LAST_MONTH = { label: "지난달", from: "2026-09-30T15:00:00Z", to: "2026-10-31T15:00:00Z" };
+
+    it("시점을붙인찾기가0건일때_화면을그리면_시점을밝히고기간없이다시찾기를권하는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [
+        { kind: "prompt", text: "찾기 결제 #위젯 지난달" },
+        {
+          kind: "noResults",
+          query: { text: "결제 #위젯 지난달", words: "결제", tags: ["위젯"] },
+          recent: [],
+          period: LAST_MONTH,
+        },
+      ];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown.slice(1)).toEqual(['· 0건: "결제 #위젯" (지난달)', "→ 기간 없이: 찾기 결제 #위젯"]);
+    });
+
+    it("시점이있는0건일때_기간없이칩을누르면_입력줄에찍기만하는지", () => {
+      // given
+      const { onInputChange } = renderView({
+        lines: [{ kind: "noResults", query: { text: "결제 지난달", words: "결제", tags: [] }, recent: [], period: LAST_MONTH }],
+      });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "찾기 결제" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("찾기 결제");
     });
   });
 });
