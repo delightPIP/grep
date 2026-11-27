@@ -45,8 +45,8 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     /// `더 보기`가 이어 붙일 목록 줄과 다음 쪽을 받는 값.
     struct ListPage: Equatable {
         enum Source: Equatable {
-            case recent(limit: Int)
-            case search(SearchQuery)
+            case recent(limit: Int, period: Period?)
+            case search(SearchQuery, period: Period?)
             case bin
         }
 
@@ -229,7 +229,8 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
         case .keep:
             keep(KeepCommand.request(for: command.argument), typed: text)
         case .recent:
-            showRecent(limit: RecentCommand.limit(for: command.argument), typed: text)
+            let parsed = RecentCommand.parse(command.argument)
+            showRecent(limit: parsed.limit, period: parsed.period, typed: text)
         case .seek where pipe(seekArgument: command.argument, typed: text):
             break
         case .seek:
@@ -403,7 +404,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     // MARK: 최근과 더 보기
 
     /// `GET /items`. 친 줄은 바로 찍는다. 실패하면 `✗ 최근 안 됨`과 다시 칠 명령을 보인다(COM-010 규칙 1).
-    private func showRecent(limit: Int, typed: String) {
+    private func showRecent(limit: Int, period: Period?, typed: String) {
         update(viewState.appending(lines: [.prompt(typed)]).with(input: ""))
         startTask { [weak self] in
             guard let self else { return }
@@ -415,14 +416,14 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
                 return
             }
             let outcome = await BrowseAPI.recent(
-                limit: limit, cursor: nil, transport: httpTransport, accessToken: token
+                limit: limit, cursor: nil, period: period, transport: httpTransport, accessToken: token
             )
             guard !Task.isCancelled else { return }
             switch outcome {
-            case .page(let items, let nextCursor):
+            case .page(let items, let total, let nextCursor):
                 showList(
-                    .recentList(items: items, hasMore: nextCursor != nil),
-                    nextCursor: nextCursor, source: .recent(limit: limit), typed: typed
+                    .recentList(items: items, hasMore: nextCursor != nil, total: total, period: period),
+                    nextCursor: nextCursor, source: .recent(limit: limit, period: period), typed: typed
                 )
             case .failed(let reason):
                 update(viewState.appending(lines: [.commandFailed(command: .recent, reason: reason, retry: typed)]))
@@ -494,7 +495,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             // 기다리는 동안 다른 목록이 찍혔으면 늦게 온 쪽을 버린다.
             guard !Task.isCancelled, listPage == page else { return }
             switch outcome {
-            case .page(let items, let nextCursor):
+            case .page(let items, _, let nextCursor):
                 listPage = nextCursor.map {
                     ListPage(lineIndex: page.lineIndex, cursor: $0, source: page.source, typed: page.typed)
                 }
@@ -513,17 +514,17 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
 
     private func nextPage(of page: ListPage, accessToken: String) async -> BrowseAPI.PageOutcome {
         switch page.source {
-        case .recent(let limit):
+        case .recent(let limit, let period):
             return await BrowseAPI.recent(
-                limit: limit, cursor: page.cursor, transport: httpTransport, accessToken: accessToken
+                limit: limit, cursor: page.cursor, period: period, transport: httpTransport, accessToken: accessToken
             )
-        case .search(let query):
+        case .search(let query, let period):
             let outcome = await BrowseAPI.search(
-                query, limit: SeekCommand.pageSize, cursor: page.cursor,
+                query, limit: SeekCommand.pageSize, cursor: page.cursor, period: period,
                 transport: httpTransport, accessToken: accessToken
             )
             switch outcome {
-            case .page(let items, _, let nextCursor): return .page(items: items, nextCursor: nextCursor)
+            case .page(let items, let total, let nextCursor): return .page(items: items, total: total, nextCursor: nextCursor)
             case .sessionExpired: return .sessionExpired
             case .failed(let reason): return .failed(reason)
             case .cancelled: return .cancelled
@@ -541,13 +542,13 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             update(viewState.appending(lines: [.prompt(typed), .missingArgument(.seek)]).with(input: ""))
         case .missingTag:
             update(viewState.appending(lines: [.prompt(typed), .missingTag]).with(input: ""))
-        case .query(let query):
-            search(query, typed: typed)
+        case .query(let query, let period):
+            search(query, period: period, typed: typed)
         }
     }
 
     /// `GET /items/search`. 0건이면 최근 저장 자료를 함께 보인다(commands 6절). 실패는 `✗ 찾기 안 됨`(COM-010 규칙 1).
-    private func search(_ query: SearchQuery, typed: String) {
+    private func search(_ query: SearchQuery, period: Period?, typed: String) {
         update(viewState.appending(lines: [.prompt(typed)]).with(input: ""))
         startTask { [weak self] in
             guard let self else { return }
@@ -559,16 +560,16 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
                 return
             }
             let outcome = await BrowseAPI.search(
-                query, limit: SeekCommand.pageSize, cursor: nil, transport: httpTransport, accessToken: token
+                query, limit: SeekCommand.pageSize, cursor: nil, period: period, transport: httpTransport, accessToken: token
             )
             guard !Task.isCancelled else { return }
             switch outcome {
             case .page(let items, _, _) where items.isEmpty:
-                await showNoResults(for: query, typed: typed, accessToken: token)
+                await showNoResults(for: query, period: period, typed: typed, accessToken: token)
             case .page(let items, let total, let nextCursor):
                 showList(
-                    .searchResult(query: query, total: total, items: items, hasMore: nextCursor != nil),
-                    nextCursor: nextCursor, source: .search(query), typed: typed
+                    .searchResult(query: query, total: total, items: items, hasMore: nextCursor != nil, period: period),
+                    nextCursor: nextCursor, source: .search(query, period: period), typed: typed
                 )
             case .failed(let reason):
                 update(viewState.appending(lines: [.commandFailed(command: .seek, reason: reason, retry: typed)]))
@@ -582,16 +583,16 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     }
 
     /// `· 0건` 뒤에 붙일 최근 저장 자료를 받는다. 받지 못해도 찾기는 끝난 것이라 0건 줄은 찍는다.
-    func showNoResults(for query: SearchQuery, typed: String, accessToken: String) async {
+    func showNoResults(for query: SearchQuery, period: Period? = nil, typed: String, accessToken: String) async {
         let outcome = await BrowseAPI.recent(
             limit: SeekCommand.noResultsRecentCount, cursor: nil, transport: httpTransport, accessToken: accessToken
         )
         guard !Task.isCancelled else { return }
         switch outcome {
-        case .page(let items, _):
-            showList(.noResults(query: query, recent: items), nextCursor: nil, source: .search(query), typed: typed)
+        case .page(let items, _, _):
+            showList(.noResults(query: query, recent: items, period: period), nextCursor: nil, source: .search(query, period: period), typed: typed)
         case .failed:
-            showList(.noResults(query: query, recent: []), nextCursor: nil, source: .search(query), typed: typed)
+            showList(.noResults(query: query, recent: [], period: period), nextCursor: nil, source: .search(query, period: period), typed: typed)
         case .sessionExpired:
             restoreInput(typed)
             expire()

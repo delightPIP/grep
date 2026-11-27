@@ -20,24 +20,24 @@ extension TerminalInteractor {
             update(viewState.appending(lines: [.prompt(typed), .missingArgument(.seek)]).with(input: ""))
         case .missingTag:
             update(viewState.appending(lines: [.prompt(typed), .missingTag]).with(input: ""))
-        case .query(let query):
-            searchThenHandOff(query, typed: typed)
+        case .query(let query, let period):
+            searchThenHandOff(query, period: period, typed: typed)
         }
         return true
     }
 
     /// 결과가 5건 이하면 바로 복사하고, 넘으면 복사하지 않고 묻는다(COM-008 규칙 1~3). 0건은 찾기와 같다.
-    private func searchThenHandOff(_ query: SearchQuery, typed: String) {
+    private func searchThenHandOff(_ query: SearchQuery, period: Period?, typed: String) {
         let sequence = inputSequence
         run(typed: typed) { [weak self] token in
             guard let self else { return }
             let outcome = await BrowseAPI.search(
-                query, limit: SeekCommand.pageSize, cursor: nil, transport: httpTransport, accessToken: token
+                query, limit: SeekCommand.pageSize, cursor: nil, period: period, transport: httpTransport, accessToken: token
             )
             guard !Task.isCancelled else { return }
             switch outcome {
             case .page(let items, _, _) where items.isEmpty:
-                await showNoResults(for: query, typed: typed, accessToken: token)
+                await showNoResults(for: query, period: period, typed: typed, accessToken: token)
             case .page(let items, let total, _) where total <= PendingHandoff.instantLimit:
                 await handOff(items.map(\.number), typed: typed, accessToken: token)
             // 기다리는 동안 다른 입력이 있었으면 그 입력이 이미 답이다. 묻자마자 취소한다(COM-007 규칙 1·3).

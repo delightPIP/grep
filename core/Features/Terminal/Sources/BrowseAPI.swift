@@ -9,8 +9,8 @@ import GrepCore
 /// 자료 조회 API(api/openapi.yaml `listRecentItems`·`searchItems`·`getItemStatuses`·`getHealth`). 응답 해석까지만 한다.
 enum BrowseAPI {
     enum PageOutcome: Equatable {
-        /// `nextCursor`가 nil이면 마지막 쪽이다.
-        case page(items: [ItemSummary], nextCursor: String?)
+        /// `nextCursor`가 nil이면 마지막 쪽이다. `total`은 기간 조건이 있을 때만 내려온다(#114).
+        case page(items: [ItemSummary], total: Int?, nextCursor: String?)
         case sessionExpired
         case failed(CommandFailure)
         case cancelled
@@ -46,6 +46,7 @@ enum BrowseAPI {
 
     private struct PageBody: Decodable {
         let items: [ItemSummary]
+        let total: Int?
         let nextCursor: String?
     }
 
@@ -77,12 +78,18 @@ enum BrowseAPI {
     static func recent(
         limit: Int,
         cursor: String?,
+        period: Period? = nil,
         transport: any HTTPTransport,
         accessToken: String
     ) async -> PageOutcome {
-        let query = "limit=\(limit)" + (cursor.map { "&cursor=\(percentEncoded($0))" } ?? "")
-        switch await get("\(itemsPath)?\(query)", as: PageBody.self, transport: transport, accessToken: accessToken) {
-        case .body(let page): return .page(items: page.items, nextCursor: page.nextCursor)
+        var params = ["limit=\(limit)"]
+        if let cursor { params.append("cursor=\(percentEncoded(cursor))") }
+        if let period {
+            params.append("from=\(percentEncoded(period.from))")
+            params.append("to=\(percentEncoded(period.to))")
+        }
+        switch await get("\(itemsPath)?\(params.joined(separator: "&"))", as: PageBody.self, transport: transport, accessToken: accessToken) {
+        case .body(let page): return .page(items: page.items, total: page.total, nextCursor: page.nextCursor)
         case .sessionExpired: return .sessionExpired
         // 명령 실패 이유는 COM-010의 셋뿐이다.
         case .unauthorized: return .failed(.serverError)
@@ -97,13 +104,18 @@ enum BrowseAPI {
         _ query: SearchQuery,
         limit: Int,
         cursor: String?,
+        period: Period? = nil,
         transport: any HTTPTransport,
         accessToken: String
     ) async -> SearchOutcome {
-        let conditions = (query.words.isEmpty ? [] : ["q=\(percentEncoded(query.words))"])
+        var conditions = (query.words.isEmpty ? [] : ["q=\(percentEncoded(query.words))"])
             + query.tags.map { "tag=\(percentEncoded($0))" }
             + ["limit=\(limit)"]
             + (cursor.map { ["cursor=\(percentEncoded($0))"] } ?? [])
+        if let period {
+            conditions.append("from=\(percentEncoded(period.from))")
+            conditions.append("to=\(percentEncoded(period.to))")
+        }
         let path = "\(searchPath)?\(conditions.joined(separator: "&"))"
         switch await get(path, as: SearchBody.self, transport: transport, accessToken: accessToken) {
         case .body(let page): return .page(items: page.items, total: page.total, nextCursor: page.nextCursor)

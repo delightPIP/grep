@@ -27,7 +27,7 @@ extension TerminalInteractor {
                 guard !Task.isCancelled else { return }
                 let items: [ItemSummary]
                 switch recentOutcome {
-                case .page(let fetched, _): items = fetched
+                case .page(let fetched, _, _): items = fetched
                 case .sessionExpired:
                     expire()
                     return
