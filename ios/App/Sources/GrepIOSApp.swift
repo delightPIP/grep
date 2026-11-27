@@ -1,5 +1,7 @@
+import FeatureLoggedInUI
 import FeatureLoggedOutAdapter
 import FeatureLoggedOutInterface
+import FeatureTerminalAdapter
 import FeatureTerminalInterface
 import Foundation
 import GrepAppRoot
@@ -42,53 +44,28 @@ final class RootScreen: RootViewControllable, SwiftUIRenderable {
 @MainActor
 final class AppViewFactory: GrepAppViewFactory {
     private let loggedOut = LoggedOutScreenFactory()
+    private let terminal = TerminalScreenFactory { terminalView, isKeyboardVisible in
+        AnyView(LoggedInTabWrapper(isKeyboardVisible: isKeyboardVisible, terminalView: terminalView))
+    }
 
     func makeRootView() -> RootScreen { RootScreen() }
     func makeLoggedOutView() -> any LoggedOutViewContract { loggedOut.makeLoggedOutView() }
-    // shortcut: 1단계 뼈대용 자리표시 화면, 2단계에서 Features/Terminal 어댑터로 교체.
-    func makeTerminalView() -> any TerminalViewContract { TerminalPlaceholderScreen() }
+    func makeTerminalView() -> any TerminalViewContract { terminal.makeTerminalView() }
 }
 
-/// 1단계 뼈대용 터미널 자리표시 화면.
-@MainActor
-private final class TerminalPlaceholderScreen: TerminalViewContract, SwiftUIRenderable {
-    weak var listener: (any TerminalPresentableListener)?
-    private let model = PlaceholderModel()
-
-    func render(_ state: TerminalViewState) {
-        model.itemCount = state.itemCount
-    }
-
-    func makeView() -> AnyView {
-        AnyView(TerminalPlaceholderView(model: model) { [weak self] in
-            self?.listener?.handle(.submitted("로그아웃"))
-        })
-    }
-}
-
-@MainActor @Observable
-private final class PlaceholderModel {
-    var itemCount: Int?
-}
-
-private struct TerminalPlaceholderView: View {
-    let model: PlaceholderModel
-    let onSignOut: () -> Void
+/// 터미널 화면을 하단 탭 컨테이너(MOB-001)로 감싼다.
+private struct LoggedInTabWrapper: View {
+    @Binding var isKeyboardVisible: Bool
+    let terminalView: AnyView
+    @State private var selectedTab: LoggedInTab = .terminal
 
     var body: some View {
-        VStack(spacing: 16) {
-            Text("그렙 — 터미널 준비 중")
-                .font(.system(.title3, design: .monospaced).bold())
-            if let count = model.itemCount {
-                Text("자료 \(count)")
-                    .font(.system(.body, design: .monospaced))
-                    .foregroundStyle(.secondary)
-            }
-            Button("로그아웃", action: onSignOut)
-                .buttonStyle(.bordered)
-                .frame(minHeight: 44)
+        LoggedInTabContainerView(
+            selectedTab: $selectedTab,
+            hidesTabBar: isKeyboardVisible
+        ) {
+            terminalView
         }
-        .padding(24)
     }
 }
 
