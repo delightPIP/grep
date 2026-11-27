@@ -48,6 +48,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             case recent(limit: Int, period: Period?)
             case search(SearchQuery, period: Period?)
             case bin
+            case bundle(String)
         }
 
         let lineIndex: Int
@@ -61,6 +62,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             case .recent: .recent
             case .search: .seek
             case .bin: .bin
+            case .bundle: .pack
             }
         }
     }
@@ -86,6 +88,8 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     var pendingDrop: PendingDrop?
     /// 답을 기다리는 `휴지통 비우기` 확인(ARC-008 규칙 6, COM-007).
     var pendingBinEmpty: PendingBinEmpty?
+    /// 답을 기다리는 `묶음 <이름> 지우기` 확인(ARC-003 규칙 8, COM-007).
+    var pendingBundleDelete: PendingBundleDelete?
     /// 답을 기다리는 `로그아웃 모든기기` 확인(ACC-002 규칙 4, COM-007).
     var pendingSignOutEverywhere = false
     /// 오타 제안(#118, commands.md 207줄). 빈 입력 엔터면 이 문자열을 실행하고, 다른 입력이면 지운다.
@@ -214,6 +218,11 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             confirmBinEmpty(typed: text)
             return
         }
+        if let pending = pendingBundleDelete, pending.matches(text) {
+            pendingBundleDelete = nil
+            confirmBundleDelete(pending, typed: text)
+            return
+        }
         if pendingSignOutEverywhere {
             let answer = text.trimmingWhitespace()
             if answer == "로그아웃" || answer == "signout" {
@@ -251,6 +260,8 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             reviveItems(command.argument, typed: text)
         case .bin:
             handleBin(command.argument, typed: text)
+        case .pack:
+            handleBundle(command.argument, typed: text)
         case .revise:
             reviseItem(command.argument, typed: text)
         case .guide:
@@ -259,9 +270,8 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             update(viewState.appending(lines: [.prompt(text), aboutLine(for: command.argument)]).with(input: ""))
         case .handoff where command.argument.isEmpty:
             handOffSelection(typed: text)
-        // shortcut: `넘기기 <묶음 이름>`(F12)은 묶음이 데모 범위 밖이라 받지 않는다. 고른 자료를 대신 넘기지 않도록 없는 명령으로 알린다.
         case .handoff:
-            update(viewState.appending(lines: [.prompt(text), .unknownCommand(text.trimmingWhitespace())]).with(input: ""))
+            handOffBundle(command.argument, typed: text)
         default:
             let suggestion = CommandSuggester.suggest(word: command.word, argument: command.argument)
             pendingSuggestion = suggestion
@@ -447,10 +457,12 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     }
 
     func cancelPendingConfirmations() {
-        let hadPending = pendingHandoff != nil || pendingDrop != nil || pendingBinEmpty != nil || pendingSignOutEverywhere
+        let hadPending = pendingHandoff != nil || pendingDrop != nil || pendingBinEmpty != nil
+            || pendingBundleDelete != nil || pendingSignOutEverywhere
         pendingHandoff = nil
         pendingDrop = nil
         pendingBinEmpty = nil
+        pendingBundleDelete = nil
         pendingSignOutEverywhere = false
         if hadPending {
             update(viewState.appending(lines: [.cancelled]).with(input: ""))
@@ -541,6 +553,8 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             }
         case .bin:
             return .cancelled
+        case .bundle(let name):
+            return await nextBundlePage(of: page, name: name, accessToken: accessToken)
         }
     }
 

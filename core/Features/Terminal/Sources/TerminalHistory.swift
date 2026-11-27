@@ -207,6 +207,8 @@ private struct StoredLine: Codable {
         case commandFailed, handoffConfirm, cancelled, welcome, guide, about, reconnected
         case dropConfirm, dropped, revived, binList, binEmptyConfirm, binEmptied
         case revised, tagsRemoved, samplesSaved, unpicked, pickCleared, signOutEverywhereConfirm
+        case bundleList, bundleAdded, bundleView, bundleNotFound, bundleUnpicked, notInBundle
+        case bundleDeleteConfirm, bundleDeleted, bundleNameInvalid
     }
 
     let kind: Kind
@@ -230,6 +232,9 @@ private struct StoredLine: Codable {
     var handoff: StoredHandoff?
     var saveFailure: StoredSaveFailure?
     var recovery: StoredRecovery?
+    var name: String?
+    var extraCount: Int?
+    var bundles: [BundleEntry]?
 
     /// 아직 남기지 않는 줄(계약 2, 각 이슈에서 더한다)이면 nil.
     init?(_ line: TerminalViewState.Line) {
@@ -349,8 +354,42 @@ private struct StoredLine: Codable {
         case .signOutEverywhereConfirm(let connectionCount):
             kind = .signOutEverywhereConfirm
             count = connectionCount
-        case .bundleList, .bundleAdded, .bundleView, .bundleNotFound, .bundleUnpicked, .notInBundle,
-             .bundleDeleteConfirm, .bundleDeleted, .bundleNameInvalid, .folderHint, .itemDetail, .oneNumberOnly,
+        case .bundleList(let bundles):
+            kind = .bundleList
+            self.bundles = bundles
+        case .bundleAdded(let name, let count, let alreadyCount):
+            kind = .bundleAdded
+            self.name = name
+            self.count = count
+            extraCount = alreadyCount
+        case .bundleView(let name, let total, let items, let hasMore):
+            kind = .bundleView
+            self.name = name
+            self.total = total
+            self.items = items
+            self.hasMore = hasMore
+        case .bundleNotFound(let name):
+            kind = .bundleNotFound
+            self.name = name
+        case .bundleUnpicked(let name, let remaining):
+            kind = .bundleUnpicked
+            self.name = name
+            count = remaining
+        case .notInBundle(let name, let numbers):
+            kind = .notInBundle
+            self.name = name
+            self.numbers = numbers
+        case .bundleDeleteConfirm(let name, let itemCount):
+            kind = .bundleDeleteConfirm
+            self.name = name
+            count = itemCount
+        case .bundleDeleted(let name):
+            kind = .bundleDeleted
+            self.name = name
+        case .bundleNameInvalid(let problem):
+            kind = .bundleNameInvalid
+            reason = problem.rawValue
+        case .folderHint, .itemDetail, .oneNumberOnly,
              .searchSaved, .savedSearchList, .savedSearchPeriod, .savedSearchTooLong, .savedSearchDeleteConfirm,
              .savedSearchDeleted, .savedSearchNotFound, .connectionList, .disconnectConfirm, .disconnected,
              .connectionNotFound, .connectionEnded, .importPrompt, .importProgress, .importFinished:
@@ -416,6 +455,32 @@ private struct StoredLine: Codable {
             return .unpicked(items: refs.map(\.ref), remaining: count)
         case .pickCleared: return count.map { .pickCleared(count: $0) }
         case .signOutEverywhereConfirm: return .signOutEverywhereConfirm(connectionCount: count)
+        default: return bundleLine
+        }
+    }
+
+    private var bundleLine: TerminalViewState.Line? {
+        switch kind {
+        case .bundleList: return bundles.map { .bundleList($0) }
+        case .bundleAdded:
+            guard let name, let count, let extraCount else { return nil }
+            return .bundleAdded(name: name, count: count, alreadyCount: extraCount)
+        case .bundleView:
+            guard let name, let total, let items, let hasMore else { return nil }
+            return .bundleView(name: name, total: total, items: items, hasMore: hasMore)
+        case .bundleNotFound: return name.map { .bundleNotFound(name: $0) }
+        case .bundleUnpicked:
+            guard let name, let count else { return nil }
+            return .bundleUnpicked(name: name, remaining: count)
+        case .notInBundle:
+            guard let name, let numbers else { return nil }
+            return .notInBundle(name: name, numbers: numbers)
+        case .bundleDeleteConfirm:
+            guard let name, let count else { return nil }
+            return .bundleDeleteConfirm(name: name, itemCount: count)
+        case .bundleDeleted: return name.map { .bundleDeleted(name: $0) }
+        case .bundleNameInvalid: return reason.flatMap(BundleNameProblem.init(rawValue:)).map { .bundleNameInvalid($0) }
+        default: return nil
         }
     }
 }

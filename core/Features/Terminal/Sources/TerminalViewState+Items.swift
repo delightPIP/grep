@@ -30,6 +30,8 @@ extension TerminalViewState {
             next.lines[index] = .searchResult(
                 query: query, total: total, items: items + added, hasMore: hasMore, period: period
             )
+        case .bundleView(let name, let total, let items, _):
+            next.lines[index] = .bundleView(name: name, total: total, items: items + added, hasMore: hasMore)
         default:
             return self
         }
@@ -60,6 +62,7 @@ extension TerminalViewState.Line {
         case .saved(let item), .alreadySaved(let item), .revised(let item), .tagsRemoved(let item, _): [item]
         case .recentList(let items, _, _, _), .searchResult(_, _, let items, _, _), .samplesSaved(_, _, let items): items
         case .noResults(_, let recent, _): recent
+        case .bundleView(_, _, let items, _): items
         default: []
         }
     }
@@ -77,6 +80,8 @@ extension TerminalViewState.Line {
         case .tagsRemoved(let item, let tags): .tagsRemoved(item: transform(item), tags: tags)
         case .samplesSaved(let first, let last, let items):
             .samplesSaved(firstNumber: first, lastNumber: last, items: items.map(transform))
+        case .bundleView(let name, let total, let items, let hasMore):
+            .bundleView(name: name, total: total, items: items.map(transform), hasMore: hasMore)
         default: self
         }
     }

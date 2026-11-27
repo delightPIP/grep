@@ -177,7 +177,8 @@ enum BrowseAPI {
         return .body(body)
     }
 
-    private static func percentEncoded(_ value: String) -> String {
+    /// 경로 조각·쿼리 값용. RFC 3986 unreserved 밖은 모두 %XX로 바꾼다.
+    static func percentEncoded(_ value: String) -> String {
         value.utf8.map { byte in
             unreservedBytes.contains(byte)
                 ? String(UnicodeScalar(byte))
