@@ -63,8 +63,8 @@ class S3ObjectStorage(
 		return presigner.presignPutObject(request).url().toURI()
 	}
 
-	override fun put(objectPath: String, bytes: ByteArray) {
-		client.putObject({ it.bucket(bucket).key(objectPath) }, RequestBody.fromBytes(bytes))
+	override fun put(objectPath: String, bytes: ByteArray, contentType: String) {
+		client.putObject({ it.bucket(bucket).key(objectPath).contentType(contentType) }, RequestBody.fromBytes(bytes))
 	}
 
 	/** shortcut: 20MB까지 메모리로 읽는다. 상한을 크게 올리면 스트림으로 해시·판별하도록 바꾼다. */

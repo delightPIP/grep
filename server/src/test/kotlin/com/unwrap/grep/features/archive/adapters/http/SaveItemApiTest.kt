@@ -311,7 +311,7 @@ class SaveItemApiTest : ArchiveApiTestSupport() {
 		val uploadId = upload(token, "small.pdf", pdf)
 		val path = objectPathOf(uploadId)
 		val tooLarge = ByteArray(20 * 1024 * 1024 + 1)
-		storage.put(path, tooLarge)
+		storage.put(path, tooLarge, "application/pdf")
 
 		// when
 		val result = saveItem(token, """{"kind":"file","uploadId":"$uploadId"}""")

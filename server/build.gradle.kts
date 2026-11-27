@@ -70,6 +70,8 @@ tasks.register<JavaExec>("seedDemo") {
 	description = "db/seed/demo/seed.json 34건을 지정한 계정에 넣는다(demo-seed 2절)."
 	classpath = sourceSets["main"].runtimeClasspath
 	mainClass = "com.unwrap.grep.features.demoseed.DemoSeedMainKt"
+	// Windows 콘솔에서도 한글 결과가 깨지지 않게
+	jvmArgs("-Dstdout.encoding=UTF-8", "-Dstderr.encoding=UTF-8")
 	val email = providers.gradleProperty("email")
 	val provider = providers.gradleProperty("provider").orElse("google")
 	val seedDir = layout.projectDirectory.dir("../db/seed/demo").asFile.absolutePath

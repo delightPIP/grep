@@ -68,7 +68,7 @@ abstract class ArchiveApiTestSupport {
 			.andExpect { status { isCreated() } }
 			.andReturn().response.contentAsString
 		val uploadId = Regex("\"uploadId\":\"([^\"]+)\"").find(body)!!.groupValues[1]
-		storage.put(objectPathOf(uploadId), bytes)
+		storage.put(objectPathOf(uploadId), bytes, "application/octet-stream")
 		return uploadId
 	}
 

@@ -21,9 +21,15 @@ fun main(args: Array<String>) {
 	val seedDir = Path.of(options["seed-dir"] ?: fail("시드 폴더가 없다."))
 
 	// shortcut: 서버 빈을 그대로 쓰려고 웹 문맥을 빈 포트(0)로 띄운다. 워커는 끈다. 시드가 커지면 별도 문맥으로 나눈다.
+	// 명령줄 인자로 넘겨 환경변수(PORT 등)보다 앞서게 한다. 서버가 떠 있어도 포트·DB 연결 풀(세션 풀 15)이 부딪치지 않게 연결은 2개만 쓴다.
 	val context = SpringApplicationBuilder(GrepServerApplication::class.java)
-		.properties("server.port=0", "grep.processing.enabled=false", "spring.main.banner-mode=off")
-		.run()
+		.properties("spring.main.banner-mode=off")
+		.run(
+			"--server.port=0",
+			"--grep.processing.enabled=false",
+			"--spring.datasource.hikari.maximum-pool-size=2",
+			"--spring.datasource.hikari.minimum-idle=1",
+		)
 	val code = context.use {
 		when (val result = it.getBean(DemoSeedService::class.java).seed(provider, email, seedDir)) {
 			is SeedResult.Seeded -> {

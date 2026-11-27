@@ -12,10 +12,14 @@ import java.util.concurrent.ConcurrentHashMap
 /** 메모리 스토리지. 클라이언트의 서명 URL PUT도 [put]으로 흉내 낸다. */
 class FakeObjectStorage : ObjectStorage {
 	private val objects = ConcurrentHashMap<String, ByteArray>()
+	private val contentTypes = ConcurrentHashMap<String, String>()
 
-	override fun put(objectPath: String, bytes: ByteArray) {
+	override fun put(objectPath: String, bytes: ByteArray, contentType: String) {
 		objects[objectPath] = bytes
+		contentTypes[objectPath] = contentType
 	}
+
+	fun contentTypeOf(objectPath: String): String? = contentTypes[objectPath]
 
 	fun exists(objectPath: String): Boolean = objects.containsKey(objectPath)
 
@@ -29,6 +33,7 @@ class FakeObjectStorage : ObjectStorage {
 
 	override fun delete(objectPath: String) {
 		objects.remove(objectPath)
+		contentTypes.remove(objectPath)
 	}
 }
 

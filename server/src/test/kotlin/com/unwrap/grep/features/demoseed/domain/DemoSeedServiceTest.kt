@@ -98,6 +98,30 @@ class DemoSeedServiceTest : ArchiveApiTestSupport() {
 	}
 
 	@Test
+	fun `파일자료가있을때_시드를실행하면_형식에맞는ContentType으로올리는지`() {
+		// given
+		val (email, userId) = account()
+
+		// when
+		seeder.seed(AuthProvider.GOOGLE, email, seedDir)
+
+		// then
+		val files = jdbc.sql("SELECT object_path, file_format FROM items WHERE user_id = :userId AND object_path IS NOT NULL")
+			.param("userId", userId).query().listOfRows()
+		val expected = mapOf(
+			"pdf" to "application/pdf",
+			"docx" to "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+			"png" to "image/png",
+			"jpeg" to "image/jpeg",
+			"heic" to "image/heic",
+			"txt" to "text/plain",
+			"md" to "text/markdown",
+			"webp" to "image/webp",
+		)
+		files.forEach { assertEquals(expected[it["file_format"]], storage.contentTypeOf(it["object_path"] as String), "${it["file_format"]}") }
+	}
+
+	@Test
 	fun `자료가있는계정에_시드를실행하면_거부하는지`() {
 		// given
 		val (email, userId) = account()

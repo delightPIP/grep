@@ -1,6 +1,7 @@
 package com.unwrap.grep.features.demoseed.domain
 
 import com.unwrap.grep.features.account.domain.AuthProvider
+import com.unwrap.grep.features.archive.domain.FileFormat
 import com.unwrap.grep.features.archive.domain.ItemKind
 import com.unwrap.grep.features.archive.domain.LinkNormalizer
 import com.unwrap.grep.features.archive.domain.ObjectStorage
@@ -75,8 +76,9 @@ class DemoSeedService(
 		val today = clock.instant()
 		val prepared = DemoSeedFile.load(seedDir).items.map { prepare(userId, it, seedDir, today) }
 		val uploads = prepared.mapNotNull { it.upload }
-		uploads.forEach { storage.put(it.objectPath, it.bytes) }
+		// 올리는 도중 실패해도 이미 올린 원본을 지운다(없는 경로 지우기는 무시된다).
 		val result = try {
+			uploads.forEach { storage.put(it.objectPath, it.bytes, it.contentType) }
 			transaction.execute { insertAll(userId, prepared.map { it.row }) }!!
 		} catch (e: RuntimeException) {
 			uploads.forEach { storage.delete(it.objectPath) }
@@ -93,7 +95,7 @@ class DemoSeedService(
 		return SeedResult.Seeded(rows.associate { it.seedId to repository.insert(userId, it) })
 	}
 
-	private class Upload(val objectPath: String, val bytes: ByteArray)
+	private class Upload(val objectPath: String, val bytes: ByteArray, val contentType: String)
 
 	private class Prepared(val row: SeedRow, val upload: Upload?)
 
@@ -131,7 +133,7 @@ class DemoSeedService(
 			searchText = searchText(entry, source),
 			savedAt = today.minus(Duration.ofDays(entry.savedDaysAgo)),
 		)
-		return Prepared(row, file?.let { Upload(it.objectPath, bytes!!) })
+		return Prepared(row, file?.let { Upload(it.objectPath, bytes!!, mimeType(it.format)) })
 	}
 
 	/** 워커가 쓰는 찾기 본문과 같은 순서: 제목·출처·요약·태그·본문(JdbcProcessingQueue.writeItem). */
@@ -139,6 +141,18 @@ class DemoSeedService(
 		listOfNotNull(entry.title, source, entry.listSummary, entry.handoffSummary, entry.tags.joinToString(" "), entry.body)
 			.filter { it.isNotBlank() }
 			.joinToString(" ")
+
+	/** Storage 버킷 허용 형식과 맞춘다. 브라우저 업로드는 파일의 형식을 그대로 보낸다. */
+	private fun mimeType(format: FileFormat): String = when (format) {
+		FileFormat.PDF -> "application/pdf"
+		FileFormat.MD -> "text/markdown"
+		FileFormat.TXT -> "text/plain"
+		FileFormat.DOCX -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+		FileFormat.PNG -> "image/png"
+		FileFormat.JPEG -> "image/jpeg"
+		FileFormat.WEBP -> "image/webp"
+		FileFormat.HEIC -> "image/heic"
+	}
 
 	private fun normalizeNewlines(text: String): String = text.replace("\r\n", "\n")
 
