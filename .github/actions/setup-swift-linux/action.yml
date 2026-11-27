@@ -1,0 +1,27 @@
+# carti-RIBs-Swift/.github/actions/setup-swift-linux 를 그대로 옮겼다.
+name: Swift 툴체인 설치 (Linux 러너)
+description: swift.org Ubuntu 24.04 툴체인을 받아 PATH에 넣고, 요청한 Swift SDK를 설치한다.
+inputs:
+  version:
+    description: Swift 버전
+    default: 6.4.2
+  sdks:
+    description: 설치할 Swift SDK. 한 줄에 하나씩 `<download.swift.org 아래 경로> <checksum>`
+    default: ""
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        SWIFT_VERSION: ${{ inputs.version }}
+        SWIFT_SDKS: ${{ inputs.sdks }}
+      run: |
+        base="https://download.swift.org/swift-${SWIFT_VERSION}-release"
+        bin="$RUNNER_TEMP/swift-${SWIFT_VERSION}-RELEASE-ubuntu24.04/usr/bin"
+        curl -fsSL "$base/ubuntu2404/swift-${SWIFT_VERSION}-RELEASE/swift-${SWIFT_VERSION}-RELEASE-ubuntu24.04.tar.gz" \
+          | tar -xz -C "$RUNNER_TEMP"
+        echo "$bin" >> "$GITHUB_PATH"
+        while read -r path checksum; do
+          [ -n "$path" ] || continue
+          "$bin/swift" sdk install "$base/$path" --checksum "$checksum"
+        done <<< "$SWIFT_SDKS"
