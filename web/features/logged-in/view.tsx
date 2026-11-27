@@ -913,7 +913,7 @@ function OriginalRow({ detail }: { detail: ItemDetail }) {
 /**
  * 본문이 없을 때 `· 본문 없음: <이유>`의 이유(통합 세션 규칙, #131). blocked·failed만 그리고,
  * 처리 중(상태 줄이 알림)과 ready(본문 열이 생기기 전에 처리된 자료)는 본문 줄을 그리지 않는다.
- * shortcut: failed 이유 낱말 `처리 실패`는 정책에 없어 통합 세션에 확인을 요청했다.
+ * failed 이유 `처리 실패`는 handoff-format 3절과 같은 낱말이다(`(요약 없음: 처리 실패)`, 통합 세션 확정).
  */
 function noBodyReason(item: ItemSummary): string | null {
   if (item.status === "failed") return "처리 실패";
