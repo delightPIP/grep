@@ -79,5 +79,12 @@
 | 075 | 2026-11-26 | [`/toPolicy` 대신 정책 빈칸 셋 반영](075-policy-gaps-from-topolicy.md) |
 | 076 | 2026-11-26 | [개발 넘기기 전 이슈 점검과 COM-010 작업 연결](076-link-com010-to-tasks.md) |
 | 077 | 2026-11-26 | [GitHub README 꾸미기](077-github-readme.md) |
+| 078 | 2026-11-26 | [서버 인증 /health, /me와 세션 만료 구현](078-server-auth-me-health.md) |
+| 079 | 2026-11-26 | [#31 B 갈래: Swift 코어 피처와 웹 wasm 브리지](079-issue-31-core-and-web-bridge.md) |
+| 080 | 2026-11-26 | [#31 웹 로그인 화면·터미널 껍데기·로그인 모듈](080-web-login-views-auth.md) |
+| 081 | 2026-11-26 | [#31 통합본 실제 로그인 확인(Mac)](081-issue-31-live-login-check.md) |
+| 082 | 2026-11-27 | [#31 로그인: 계획·뼈대·병렬 통합·검증 반영](082-issue-31-plan-scaffold-integration.md) |
+| 083 | 2026-11-27 | [#31 PR 54 테스트 계획의 남은 항목 확인(Mac)](083-pr-54-test-plan-recheck.md) |
+| 084 | 2026-11-27 | [데모 시드 파일 34건과 가상 기사 공개](084-demo-seed-files.md) |
 
 새 항목 파일을 만들 때 이 표에 한 줄을 추가한다. 파일명은 `NNN-<영문-슬러그>.md`이고 NNN은 다음 번호다.
