@@ -63,6 +63,14 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
 .gt-input { display: flex; gap: 1ch; align-items: baseline; }
 .gt-input-field { flex: 1; min-width: 0; font: inherit; color: var(--ink); background: transparent; border: 0; padding: 0; caret-color: var(--cursor); outline: none; }
 .gt-input-field::placeholder { color: var(--ink-muted); }
+
+/* 고치기 편집 칸(화면 W24, 시안 Edit ①): 이름 칸 16ch, 입력 칸은 남은 폭. 좁은 화면에서는 이름 아래로 내려간다. */
+.gt-field { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-1); padding-left: 2ch; }
+@media (min-width: 561px) {
+  .gt-field { grid-template-columns: 16ch minmax(0, 1fr); align-items: center; }
+}
+.gt-field-input { min-width: 0; font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 3px; padding: 6px 8px; }
+.gt-field-input:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
 /* 터치 기기와 좁은 화면: 입력줄 글자 16px. iOS는 16px 미만 입력칸을 누르면 화면을 확대하고 되돌리지 않는다. */
 @media (hover: none) and (pointer: coarse), (max-width: 560px) {
   .gt-input-field { font-size: 16px; }
@@ -102,5 +110,6 @@ html, body, #root, #app { height: 100%; }
 @media (max-width: 560px) { .gt-screen { padding: var(--space-4); } }
 
 /* 도움말 명령 표(commands 2절): 한글 · 영문 · 뜻 세 칸. 좁은 화면에서는 뜻이 다음 줄로. */
-.gt-guide-row { display: grid; grid-template-columns: 8ch 8ch minmax(0, 1fr); column-gap: 1ch; padding-left: 2ch; }
+/* 이름 칸은 가장 긴 `휴지통 비우기`(한글 6자 + 빈칸 = 13ch), 영문 칸은 `bin empty`(9ch)에 맞춘다. */
+.gt-guide-row { display: grid; grid-template-columns: 14ch 10ch minmax(0, 1fr); column-gap: 1ch; padding-left: 2ch; }
 .gt-guide-name { color: var(--command); }

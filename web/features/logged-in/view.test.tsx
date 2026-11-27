@@ -11,6 +11,9 @@ function renderView(state: Partial<LoggedInState> = {}) {
   const onPaste = vi.fn();
   const onFilesDrop = vi.fn();
   const onMoreRequested = vi.fn();
+  const onReviseSubmit = vi.fn();
+  const onReviseCancel = vi.fn();
+  const onSamplesRequest = vi.fn();
   const { container } = render(
     <LoggedInView
       itemCount={null}
@@ -25,6 +28,9 @@ function renderView(state: Partial<LoggedInState> = {}) {
       onPaste={onPaste}
       onFilesDrop={onFilesDrop}
       onMoreRequested={onMoreRequested}
+      onReviseSubmit={onReviseSubmit}
+      onReviseCancel={onReviseCancel}
+      onSamplesRequest={onSamplesRequest}
     />,
   );
   return {
@@ -33,8 +39,11 @@ function renderView(state: Partial<LoggedInState> = {}) {
     onPaste,
     onFilesDrop,
     onMoreRequested,
+    onReviseSubmit,
+    onReviseCancel,
+    onSamplesRequest,
     container,
-    input: screen.getByRole("textbox") as HTMLInputElement,
+    input: screen.getByRole("textbox", { name: "명령 입력" }) as HTMLInputElement,
   };
 }
 
@@ -115,7 +124,7 @@ describe("LoggedInView", () => {
     const { container } = renderView({ lines });
 
     // then
-    expect(outputLines(container).map(shownLine)).toEqual(["그렙 ~ $ ㅁㄴㅇ", "✗ 없는 명령: ㅁㄴㅇ"]);
+    expect(outputLines(container).map(shownLine)).toEqual(["그렙 ~ $ ㅁㄴㅇ", "✗ 없는 명령: ㅁㄴㅇ", "→ 명령 목록: 도움말"]);
   });
 
   it("없는명령으로끝난입력줄이있을때_화면을그리면_프롬프트를실패색으로그리는지", () => {
@@ -1171,7 +1180,7 @@ describe("LoggedInView", () => {
       expect(onSubmit).not.toHaveBeenCalled();
     });
 
-    it("도움말을쳤을때_화면을그리면_안내줄과명령13줄과예시줄을보이는지", () => {
+    it("도움말을쳤을때_화면을그리면_안내줄과명령16줄과예시줄을보이는지", () => {
       // given
       const lines: LoggedInState["lines"] = [{ kind: "prompt", text: "도움말" }, { kind: "guide" }];
 
@@ -1189,6 +1198,9 @@ describe("LoggedInView", () => {
         "묶음 pack 선택에 이름 붙이기",
         "고치기 revise 제목·요약 수정",
         "버리기 drop 삭제",
+        "되살리기 revive 휴지통에서 돌리기",
+        "휴지통 bin 휴지통 목록",
+        "휴지통 비우기 bin empty 휴지통 영구 삭제",
         "가져오기 bring 북마크 파일 가져오기",
         "연결 plug AI 도구 연결",
         "로그아웃 signout 로그아웃",
@@ -1270,6 +1282,508 @@ describe("LoggedInView", () => {
 
       // then
       expect(shown).toEqual(["✓ 연결됨"]);
+    });
+  });
+
+  describe("버리기·되살리기 결과(#93, ARC-008)", () => {
+    it("1건을버렸을때_화면을그리면_휴지통건수와되살리기번호를보이는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [
+        { kind: "prompt", text: "버리기 131" },
+        { kind: "dropped", items: [{ number: 131, title: "결제 오류 정리" }] },
+      ];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown[1]).toBe("✓ 휴지통 1건 (30일 뒤 삭제, 되살리기 131)");
+    });
+
+    it("여러건을버렸을때_화면을그리면_되살리기에번호를모두보이는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [
+        { kind: "prompt", text: "버리기" },
+        {
+          kind: "dropped",
+          items: [
+            { number: 131, title: "결제 오류 정리" },
+            { number: 57, title: "환불 규정" },
+          ],
+        },
+      ];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown[1]).toBe("✓ 휴지통 2건 (30일 뒤 삭제, 되살리기 131 57)");
+    });
+
+    it("되살렸을때_화면을그리면_되살림건수를보이는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [
+        { kind: "prompt", text: "되살리기 131 57" },
+        {
+          kind: "revived",
+          items: [
+            { number: 131, title: "결제 오류 정리" },
+            { number: 57, title: "환불 규정" },
+          ],
+        },
+      ];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown[1]).toBe("✓ 되살림 2건");
+    });
+  });
+
+  describe("버리기 확인·휴지통 목록·비우기(#96, ARC-008·COM-007)", () => {
+    function trashed(number: number, overrides: Partial<ItemSummary> = {}, daysLeft = 30) {
+      return { item: item({ number, ...overrides }), trashedAt: "2026-11-27T02:00:00Z", daysLeft };
+    }
+
+    it("2건이상버리려할때_화면을그리면_건수확인과실행낱말을묻는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [{ kind: "prompt", text: "버리기 21 29" }, { kind: "dropConfirm", total: 2 }];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown.slice(1)).toEqual(["! 버리기? 2건 (휴지통으로)", "→ 실행: 버리기 다시 입력 · 취소: 그 외 입력"]);
+    });
+
+    it("버리기확인을기다릴때_버리기칩을누르면_입력줄에버리기를찍기만하는지", () => {
+      // given
+      const { onInputChange, onSubmit } = renderView({ lines: [{ kind: "dropConfirm", total: 3 }] });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "버리기" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("버리기");
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+
+    it("휴지통을쳤을때_화면을그리면_건수머리와남은날칸과다음명령을보이는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [
+        { kind: "prompt", text: "휴지통" },
+        {
+          kind: "binList",
+          total: 2,
+          items: [
+            trashed(29, { title: "주간 업무 메모.md", source: "md" }),
+            trashed(21, { title: "사무실 비품 주문 목록.txt", source: "txt" }, 3),
+          ],
+          hasMore: false,
+        },
+      ];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown.slice(1)).toEqual([
+        "2건",
+        "29 주간 업무 메모.md md 30일 남음",
+        "21 사무실 비품 주문 목록.txt txt 3일 남음",
+        "→ 되살리기 또는 휴지통 비우기",
+      ]);
+    });
+
+    it("휴지통에다음쪽이남았을때_화면을그리면_머리에보인건수와더보기를보이는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [
+        { kind: "binList", total: 12, items: [trashed(29, { source: null })], hasMore: true },
+      ];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown[0]).toBe("12건 중 1건");
+      expect(shown).toContain("→ 더 보기");
+    });
+
+    it("휴지통목록일때_되살리기칩을누르면_입력줄에되살리기와빈칸을찍는지", () => {
+      // given
+      const { onInputChange } = renderView({
+        lines: [{ kind: "binList", total: 1, items: [trashed(29)], hasMore: false }],
+      });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "되살리기" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("되살리기 ");
+    });
+
+    it("휴지통을비우려할때_화면을그리면_되돌릴수없음과실행낱말을묻는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [{ kind: "prompt", text: "휴지통 비우기" }, { kind: "binEmptyConfirm", total: 2 }];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown.slice(1)).toEqual(["! 비우기? 2건 (되돌릴 수 없음)", "→ 실행: 비우기 다시 입력 · 취소: 그 외 입력"]);
+    });
+
+    it("휴지통을비웠을때_화면을그리면_영구삭제건수를보이는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [{ kind: "prompt", text: "비우기" }, { kind: "binEmptied", count: 2 }];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown[1]).toBe("✓ 비움  2건 영구 삭제");
+    });
+  });
+
+  describe("고치기 편집·결과(#99, ARC-002·ARC-004·화면 W24)", () => {
+    const REVISING = { number: 25, title: "겨울 음료 트렌드 보고서.pdf", summary: "겨울 음료 수요 정리" };
+
+    it("고치는중일때_화면을그리면_머리줄과두칸과키안내를보이고제목칸에초점을두는지", () => {
+      // given
+      const { container } = renderView({ lines: [{ kind: "prompt", text: "고치기 25" }], revising: REVISING });
+
+      // when
+      const title = screen.getByRole("textbox", { name: "제목" }) as HTMLInputElement;
+      const summary = screen.getByRole("textbox", { name: "요약 (직접 고침)" }) as HTMLInputElement;
+
+      // then
+      expect(outputLines(container).map(shownLine)).toContain("· 고치기 25  겨울 음료 트렌드 보고서.pdf");
+      expect(title.value).toBe(REVISING.title);
+      expect(summary.value).toBe(REVISING.summary);
+      expect(document.activeElement).toBe(title);
+      expect(container.textContent).toContain("Enter: 저장 · Esc: 취소 · Tab: 다음 칸");
+    });
+
+    it("고치지않을때_화면을그리면_편집칸이없는지", () => {
+      // given
+      renderView({ revising: null });
+
+      // when
+      const title = screen.queryByRole("textbox", { name: "제목" });
+
+      // then
+      expect(title).toBeNull();
+    });
+
+    it("두칸을고쳤을때_엔터를누르면_번호와고친제목요약을보내는지", () => {
+      // given
+      const { onReviseSubmit, onSubmit } = renderView({ revising: REVISING });
+      const title = screen.getByRole("textbox", { name: "제목" });
+      const summary = screen.getByRole("textbox", { name: "요약 (직접 고침)" });
+      fireEvent.change(title, { target: { value: "겨울 음료 보고서" } });
+      fireEvent.change(summary, { target: { value: "3쪽 표가 핵심" } });
+
+      // when
+      fireEvent.keyDown(summary, { key: "Enter" });
+
+      // then
+      expect(onReviseSubmit).toHaveBeenCalledWith(25, "겨울 음료 보고서", "3쪽 표가 핵심");
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+
+    it("고치기가끝났을때_편집칸이닫히면_명령입력줄로초점을돌려놓는지", () => {
+      // given
+      const props = {
+        itemCount: null, lines: [], input: "", selection: [], processingCount: 0, isOffline: false,
+        onInputChange: vi.fn(), onSubmit: vi.fn(), onPaste: vi.fn(), onFilesDrop: vi.fn(),
+      };
+      const { rerender } = render(<LoggedInView {...props} revising={REVISING} />);
+
+      // when
+      rerender(<LoggedInView {...props} revising={null} />);
+
+      // then
+      expect(document.activeElement).toBe(screen.getByRole("textbox", { name: "명령 입력" }));
+    });
+
+    it("한글을조합하는중일때_엔터를누르면_저장하지않는지", () => {
+      // given
+      const { onReviseSubmit } = renderView({ revising: REVISING });
+
+      // when
+      fireEvent.keyDown(screen.getByRole("textbox", { name: "제목" }), { key: "Enter", isComposing: true });
+
+      // then
+      expect(onReviseSubmit).not.toHaveBeenCalled();
+    });
+
+    it("고치는중일때_Esc를누르면_취소를알리고저장하지않는지", () => {
+      // given
+      const { onReviseSubmit, onReviseCancel } = renderView({ revising: REVISING });
+
+      // when
+      fireEvent.keyDown(screen.getByRole("textbox", { name: "요약 (직접 고침)" }), { key: "Escape" });
+
+      // then
+      expect(onReviseCancel).toHaveBeenCalledTimes(1);
+      expect(onReviseSubmit).not.toHaveBeenCalled();
+    });
+
+    it("요약을직접고쳐저장했을때_화면을그리면_고침줄과직접고침이름표를보이는지", () => {
+      // given
+      const revised = item({ number: 25, title: "겨울 음료 보고서", listSummary: "3쪽 표가 핵심", summarySource: "user" });
+      const lines: LoggedInState["lines"] = [{ kind: "prompt", text: "고치기 25" }, { kind: "revised", item: revised }];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown.slice(1)).toEqual(["✓ 고침 25번  겨울 음료 보고서", "요약 (직접 고침)  3쪽 표가 핵심"]);
+    });
+
+    it("제목만고쳐AI요약이남았을때_화면을그리면_직접고침이름표를붙이지않는지", () => {
+      // given
+      const revised = item({ number: 25, title: "겨울 음료 보고서", summarySource: "ai" });
+
+      // when
+      const shown = shownOutput([{ kind: "revised", item: revised }]);
+
+      // then
+      expect(shown).toEqual(["✓ 고침 25번  겨울 음료 보고서"]);
+    });
+
+    it("태그를지웠을때_화면을그리면_지운태그와번호를보이는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [
+        { kind: "prompt", text: "고치기 25 -#할인" },
+        { kind: "tagsRemoved", item: item({ number: 25 }), tags: ["할인"] },
+      ];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown[1]).toBe("✓ 태그 지움 #할인 (25번)");
+    });
+  });
+
+  describe("샘플 8건(#102, ARC-010)", () => {
+    it("첫화면일때_샘플칩을누르면_입력줄을거치지않고바로샘플을요청하는지", () => {
+      // given
+      const { onSamplesRequest, onInputChange } = renderView({ lines: [{ kind: "welcome" }] });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "샘플 8건으로 해 보기" }));
+
+      // then
+      expect(onSamplesRequest).toHaveBeenCalledTimes(1);
+      expect(onInputChange).not.toHaveBeenCalled();
+    });
+
+    it("샘플을받았을때_화면을그리면_받은범위와치우는명령과목록을보이는지", () => {
+      // given
+      const items = [item({ number: 15, title: "샘플 둘", source: null }), item({ number: 8, title: "샘플 하나", source: null })];
+      const lines: LoggedInState["lines"] = [{ kind: "samplesSaved", firstNumber: 8, lastNumber: 15, items }];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown.slice(0, 2)).toEqual(["✓ 샘플 8건 저장 (8-15번)", "· 치우려면: 버리기 8-15"]);
+      expect(shown[2]).toMatch(/^15 샘플 둘 /);
+    });
+
+    it("샘플을받았을때_치우는명령칩을누르면_입력줄에버리기범위를찍기만하는지", () => {
+      // given
+      const { onInputChange, onSubmit } = renderView({
+        lines: [{ kind: "samplesSaved", firstNumber: 1, lastNumber: 8, items: [] }],
+      });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "버리기 1-8" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("버리기 1-8");
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("고르기 빼기·비우기(#108, commands 6절)", () => {
+    it("선택에서뺐을때_화면을그리면_그때남은선택건수를보이는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [
+        { kind: "prompt", text: "고르기 빼기 140" },
+        { kind: "unpicked", items: [{ number: 140, title: "환불 규정" }], remaining: 2 },
+      ];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown.slice(1)).toEqual(["✓ 뺌  선택 2건 남음"]);
+    });
+
+    it("선택을모두풀었을때_화면을그리면_선택비움한줄을보이는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [{ kind: "prompt", text: "고르기 비우기" }, { kind: "pickCleared", count: 3 }];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown.slice(1)).toEqual(["✓ 선택 비움"]);
+    });
+  });
+
+  describe("모든 기기 로그아웃 확인(#111, ACC-002·COM-007)", () => {
+    it("로그아웃모든기기를쳤을때_화면을그리면_다른기기반영시간과실행낱말을묻는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [{ kind: "prompt", text: "로그아웃 모든기기" }, { kind: "signOutEverywhereConfirm" }];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown.slice(1)).toEqual([
+        "! 로그아웃? 모든 기기 (다른 기기는 최대 1시간 뒤)",
+        "→ 실행: 로그아웃 다시 입력 · 취소: 그 외 입력",
+      ]);
+    });
+  });
+
+  describe("시점 머리 줄·주 구분선(#114, user-flow 5절 3번·commands 3절 시점)", () => {
+    // 한국 시간 10/1 00:00 ~ 11/1 00:00(반열린 구간)
+    const LAST_MONTH = { label: "지난달", from: "2026-09-30T15:00:00Z", to: "2026-10-31T15:00:00Z" };
+    // 한국 시간 11/16(월) 00:00 ~ 11/23(월) 00:00
+    const LAST_WEEK = { label: "지난주", from: "2026-11-15T15:00:00Z", to: "2026-11-22T15:00:00Z" };
+    const savedOn = (number: number, savedAt: string) =>
+      item({ number, title: `자료 ${number}`, source: null, savedAt, status: "ready", listSummary: null, tags: [] });
+
+    it("최근에시점이붙고여러주에걸칠때_화면을그리면_건수머리와주마다구분선을보이는지", () => {
+      // given
+      const items = [
+        savedOn(9, "2026-10-30T01:00:00Z"),
+        savedOn(6, "2026-10-25T16:00:00Z"), // 한국 시간 10/26(월) 01:00
+        savedOn(5, "2026-10-25T14:00:00Z"), // 한국 시간 10/25(일) 23:00
+      ];
+      const lines: LoggedInState["lines"] = [
+        { kind: "prompt", text: "최근 지난달" },
+        { kind: "recentList", items, hasMore: false, period: LAST_MONTH },
+      ];
+
+      // when
+      const shown = shownOutput(lines).slice(1);
+
+      // then
+      expect(shown[0]).toBe("3건 · 지난달 (10/1~10/31)");
+      expect(shown[1]).toBe("── 10/26~11/1 ──");
+      expect(shown[2]).toMatch(/^9 자료 9 /);
+      expect(shown[3]).toMatch(/^6 자료 6 /);
+      expect(shown[4]).toBe("── 10/19~10/25 ──");
+      expect(shown[5]).toMatch(/^5 자료 5 /);
+    });
+
+    it("시점이한주안일때_화면을그리면_구분선없이머리만보이는지", () => {
+      // given
+      const items = [savedOn(12, "2026-11-20T03:00:00Z"), savedOn(11, "2026-11-16T03:00:00Z")];
+
+      // when
+      const shown = shownOutput([{ kind: "recentList", items, hasMore: false, period: LAST_WEEK }]);
+
+      // then
+      expect(shown[0]).toBe("2건 · 지난주 (11/16~11/22)");
+      expect(shown.some((line) => line.startsWith("──"))).toBe(false);
+    });
+
+    it("최근에시점이붙고10건을넘을때_화면을그리면_전체중보인건수를머리에보이는지", () => {
+      // given
+      const items = [savedOn(9, "2026-10-30T01:00:00Z")];
+
+      // when
+      const shown = shownOutput([{ kind: "recentList", items, hasMore: true, period: LAST_MONTH, total: 23 }]);
+
+      // then
+      expect(shown[0]).toBe("23건 중 1건 · 지난달 (10/1~10/31)");
+    });
+
+    it("찾기에시점이붙고다음쪽이남았을때_화면을그리면_전체중보인건수와시점을한머리에보이는지", () => {
+      // given
+      const items = [savedOn(9, "2026-10-30T01:00:00Z")];
+
+      // when
+      const shown = shownOutput([
+        { kind: "searchResult", query: { text: "결제 지난달", words: "결제", tags: [] }, total: 23, items, hasMore: true, period: LAST_MONTH },
+      ]);
+
+      // then
+      expect(shown[0]).toBe("23건 중 1건 · 지난달 (10/1~10/31)");
+    });
+  });
+
+  describe("오타 제안(#118, commands 5절)", () => {
+    it("가까운명령이있을때_화면을그리면_없는명령다음줄에고친입력을묻는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [
+        { kind: "prompt", text: "찻기 결제" },
+        { kind: "unknownCommand", name: "찻기", suggestion: "찾기 결제" },
+      ];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown.slice(1)).toEqual(["✗ 없는 명령: 찻기", "→ 찾기 결제?"]);
+    });
+
+    it("제안이떠있을때_제안칩을누르면_입력줄에고친입력을찍기만하는지", () => {
+      // given
+      const { onInputChange, onSubmit } = renderView({
+        lines: [{ kind: "unknownCommand", name: "찻기", suggestion: "찾기 결제" }],
+      });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "찾기 결제" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("찾기 결제");
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("시점을 붙인 찾기 0건(#114, commands 6절)", () => {
+    const LAST_MONTH = { label: "지난달", from: "2026-09-30T15:00:00Z", to: "2026-10-31T15:00:00Z" };
+
+    it("시점을붙인찾기가0건일때_화면을그리면_시점을밝히고기간없이다시찾기를권하는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [
+        { kind: "prompt", text: "찾기 결제 #위젯 지난달" },
+        {
+          kind: "noResults",
+          query: { text: "결제 #위젯 지난달", words: "결제", tags: ["위젯"] },
+          recent: [],
+          period: LAST_MONTH,
+        },
+      ];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown.slice(1)).toEqual(['· 0건: "결제 #위젯" (지난달)', "→ 기간 없이: 찾기 결제 #위젯"]);
+    });
+
+    it("시점이있는0건일때_기간없이칩을누르면_입력줄에찍기만하는지", () => {
+      // given
+      const { onInputChange } = renderView({
+        lines: [{ kind: "noResults", query: { text: "결제 지난달", words: "결제", tags: [] }, recent: [], period: LAST_MONTH }],
+      });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "찾기 결제" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("찾기 결제");
     });
   });
 });

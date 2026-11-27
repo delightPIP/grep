@@ -120,16 +120,19 @@ export type CommandFailure = "disconnected" | "timedOut" | "serverError" | "clip
 /** 출력 한 줄. core `LoggedInViewState.Line`. 문구는 뷰가 정책 원문으로 만든다. */
 export type TerminalLine =
   | { kind: "prompt"; text: string }
-  | { kind: "unknownCommand"; name: string }
+  /** suggestion: 가까운 명령으로 고친 입력 전체(`찾기 결제`, F17). 없으면 null(#118, 통합 승인) */
+  | { kind: "unknownCommand"; name: string; suggestion?: string | null }
   | { kind: "missingArgument"; command: CommandName }
   | { kind: "missingTag" }
   | { kind: "saved"; item: ItemSummary }
   | { kind: "alreadySaved"; item: ItemSummary }
   | { kind: "inTrash"; number: number }
   | { kind: "saveFailed"; reason: SaveFailure; recovery: SaveRecovery }
-  | { kind: "recentList"; items: ItemSummary[]; hasMore: boolean; period?: Period | null }
+  /** total: 시점이 붙은 `최근`이면 그 기간 전체 건수, 시점이 없으면 null(#114, 통합 승인) */
+  | { kind: "recentList"; items: ItemSummary[]; hasMore: boolean; period?: Period | null; total?: number | null }
   | { kind: "searchResult"; query: SearchQuery; total: number; items: ItemSummary[]; hasMore: boolean; period?: Period | null }
-  | { kind: "noResults"; query: SearchQuery; recent: ItemSummary[] }
+  /** period: 시점을 붙인 찾기가 0건이면 그 시점. `→ 기간 없이: 찾기 <검색어>`를 보인다(#114, 통합 승인) */
+  | { kind: "noResults"; query: SearchQuery; recent: ItemSummary[]; period?: Period | null }
   | { kind: "picked"; items: ItemRef[] }
   | { kind: "notFound"; numbers: number[] }
   | { kind: "invalidNumber"; input: string }
@@ -155,7 +158,8 @@ export type TerminalLine =
   // #93 샘플(ARC-010 규칙 4): 받은 범위와 치우는 법, 이어서 `최근`과 같은 목록
   | { kind: "samplesSaved"; firstNumber: number; lastNumber: number; items: ItemSummary[] }
   // #108 고르기 빼기·비우기
-  | { kind: "unpicked"; items: ItemRef[] }
+  /** remaining: 뺀 뒤 남은 선택 수(1 이상). 0이 되면 unpicked 대신 pickCleared가 온다(#108, 통합 승인) */
+  | { kind: "unpicked"; items: ItemRef[]; remaining: number }
   | { kind: "pickCleared"; count: number }
   // #111 로그아웃 모든기기(ACC-002 규칙 4): 확인 뒤 Supabase 전역 로그아웃. 다른 기기는 접근 토큰 만료 때(최대 1시간)
   | { kind: "signOutEverywhereConfirm" };

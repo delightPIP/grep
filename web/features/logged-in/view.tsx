@@ -1,6 +1,17 @@
 // 터미널 화면. 순수 뷰: 받은 상태만 그리고, 입력은 onInputChange·onSubmit·onPaste·onFilesDrop으로만 알린다.
 // 배치는 시안 Main·Errors·Logout ③ 아트보드, 출력 비우기(로그아웃·다른 계정 로그인, COM-009)는 코어가 lines로 내려준다.
-import { createContext, useContext, useEffect, useRef, useState, type ClipboardEvent, type DragEvent, type ReactNode } from "react";
+import {
+  Fragment,
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ClipboardEvent,
+  type DragEvent,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import type {
   CommandFailure,
   CommandName,
@@ -8,10 +19,13 @@ import type {
   ItemRef,
   ItemSummary,
   LoggedInState,
+  Period,
+  Revising,
   SaveFailure,
   SaveRecovery,
   SearchQuery,
   TerminalLine,
+  TrashEntry,
 } from "../../support/view-state";
 import { Banner, DockInput, Line, Prompt, StatusBar, Window, type StatusItem } from "../../ui/grep";
 
@@ -27,6 +41,17 @@ export type LoggedInViewProps = LoggedInState & {
    * shortcut: 선택 속성. 어댑터가 `handle.moreRequested`로 이으면(#60 클라이언트 갈래) 필수로 바꾼다.
    */
   onMoreRequested?: () => void;
+  /**
+   * `고치기` 편집 칸에서 Enter(core `reviseSubmitted`), Esc(core `reviseCancelled`).
+   * shortcut: 선택 속성. 어댑터가 `handle.reviseSubmitted`·`handle.reviseCancelled`로 이으면(M 갈래) 필수로 바꾼다.
+   */
+  onReviseSubmit?: (number: number, title: string, summary: string) => void;
+  onReviseCancel?: () => void;
+  /**
+   * 0건 첫 화면의 `→ 샘플 8건으로 해 보기`를 눌렀다(core `samplesRequested`). 누르면 바로 저장한다(ARC-010 규칙 2).
+   * shortcut: 선택 속성. 어댑터가 `handle.samplesRequested`로 이으면(M 갈래) 필수로 바꾼다.
+   */
+  onSamplesRequest?: () => void;
 };
 
 const HELP_HINT = { key: "?", label: "도움말" };
@@ -77,7 +102,8 @@ const PICK_EXAMPLE = "고르기 131 140";
  * 출력 안의 명령 칩·자료 번호가 쓰는 것(commands 6절 출력 원칙).
  * insert: 누르면 그 명령을 입력줄에 찍기만 한다(엔터로 실행). selected: 목록 행 `▸` 표시용 고른 번호.
  */
-type TerminalChips = { insert: (command: string) => void; selected: ReadonlySet<number> };
+/** requestSamples: 화면 칩 `샘플 8건으로 해 보기`. 명령 칩과 달리 입력줄을 거치지 않는다. */
+type TerminalChips = { insert: (command: string) => void; selected: ReadonlySet<number>; requestSamples?: () => void };
 const ChipContext = createContext<TerminalChips>({ insert: () => {}, selected: new Set() });
 
 /** 명령 칩. 누르면 입력줄에 찍힌다. 화면 칩(`더 보기`·`펼치기`)과 달리 바로 실행하지 않는다. */
@@ -250,20 +276,71 @@ function ListRow({ item }: { item: ItemSummary }) {
   );
 }
 
-function ListLines({ items, hasMore, onMoreRequested }: { items: ItemSummary[]; hasMore: boolean; onMoreRequested?: () => void }) {
+/** commands 6절 더 보기. 다음 쪽은 코어가 받는다. */
+function MoreChip({ onMoreRequested }: { onMoreRequested?: () => void }) {
+  return (
+    <Plain>
+      {"→ "}
+      <button type="button" className="gt-chip" onClick={onMoreRequested}>
+        더 보기
+      </button>
+    </Plain>
+  );
+}
+
+/**
+ * 시점(F22) 날짜 계산. 한국 시간은 일광 절약 시간이 없어 UTC+9 고정이므로, 9시간을 더한 UTC 날짜를 한국 날짜로 쓴다.
+ * 날짜는 1970-01-01부터 센 한국 날짜 번호로 다룬다.
+ */
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const DAYS_PER_WEEK = 7;
+
+const kstDay = (ms: number) => Math.floor((ms + KST_OFFSET_MS) / DAY_MS);
+/** 주는 월요일에 시작한다(commands 3절 시점). */
+function weekStart(day: number): number {
+  const sundayBased = new Date(day * DAY_MS).getUTCDay();
+  return day - ((sundayBased + DAYS_PER_WEEK - 1) % DAYS_PER_WEEK);
+}
+function monthDay(day: number): string {
+  const date = new Date(day * DAY_MS);
+  return `${date.getUTCMonth() + 1}/${date.getUTCDate()}`;
+}
+
+/** 기간의 첫날과 마지막 날. to는 반열린 구간 끝이라 1ms 앞이 마지막 날이다. */
+function periodDays(period: Period): { first: number; last: number } {
+  return { first: kstDay(Date.parse(period.from)), last: kstDay(Date.parse(period.to) - 1) };
+}
+
+/** 기간이 여러 주에 걸치면 주 구분선을 넣는다(user-flow 5절 3번). */
+function spansWeeks(period: Period): boolean {
+  const { first, last } = periodDays(period);
+  return weekStart(first) !== weekStart(last);
+}
+
+/** 주 구분선 `── 10/26~11/1 ──`. 기간 끝에서 자르지 않고 월~일 한 주를 보인다(시안 TimeSearch ②). */
+function WeekDivider({ start }: { start: number }) {
+  return <Plain dim>{`── ${monthDay(start)}~${monthDay(start + DAYS_PER_WEEK - 1)} ──`}</Plain>;
+}
+
+type ListLinesProps = { items: ItemSummary[]; hasMore: boolean; onMoreRequested?: () => void; period?: Period | null };
+
+function ListLines({ items, hasMore, onMoreRequested, period }: ListLinesProps) {
+  const divided = period != null && spansWeeks(period);
+  const weekOf = (item: ItemSummary) => weekStart(kstDay(Date.parse(item.savedAt)));
   return (
     <>
-      {items.map((item) => (
-        <ListRow key={item.number} item={item} />
-      ))}
-      {hasMore && (
-        <Plain>
-          {"→ "}
-          <button type="button" className="gt-chip" onClick={onMoreRequested}>
-            더 보기
-          </button>
-        </Plain>
-      )}
+      {items.map((item, index) => {
+        const week = weekOf(item);
+        const newWeek = divided && (index === 0 || weekOf(items[index - 1]) !== week);
+        return (
+          <Fragment key={item.number}>
+            {newWeek && <WeekDivider start={week} />}
+            <ListRow item={item} />
+          </Fragment>
+        );
+      })}
+      {hasMore && <MoreChip onMoreRequested={onMoreRequested} />}
     </>
   );
 }
@@ -273,22 +350,80 @@ function searchHeader(total: number, shown: number): string {
   return shown < total ? `${total}건 중 ${shown}건` : `${total}건`;
 }
 
-type SearchResultLinesProps = { total: number; items: ItemSummary[]; hasMore: boolean; onMoreRequested?: () => void };
+/** 시점이 붙으면 머리 뒤에 ` · 지난달 (10/1~10/31)`(commands 6절 시점을 붙인 결과). */
+function listHeader(total: number, shown: number, period: Period | null | undefined): string {
+  const count = searchHeader(total, shown);
+  if (period == null) return count;
+  const { first, last } = periodDays(period);
+  return `${count} · ${period.label} (${monthDay(first)}~${monthDay(last)})`;
+}
 
-function SearchResultLines({ total, items, hasMore, onMoreRequested }: SearchResultLinesProps) {
+type SearchResultLinesProps = {
+  total: number;
+  items: ItemSummary[];
+  hasMore: boolean;
+  onMoreRequested?: () => void;
+  period?: Period | null;
+};
+
+function SearchResultLines({ total, items, hasMore, onMoreRequested, period }: SearchResultLinesProps) {
   return (
     <>
-      <Plain>{searchHeader(total, items.length)}</Plain>
-      <ListLines items={items} hasMore={hasMore} onMoreRequested={onMoreRequested} />
+      <Plain>{listHeader(total, items.length, period)}</Plain>
+      <ListLines items={items} hasMore={hasMore} onMoreRequested={onMoreRequested} period={period} />
     </>
   );
 }
 
 /** 0건 뒤 최근 자료는 검색 결과처럼 읽히지 않게 머리줄을 단다(commands 6절, ARC-002 사용자 문구). */
-function NoResultsLines({ query, recent }: { query: SearchQuery; recent: ItemSummary[] }) {
+/**
+ * commands 5절 없는 명령. 가까운 명령(F17)이 있으면 고친 입력을 묻고, 없으면 도움말로 안내한다.
+ * 제안 칩은 다른 명령 칩처럼 입력줄에 찍기만 한다. 엔터 한 번으로 제안을 실행하는 것은 코어가 맡는다(commands 5절 입력 받아 주기).
+ */
+function UnknownCommandLines({ name, suggestion }: { name: string; suggestion: string | null }) {
   return (
     <>
-      <Line tone="info">{`0건: "${query.text}"`}</Line>
+      <Line tone="error">
+        <b>없는 명령:</b> {name}
+      </Line>
+      <Plain>
+        {"→ "}
+        {suggestion === null ? (
+          <>
+            {"명령 목록: "}
+            <CommandChip command="도움말" />
+          </>
+        ) : (
+          <>
+            <CommandChip command={suggestion} />?
+          </>
+        )}
+      </Plain>
+    </>
+  );
+}
+
+/** 시점 낱말을 뺀 검색어(`결제 #위젯`). 시점이 붙은 찾기에서 query.text는 시점까지 친 그대로라 다시 만든다. */
+const queryWithoutPeriod = (query: SearchQuery) => [query.words, ...query.tags.map((tag) => `#${tag}`)].filter(Boolean).join(" ");
+
+type NoResultsLinesProps = { query: SearchQuery; recent: ItemSummary[]; period?: Period | null };
+
+function NoResultsLines({ query, recent, period }: NoResultsLinesProps) {
+  const bare = queryWithoutPeriod(query);
+  return (
+    <>
+      {period == null ? (
+        <Line tone="info">{`0건: "${query.text}"`}</Line>
+      ) : (
+        // commands 6절 시점을 붙인 결과: `· 0건: "결제" (지난달)` 뒤에 `→ 기간 없이: 찾기 결제`.
+        <>
+          <Line tone="info">{`0건: "${bare}" (${period.label})`}</Line>
+          <Plain>
+            {"→ 기간 없이: "}
+            <CommandChip command={`찾기 ${bare}`} />
+          </Plain>
+        </>
+      )}
       {recent.length > 0 && <Line tone="info">{`최근 저장 ${recent.length}건 (검색 결과 아님)`}</Line>}
       <ListLines items={recent} hasMore={false} />
     </>
@@ -380,6 +515,83 @@ function HandoffConfirmLines({ total }: { total: number }) {
   );
 }
 
+/** COM-007 확인 답. 실행 낱말은 칩으로 입력줄에 찍기만 한다(엔터로 답). */
+function ConfirmAnswer({ word }: { word: string }) {
+  return (
+    <Plain>
+      {"→ 실행: "}
+      <CommandChip command={word} />
+      {" 다시 입력 · 취소: 그 외 입력"}
+    </Plain>
+  );
+}
+
+/** ARC-008 2건 이상 버리기 확인. */
+function DropConfirmLines({ total }: { total: number }) {
+  return (
+    <>
+      <Line tone="warn">{`버리기? ${total}건 (휴지통으로)`}</Line>
+      <ConfirmAnswer word="버리기" />
+    </>
+  );
+}
+
+/** ARC-008 휴지통 비우기 확인. */
+function BinEmptyConfirmLines({ total }: { total: number }) {
+  return (
+    <>
+      <Line tone="warn">{`비우기? ${total}건 (되돌릴 수 없음)`}</Line>
+      <ConfirmAnswer word="비우기" />
+    </>
+  );
+}
+
+/**
+ * ACC-002 모든 기기 로그아웃 확인. 정책 문구의 `· AI 도구 연결 N개`는 연결(F7)을 만들 때부터 적용한다(ACC-002 적용 범위).
+ * shortcut: 연결 수가 계약에 없어 그 칸을 뺐다. F7에서 연결 수를 계약에 더할 때 넣는다.
+ */
+function SignOutEverywhereConfirmLines() {
+  return (
+    <>
+      <Line tone="warn">로그아웃? 모든 기기 (다른 기기는 최대 1시간 뒤)</Line>
+      <ConfirmAnswer word="로그아웃" />
+    </>
+  );
+}
+
+/** 휴지통 행. 시각 칸에 영구 삭제까지 남은 날(ARC-008 규칙 10). */
+function TrashRow({ entry: { item, daysLeft } }: { entry: TrashEntry }) {
+  return (
+    <div className="gt-line gt-row">
+      <NumberCell number={item.number} />
+      <span>{item.kind === "text" ? textTitle(item.title) : item.title}</span>
+      {item.source && <span className="gt-row-meta">{item.source}</span>}
+      <span className="gt-row-meta">{`${daysLeft}일 남음`}</span>
+    </div>
+  );
+}
+
+type BinListLinesProps = { total: number; items: TrashEntry[]; hasMore: boolean; onMoreRequested?: () => void };
+
+/** `휴지통` 목록(ARC-008 규칙 5, 시안 Trash ③). 순서는 서버가 지운 날 최신순으로 준다. */
+function BinListLines({ total, items, hasMore, onMoreRequested }: BinListLinesProps) {
+  return (
+    <>
+      <Plain>{searchHeader(total, items.length)}</Plain>
+      {items.map((entry) => (
+        <TrashRow key={entry.item.number} entry={entry} />
+      ))}
+      {hasMore && <MoreChip onMoreRequested={onMoreRequested} />}
+      <Plain>
+        {"→ "}
+        <CommandChip command="되살리기 ">되살리기</CommandChip>
+        {" 또는 "}
+        <CommandChip command="휴지통 비우기" />
+      </Plain>
+    </>
+  );
+}
+
 /** COM-008 값: 직접 복사 키. 터치 기기 문구는 AI 제안(PO 확인 전). */
 function copyKeyHint(): string {
   if (typeof window.matchMedia === "function" && window.matchMedia("(hover: none) and (pointer: coarse)").matches) {
@@ -446,13 +658,41 @@ function TerminalIntro({ itemCount }: { itemCount: number | null }) {
 }
 
 /** commands 6절 첫 화면(자료 0건). 명령 13줄 표는 보이지 않는다. */
+/** ARC-010 규칙 2: 누르면 바로 저장. 두 번 눌러도 한 번만 저장하는 것(규칙 7)은 코어·서버가 지킨다. */
+function SamplesChip() {
+  const { requestSamples } = useContext(ChipContext);
+  return (
+    <button type="button" className="gt-chip" onClick={requestSamples}>
+      샘플 8건으로 해 보기
+    </button>
+  );
+}
+
+/** ARC-010 규칙 4: 받은 번호 범위와 치우는 법을 한 줄씩, 이어서 `최근`과 같은 목록. */
+function SamplesSavedLines({ firstNumber, lastNumber, items }: { firstNumber: number; lastNumber: number; items: ItemSummary[] }) {
+  const range = `${firstNumber}-${lastNumber}`;
+  return (
+    <>
+      <Line tone="ok">{`샘플 ${lastNumber - firstNumber + 1}건 저장 (${range}번)`}</Line>
+      <Line tone="info">
+        {"치우려면: "}
+        <CommandChip command={`버리기 ${range}`} />
+      </Line>
+      <ListLines items={items} hasMore={false} />
+    </>
+  );
+}
+
 function WelcomeLines() {
   return (
     <>
       <TerminalHead />
       <Line tone="info">자료 0건</Line>
-      {/* shortcut: 샘플 저장(ARC-010)은 서버·명령이 없어 칩 대신 글자로만 둔다. 샘플 저장이 들어오면 칩으로. */}
-      <Plain>→ 샘플 8건으로 해 보기 또는 아래에 링크 붙여 넣기</Plain>
+      <Plain>
+        {"→ "}
+        <SamplesChip />
+        {" 또는 아래에 링크 붙여 넣기"}
+      </Plain>
       <Line tone="info">
         {"명령 전체: "}
         <CommandChip command="도움말" />
@@ -461,7 +701,7 @@ function WelcomeLines() {
   );
 }
 
-/** commands 2절 `도움말` 화면. 명령 13줄(한글·영문·뜻). */
+/** commands 2절 `도움말` 화면. 명령 13줄에 휴지통 명령 3줄(ARC-008, #96)을 더한 16줄(한글·영문·뜻). */
 const GUIDE_ROWS: ReadonlyArray<readonly [string, string, string]> = [
   ["담기", "keep", "자료 저장"],
   ["최근", "recent", "최근 자료 목록"],
@@ -471,6 +711,9 @@ const GUIDE_ROWS: ReadonlyArray<readonly [string, string, string]> = [
   ["묶음", "pack", "선택에 이름 붙이기"],
   ["고치기", "revise", "제목·요약 수정"],
   ["버리기", "drop", "삭제"],
+  ["되살리기", "revive", "휴지통에서 돌리기"],
+  ["휴지통", "bin", "휴지통 목록"],
+  ["휴지통 비우기", "bin empty", "휴지통 영구 삭제"],
   ["가져오기", "bring", "북마크 파일 가져오기"],
   ["연결", "plug", "AI 도구 연결"],
   ["로그아웃", "signout", "로그아웃"],
@@ -506,11 +749,7 @@ function OutputLine({ line, failed, onMoreRequested }: OutputLineProps) {
     case "prompt":
       return <Prompt cmd={line.text} failed={failed} />;
     case "unknownCommand":
-      return (
-        <Line tone="error">
-          <b>없는 명령:</b> {line.name}
-        </Line>
-      );
+      return <UnknownCommandLines name={line.name} suggestion={line.suggestion ?? null} />;
     case "missingArgument":
       // 다른 명령의 빠진 인자 문구는 그 명령의 실행 이슈에서 더한다.
       if (line.command === "keep") return <Line tone="error">저장할 것 없음  예: 담기 https://…</Line>;
@@ -531,13 +770,29 @@ function OutputLine({ line, failed, onMoreRequested }: OutputLineProps) {
     case "saveFailed":
       return <SaveFailedLines reason={line.reason} recovery={line.recovery} />;
     case "recentList":
-      return <ListLines items={line.items} hasMore={line.hasMore} onMoreRequested={onMoreRequested} />;
+      // 시점이 없는 `최근`은 머리 줄 없이 목록만(commands 6절). 시점이 있으면 찾기와 같은 머리 줄.
+      if (line.period == null) return <ListLines items={line.items} hasMore={line.hasMore} onMoreRequested={onMoreRequested} />;
+      return (
+        <SearchResultLines
+          total={line.total ?? line.items.length}
+          items={line.items}
+          hasMore={line.hasMore}
+          onMoreRequested={onMoreRequested}
+          period={line.period}
+        />
+      );
     case "searchResult":
       return (
-        <SearchResultLines total={line.total} items={line.items} hasMore={line.hasMore} onMoreRequested={onMoreRequested} />
+        <SearchResultLines
+          total={line.total}
+          items={line.items}
+          hasMore={line.hasMore}
+          onMoreRequested={onMoreRequested}
+          period={line.period}
+        />
       );
     case "noResults":
-      return <NoResultsLines query={line.query} recent={line.recent} />;
+      return <NoResultsLines query={line.query} recent={line.recent} period={line.period} />;
     case "picked":
       return <PickedLines items={line.items} />;
     case "notFound":
@@ -561,6 +816,42 @@ function OutputLine({ line, failed, onMoreRequested }: OutputLineProps) {
       return <CommandFailedLines command={line.command} reason={line.reason} retry={line.retry} />;
     case "reconnected":
       return <Line tone="ok">연결됨</Line>;
+    case "dropped":
+      // ARC-008 사용자 문구. 되살리기는 `<번호...>`를 받으므로 옮긴 번호를 모두 적는다.
+      return (
+        <Line tone="ok">
+          {`휴지통 ${line.items.length}건 (30일 뒤 삭제, 되살리기 ${line.items.map((ref) => ref.number).join(" ")})`}
+        </Line>
+      );
+    case "dropConfirm":
+      return <DropConfirmLines total={line.total} />;
+    case "binList":
+      return (
+        <BinListLines total={line.total} items={line.items} hasMore={line.hasMore} onMoreRequested={onMoreRequested} />
+      );
+    case "binEmptyConfirm":
+      return <BinEmptyConfirmLines total={line.total} />;
+    case "binEmptied":
+      // ARC-008 사용자 문구.
+      return <Line tone="ok">{`비움  ${line.count}건 영구 삭제`}</Line>;
+    case "signOutEverywhereConfirm":
+      return <SignOutEverywhereConfirmLines />;
+    case "unpicked":
+      // commands 6절 선택 빼기. 남은 수는 그 시점 값을 줄이 들고 온다(지난 줄이 나중 선택에 따라 바뀌지 않게).
+      return <Line tone="ok">{`뺌  선택 ${line.remaining}건 남음`}</Line>;
+    case "pickCleared":
+      // commands 6절 선택 빼기 "모두 풀면 `✓ 선택 비움`". 건수는 문구에 없다.
+      return <Line tone="ok">선택 비움</Line>;
+    case "samplesSaved":
+      return <SamplesSavedLines firstNumber={line.firstNumber} lastNumber={line.lastNumber} items={line.items} />;
+    case "revised":
+      return <RevisedLines item={line.item} />;
+    case "tagsRemoved":
+      // 시안 Edit ③(문구 제안). 지운 태그는 다시 붙지 않는다(ARC-002 규칙 2).
+      return <Line tone="ok">{`태그 지움 ${line.tags.map((tag) => `#${tag}`).join(" ")} (${line.item.number}번)`}</Line>;
+    case "revived":
+      // ARC-008 사용자 문구.
+      return <Line tone="ok">{`되살림 ${line.items.length}건`}</Line>;
     default:
       // 나머지 줄 종류(#56 계약)는 각 실행 이슈(#58~#68)가 정책 원문으로 그린다.
       return null;
@@ -575,6 +866,80 @@ function Block({ lines, onMoreRequested }: { lines: TerminalLine[]; onMoreReques
         <OutputLine key={index} line={line} failed={failed} onMoreRequested={onMoreRequested} />
       ))}
     </div>
+  );
+}
+
+type ReviseFormProps = {
+  revising: Revising;
+  onSubmit?: (number: number, title: string, summary: string) => void;
+  onCancel?: () => void;
+};
+
+/**
+ * `고치기` 편집(commands 3절 고치기, 화면 W24). 모달 없이 출력 안에 제목·`요약 (직접 고침)` 두 칸을 열고 첫 칸에 초점.
+ * Enter 저장, Esc 취소, Tab은 브라우저 기본대로 다음 칸. 고친 값은 저장 전까지 이 칸만 들고 있다.
+ */
+function ReviseForm({ revising, onSubmit, onCancel }: ReviseFormProps) {
+  const [title, setTitle] = useState(revising.title);
+  const [summary, setSummary] = useState(revising.summary);
+  const titleRef = useRef<HTMLInputElement>(null);
+  // 입력줄의 autoFocus가 뒤에 그려져 초점을 가져가므로, 그린 뒤 제목 칸으로 옮긴다.
+  useEffect(() => titleRef.current?.focus(), []);
+
+  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      onCancel?.();
+      return;
+    }
+    // 한글 조합을 끝내는 엔터는 저장이 아니다.
+    if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+    event.preventDefault();
+    onSubmit?.(revising.number, title, summary);
+  }
+
+  return (
+    <div className="gt-block gt-revise">
+      <Line tone="info">{`고치기 ${revising.number}  ${revising.title}`}</Line>
+      <label className="gt-field">
+        <span className="gt-hint">제목</span>
+        <input
+          ref={titleRef}
+          className="gt-field-input"
+          type="text"
+          autoComplete="off"
+          spellCheck={false}
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+          onKeyDown={handleKeyDown}
+        />
+      </label>
+      <label className="gt-field">
+        <span className="gt-hint">요약 (직접 고침)</span>
+        <input
+          className="gt-field-input"
+          type="text"
+          autoComplete="off"
+          spellCheck={false}
+          value={summary}
+          onChange={(event) => setSummary(event.target.value)}
+          onKeyDown={handleKeyDown}
+        />
+      </label>
+      <Line tone="info">Enter: 저장 · Esc: 취소 · Tab: 다음 칸</Line>
+    </div>
+  );
+}
+
+/** 고친 뒤. 직접 고친 요약에는 ARC-004 규칙 1 이름표를 붙인다(시안 Edit ②). */
+function RevisedLines({ item }: { item: ItemSummary }) {
+  return (
+    <>
+      <Line tone="ok">{`고침 ${item.number}번  ${item.title}`}</Line>
+      {item.summarySource === "user" && item.listSummary !== null && (
+        <Plain dim>{`요약 (직접 고침)  ${item.listSummary}`}</Plain>
+      )}
+    </>
   );
 }
 
@@ -618,9 +983,20 @@ export function LoggedInView({
   onPaste,
   onFilesDrop,
   onMoreRequested,
+  revising,
+  onReviseSubmit,
+  onReviseCancel,
+  onSamplesRequest,
 }: LoggedInViewProps) {
   const [isDragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const isRevising = Boolean(revising);
+  const wasRevising = useRef(isRevising);
+  // 고치기 칸이 닫히면(저장·취소) 초점이 갈 곳이 없어지므로 입력줄로 돌려놓는다. 닫힐 때만 옮긴다(미리보기 선택 등을 빼앗지 않게).
+  useEffect(() => {
+    if (wasRevising.current && !isRevising) inputRef.current?.focus();
+    wasRevising.current = isRevising;
+  }, [isRevising]);
   // 명령 칩·번호는 입력줄에 찍기만 한다(commands 6절, 2026-11-26 PO 결정). 눌린 버튼에 초점이 남으면 엔터가 버튼을 다시 누르므로 입력줄로 돌려보낸다.
   const chips: TerminalChips = {
     insert: (command) => {
@@ -628,6 +1004,7 @@ export function LoggedInView({
       inputRef.current?.focus();
     },
     selected: new Set(selection.map((ref) => ref.number)),
+    requestSamples: onSamplesRequest,
   };
 
   function handlePaste(event: ClipboardEvent) {
@@ -679,6 +1056,9 @@ export function LoggedInView({
           {toBlocks(lines).map((block, index) => (
             <Block key={index} lines={block} onMoreRequested={onMoreRequested} />
           ))}
+          {revising && (
+            <ReviseForm key={revising.number} revising={revising} onSubmit={onReviseSubmit} onCancel={onReviseCancel} />
+          )}
         </ChipContext.Provider>
         <SelectionLine selection={selection} />
         <DockInput
