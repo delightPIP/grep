@@ -13,10 +13,12 @@ import {
   type ReactNode,
 } from "react";
 import type {
+  BlockedReason,
   BundleEntry,
   CommandFailure,
   CommandName,
   HandoffResult,
+  ItemDetail,
   ItemRef,
   ItemSummary,
   LoggedInState,
@@ -259,6 +261,16 @@ const MATCH_LABEL: Partial<Record<NonNullable<ItemSummary["matchedIn"]>, string>
 const rowTone = (item: ItemSummary) =>
   item.status === "blocked" || item.status === "failed" ? "gt-warn" : "gt-hint";
 
+/** 목록 제목. 누르면 `열기 <번호>`가 입력줄에 찍힌다(ARC-011 규칙 4). */
+function TitleCell({ item }: { item: ItemSummary }) {
+  const { insert } = useContext(ChipContext);
+  return (
+    <button type="button" className="gt-num-chip gt-row-title" onClick={() => insert(`열기 ${item.number}`)}>
+      {item.kind === "text" ? textTitle(item.title) : item.title}
+    </button>
+  );
+}
+
 function ListRow({ item }: { item: ItemSummary }) {
   const tags = item.tags.slice(0, LIST_TAG_LIMIT);
   const summary = rowSummary(item);
@@ -267,7 +279,7 @@ function ListRow({ item }: { item: ItemSummary }) {
     <>
       <div className="gt-line gt-row">
         <NumberCell number={item.number} />
-        <span>{item.kind === "text" ? textTitle(item.title) : item.title}</span>
+        <TitleCell item={item} />
         {item.source && <span className="gt-row-meta">{item.source}</span>}
         <span className="gt-row-meta">{savedAtText(item.savedAt)}</span>
       </div>
@@ -683,6 +695,156 @@ const BUNDLE_NAME_RULE = {
   reserved: "묶음 이름: 숫자만 · #시작 · 빼기 · 지우기 불가",
 } as const;
 
+/** ARC-005·COM-004 `본문 못 가져옴: <이유>`의 이유 낱말. */
+const BLOCKED_REASON_LABEL: Record<BlockedReason, string> = {
+  loginRequired: "로그인 필요",
+  accessDenied: "접근 거부",
+  disallowedURL: "열지 않는 주소",
+  encrypted: "암호 걸린 PDF",
+  noText: "글자 없음",
+};
+
+/** ARC-005 처리 상태 문구. 파일 이유(COM-004)에는 `제목·링크만 저장`을 붙이지 않는다. ready면 null. */
+function statusText(item: ItemSummary): { tone: "hint" | "warn"; text: string } | null {
+  if (isProcessing(item)) return { tone: "hint", text: "· 요약 생성 중" };
+  if (item.status === "failed") return { tone: "warn", text: "! 요약 못 만듦  제목·출처만 넘김" };
+  if (item.status !== "blocked" || item.blockedReason === null) return null;
+  const reason = BLOCKED_REASON_LABEL[item.blockedReason];
+  return {
+    tone: "warn",
+    text: item.kind === "link" ? `! 본문 못 가져옴: ${reason}  제목·링크만 저장` : `! 본문 못 가져옴: ${reason}`,
+  };
+}
+
+/**
+ * ARC-011 규칙 6-2 출처. 링크는 호스트, 아니면 `직접 넣음 · <형식>`(ARC-007 형식 값). 이미지는 미리보기 URL이 있는 파일이다(계약).
+ * shortcut: 계약에 링크 주소가 없어 호스트를 눌러 원래 페이지를 여는 동작은 뺐다. ItemDetail에 주소가 생기면 링크로.
+ */
+function detailSource(detail: ItemDetail): string {
+  const { item } = detail;
+  if (item.kind === "link") return item.source ?? "";
+  if (item.kind === "text") return "직접 넣음 · 글";
+  if (detail.previewUrl !== null) return "직접 넣음 · 이미지";
+  return item.source ? `직접 넣음 · ${item.source.toUpperCase()}` : "직접 넣음";
+}
+
+/** 자세히 보기 한 줄. 이름표 칸과 값 칸(시안 ItemDetail). */
+function DetailRow({ label, tone, children }: { label: string; tone?: "hint" | "warn"; children: ReactNode }) {
+  return (
+    <div className={tone ? `gt-line gt-detail-row gt-${tone}` : "gt-line gt-detail-row"}>
+      <span className="gt-detail-label">{label}</span>
+      <span>{children}</span>
+    </div>
+  );
+}
+
+/** 칩 여럿을 한 칸 띄어 잇는다. */
+function ChipList({ commands }: { commands: ReadonlyArray<readonly [label: string, command: string]> }) {
+  return (
+    <>
+      {commands.map(([label, command], index) => (
+        <Fragment key={command}>
+          {index > 0 && " "}
+          <CommandChip command={command}>{label}</CommandChip>
+        </Fragment>
+      ))}
+    </>
+  );
+}
+
+/** ARC-011 규칙 6-8·7 본문 머리. 일부만 읽었으면 ARC-004 규칙 8 문구를 붙인다. */
+function bodyHead(detail: ItemDetail): string {
+  const from = detail.bodyFromImage ? "(이미지에서 읽음) " : "";
+  const partial = detail.item.partialNote ? ` (${detail.item.partialNote})` : "";
+  return `${from}${charCountText(detail.bodyLength)}${partial}  `;
+}
+
+/** ARC-011 규칙 6-9 원본. 이미지는 그림, 파일은 `원본 열기`(서명 URL 10분). PDF 첫 쪽 그림은 계약에 아직 없다. */
+function OriginalRow({ detail }: { detail: ItemDetail }) {
+  if (detail.previewUrl === null && detail.originalUrl === null) return null;
+  return (
+    <DetailRow label="원본">
+      <span className="gt-detail-original">
+        {detail.previewUrl !== null && (
+          <img className="gt-detail-image" src={detail.previewUrl} alt={`${detail.item.title} 미리보기`} />
+        )}
+        {detail.originalUrl !== null && (
+          <a className="gt-chip" href={detail.originalUrl} target="_blank" rel="noopener noreferrer">
+            원본 열기
+          </a>
+        )}
+      </span>
+    </DetailRow>
+  );
+}
+
+/** ARC-011 규칙 6-8 본문. 본문이 없으면 이유가 있을 때만 `· 본문 없음: <이유>`. */
+function DetailBody({ detail }: { detail: ItemDetail }) {
+  const { item } = detail;
+  const [isExpanded, setExpanded] = useState(item.kind === "text");
+  if (detail.body === null) {
+    if (item.blockedReason === null) return null;
+    return <Line tone="info">{`본문 없음: ${BLOCKED_REASON_LABEL[item.blockedReason]}`}</Line>;
+  }
+  return (
+    <>
+      <DetailRow label="본문">
+        {bodyHead(detail)}
+        <button type="button" className="gt-chip" aria-expanded={isExpanded} onClick={() => setExpanded(!isExpanded)}>
+          {isExpanded ? "접기" : "펼치기"}
+        </button>
+      </DetailRow>
+      {isExpanded && <Preview text={detail.body} />}
+    </>
+  );
+}
+
+/**
+ * ARC-011 규칙 6 자세히 보기. 값이 없는 줄은 뺀다. 터미널 출력 블록은 연 때 모습 그대로 둔다(규칙 9).
+ * 글 자료는 본문이 곧 원본이라 펼쳐 둔다. `펼치기`는 화면 칩이라 누르면 바로 펼친다.
+ */
+function ItemDetailLines({ detail }: { detail: ItemDetail }) {
+  const { item } = detail;
+  const status = statusText(item);
+  const summaryLabel = item.summarySource === "user" ? "요약 (직접 고침)" : "AI 요약";
+  return (
+    <section className="gt-detail" aria-label="자세히 보기">
+      <div className="gt-line gt-row">
+        <NumberCell number={item.number} />
+        <b>{item.title}</b>
+      </div>
+      <DetailRow label="출처">{detailSource(detail)}</DetailRow>
+      <DetailRow label="저장">{savedAtText(item.savedAt)}</DetailRow>
+      {status !== null && (
+        <DetailRow label="상태" tone={status.tone}>
+          {status.text}
+        </DetailRow>
+      )}
+      {detail.handoffSummary !== null && <DetailRow label={summaryLabel}>{detail.handoffSummary}</DetailRow>}
+      {detail.allTags.length > 0 && (
+        <DetailRow label="태그 (AI 추정)">
+          <ChipList commands={detail.allTags.map((tag) => [`#${tag}`, `찾기 #${tag}`] as const)} />
+        </DetailRow>
+      )}
+      <DetailRow label="묶음">
+        {detail.bundles.length === 0 ? "없음" : <ChipList commands={detail.bundles.map((name) => [name, `묶음 ${name}`] as const)} />}
+      </DetailRow>
+      <DetailBody detail={detail} />
+      <OriginalRow detail={detail} />
+      <Plain>
+        {"→ "}
+        <CommandChip command={`고르기 ${item.number}`} />
+        {" 또는 "}
+        <CommandChip command="묶음 ">묶음 &lt;이름&gt;</CommandChip>
+        {" 또는 "}
+        <CommandChip command={`고치기 ${item.number}`} />
+        {" 또는 "}
+        <CommandChip command={`버리기 ${item.number}`} />
+      </Plain>
+    </section>
+  );
+}
+
 /** COM-008 값: 직접 복사 키. 터치 기기 문구는 AI 제안(PO 확인 전). */
 function copyKeyHint(): string {
   if (typeof window.matchMedia === "function" && window.matchMedia("(hover: none) and (pointer: coarse)").matches) {
@@ -850,6 +1012,8 @@ function OutputLine({ line, failed, onMoreRequested }: OutputLineProps) {
       if (line.command === "seek") return <Line tone="error">검색어 없음  예: 찾기 결제</Line>;
       // ARC-001 사용자 문구.
       if (line.command === "pick") return <Line tone="error">번호 없음  예: 고르기 131</Line>;
+      // ARC-011 사용자 문구.
+      if (line.command === "peek") return <Line tone="error">번호 없음  예: 열기 131</Line>;
       return null;
     case "missingTag":
       // ARC-002 사용자 문구.
@@ -947,6 +1111,11 @@ function OutputLine({ line, failed, onMoreRequested }: OutputLineProps) {
     case "revived":
       // ARC-008 사용자 문구.
       return <Line tone="ok">{`되살림 ${line.items.length}건`}</Line>;
+    // #131 자세히 보기(ARC-011)
+    case "itemDetail":
+      return <ItemDetailLines detail={line.detail} />;
+    case "oneNumberOnly":
+      return <Line tone="error">{`번호 하나만  예: ${COMMAND_LABEL[line.command]} 131`}</Line>;
     // #121 묶음(ARC-003 사용자 문구)
     case "bundleList":
       return <BundleListLines bundles={line.bundles} />;
