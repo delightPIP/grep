@@ -11,7 +11,7 @@ import ProjectDescription
 let deploymentTargets: DeploymentTargets = .iOS("17.0")
 let swiftSettings: Settings = .settings(base: ["SWIFT_VERSION": "6.0"])
 let bundlePrefix = "com.unwrap.grep"
-let features = ["LoggedOut"]
+let features = ["LoggedOut", "Terminal"]
 
 func uiTarget(_ name: String) -> Target {
     .target(
@@ -92,7 +92,26 @@ let platformTestsTarget: Target = .target(
     settings: swiftSettings
 )
 
+let loggedInUITarget: Target = uiTarget("LoggedIn")
+
+let terminalAdapterTestsTarget: Target = .target(
+    name: "FeatureTerminalAdapterTests",
+    destinations: .iOS,
+    product: .unitTests,
+    bundleId: "\(bundlePrefix).feature.terminal.adapter.tests",
+    deploymentTargets: deploymentTargets,
+    sources: ["Features/Terminal/Tests/**"],
+    dependencies: [
+        .target(name: "FeatureTerminalAdapter"),
+        .target(name: "FeatureTerminalUI"),
+        .package(product: "GrepCore"),
+        .package(product: "FeatureTerminalInterface"),
+    ],
+    settings: swiftSettings
+)
+
 let appDependencies: [TargetDependency] = features.map { .target(name: "Feature\($0)Adapter") } + [
+    .target(name: "FeatureLoggedInUI"),
     .target(name: "GrepPlatform"),
     .package(product: "RIBs"),
     .package(product: "RIBsSwiftUI"),
@@ -128,7 +147,7 @@ let allTargets: [Target] =
     features.map(uiTarget)
     + features.map(adapterTarget)
     + features.map(exampleTarget)
-    + [platformTarget, platformTestsTarget, appTarget]
+    + [loggedInUITarget, terminalAdapterTestsTarget, platformTarget, platformTestsTarget, appTarget]
 
 let project = Project(
     name: "Grep",
