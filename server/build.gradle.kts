@@ -62,6 +62,10 @@ tasks.processResources {
 	from("../db/migrations") {
 		into("db/migration")
 	}
+	// #102 샘플 8건(ARC-010). 원본은 db/seed/samples(seed.json과 본문·파일). POST /samples가 jar 안에서 읽는다.
+	from("../db/seed/samples") {
+		into("samples")
+	}
 }
 
 // #69 데모 시드: ./gradlew seedDemo -Pemail=<계정 이메일> [-Pprovider=google]. 서버와 같은 DB·스토리지 환경변수를 쓴다.

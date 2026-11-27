@@ -1,0 +1,114 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "T01",
+      "kind": "link",
+      "format": "link",
+      "title": "테스트 샘플 링크 1",
+      "status": "ready",
+      "url": "https://sample.test/item/1",
+      "listSummary": "샘플 한 줄 1",
+      "handoffSummary": "샘플 넘길 요약 1.",
+      "tags": [
+        "샘플",
+        "캠페인"
+      ]
+    },
+    {
+      "id": "T02",
+      "kind": "link",
+      "format": "link",
+      "title": "테스트 샘플 링크 2",
+      "status": "ready",
+      "url": "https://sample.test/item/2",
+      "listSummary": "샘플 한 줄 2",
+      "handoffSummary": "샘플 넘길 요약 2.",
+      "tags": [
+        "샘플",
+        "캠페인"
+      ]
+    },
+    {
+      "id": "T06",
+      "kind": "text",
+      "format": "text",
+      "title": "테스트 샘플 글",
+      "status": "ready",
+      "textFile": "texts/t06.txt",
+      "listSummary": "글 한 줄",
+      "handoffSummary": "글 넘길 요약.",
+      "tags": [
+        "샘플"
+      ]
+    },
+    {
+      "id": "T03",
+      "kind": "link",
+      "format": "link",
+      "title": "테스트 샘플 링크 3",
+      "status": "ready",
+      "url": "https://sample.test/item/3",
+      "listSummary": "샘플 한 줄 3",
+      "handoffSummary": "샘플 넘길 요약 3.",
+      "tags": [
+        "샘플",
+        "캠페인"
+      ]
+    },
+    {
+      "id": "T04",
+      "kind": "link",
+      "format": "link",
+      "title": "테스트 샘플 링크 4",
+      "status": "ready",
+      "url": "https://sample.test/item/4",
+      "listSummary": "샘플 한 줄 4",
+      "handoffSummary": "샘플 넘길 요약 4.",
+      "tags": [
+        "샘플",
+        "캠페인"
+      ]
+    },
+    {
+      "id": "T07",
+      "kind": "file",
+      "format": "md",
+      "title": "테스트 샘플 파일.md",
+      "status": "ready",
+      "file": "files/t07.md",
+      "listSummary": "파일 한 줄",
+      "handoffSummary": "파일 넘길 요약.",
+      "tags": [
+        "샘플"
+      ]
+    },
+    {
+      "id": "T05",
+      "kind": "link",
+      "format": "link",
+      "title": "테스트 샘플 링크 5",
+      "status": "ready",
+      "url": "https://sample.test/item/5",
+      "listSummary": "샘플 한 줄 5",
+      "handoffSummary": "샘플 넘길 요약 5.",
+      "tags": [
+        "샘플",
+        "캠페인"
+      ]
+    },
+    {
+      "id": "T08",
+      "kind": "text",
+      "format": "text",
+      "title": "그렙 사용법",
+      "status": "ready",
+      "textFile": "texts/t08.txt",
+      "listSummary": "사용법 한 줄",
+      "handoffSummary": "사용법 넘길 요약.",
+      "tags": [
+        "사용법"
+      ]
+    }
+  ]
+}

@@ -1,20 +1,16 @@
 package com.unwrap.grep.features.demoseed.domain
 
 import com.unwrap.grep.features.account.domain.AuthProvider
-import com.unwrap.grep.features.archive.domain.FileFormat
 import com.unwrap.grep.features.archive.domain.ItemKind
-import com.unwrap.grep.features.archive.domain.LinkNormalizer
 import com.unwrap.grep.features.archive.domain.ObjectStorage
 import com.unwrap.grep.features.archive.domain.StoredFile
 import org.springframework.stereotype.Service
 import org.springframework.transaction.support.TransactionTemplate
 import java.nio.file.Files
 import java.nio.file.Path
-import java.security.MessageDigest
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
-import java.util.HexFormat
 import java.util.UUID
 
 /** 자료 한 건의 넣을 값. 번호는 저장소가 트랜잭션 안에서 붙인다(ARC-001). */
@@ -74,17 +70,20 @@ class DemoSeedService(
 		if (already > 0) return SeedResult.AlreadyHasItems(already)
 
 		val today = clock.instant()
-		val prepared = DemoSeedFile.load(seedDir).items.map { prepare(userId, it, seedDir, today) }
+		val prepared = DemoSeedFile.load(seedDir).items.map { entry ->
+			PremadeItems.prepare(userId, entry, today.minus(Duration.ofDays(entry.savedDaysAgo))) {
+				Files.readAllBytes(seedDir.resolve(it))
+			}
+		}
 		val uploads = prepared.mapNotNull { it.upload }
-		// 올리는 도중 실패해도 이미 올린 원본을 지운다(없는 경로 지우기는 무시된다).
+		PremadeItems.putAll(storage, uploads)
 		val result = try {
-			uploads.forEach { storage.put(it.objectPath, it.bytes, it.contentType) }
 			transaction.execute { insertAll(userId, prepared.map { it.row }) }!!
 		} catch (e: RuntimeException) {
-			uploads.forEach { storage.delete(it.objectPath) }
+			PremadeItems.deleteAll(storage, uploads)
 			throw e
 		}
-		if (result !is SeedResult.Seeded) uploads.forEach { storage.delete(it.objectPath) }
+		if (result !is SeedResult.Seeded) PremadeItems.deleteAll(storage, uploads)
 		return result
 	}
 
@@ -94,68 +93,4 @@ class DemoSeedService(
 		if (last > 0) return SeedResult.AlreadyHasItems(last)
 		return SeedResult.Seeded(rows.associate { it.seedId to repository.insert(userId, it) })
 	}
-
-	private class Upload(val objectPath: String, val bytes: ByteArray, val contentType: String)
-
-	private class Prepared(val row: SeedRow, val upload: Upload?)
-
-	private fun prepare(userId: UUID, entry: SeedEntry, seedDir: Path, today: Instant): Prepared {
-		val kind = entry.itemKind
-		val link = entry.url?.let { requireNotNull(LinkNormalizer.normalize(it)) { "${entry.id}: bad url" } }
-		val bytes = entry.file?.let { Files.readAllBytes(seedDir.resolve(it)) }
-		// 경로 앞을 사용자 ID로 둔다(UploadService와 같은 규칙, COM-006).
-		val file = bytes?.let {
-			StoredFile("$userId/${UUID.randomUUID()}", entry.title, entry.fileFormat, it.size.toLong(), sha256(it))
-		}
-		val textBody = entry.textFile?.let { normalizeNewlines(Files.readString(seedDir.resolve(it))).trimEnd('\n') }
-		require(kind != ItemKind.LINK || link != null) { "${entry.id}: link needs url" }
-		require(kind != ItemKind.FILE || file != null) { "${entry.id}: file needs file" }
-		require(kind != ItemKind.TEXT || textBody != null) { "${entry.id}: text needs textFile" }
-		val source = when (kind) {
-			ItemKind.LINK -> link!!.host
-			ItemKind.TEXT -> null
-			ItemKind.FILE -> file!!.format.value
-		}
-		val row = SeedRow(
-			seedId = entry.id,
-			kind = kind,
-			title = entry.title,
-			source = source,
-			url = entry.url,
-			normalizedUrl = link?.value,
-			textBody = textBody,
-			file = file,
-			status = entry.itemStatus.value,
-			blockedReason = entry.blockedReason,
-			listSummary = entry.listSummary,
-			handoffSummary = entry.handoffSummary,
-			tags = entry.tags,
-			searchText = searchText(entry, source),
-			savedAt = today.minus(Duration.ofDays(entry.savedDaysAgo)),
-		)
-		return Prepared(row, file?.let { Upload(it.objectPath, bytes!!, mimeType(it.format)) })
-	}
-
-	/** 워커가 쓰는 찾기 본문과 같은 순서: 제목·출처·요약·태그·본문(JdbcProcessingQueue.writeItem). */
-	private fun searchText(entry: SeedEntry, source: String?): String =
-		listOfNotNull(entry.title, source, entry.listSummary, entry.handoffSummary, entry.tags.joinToString(" "), entry.body)
-			.filter { it.isNotBlank() }
-			.joinToString(" ")
-
-	/** Storage 버킷 허용 형식과 맞춘다. 브라우저 업로드는 파일의 형식을 그대로 보낸다. */
-	private fun mimeType(format: FileFormat): String = when (format) {
-		FileFormat.PDF -> "application/pdf"
-		FileFormat.MD -> "text/markdown"
-		FileFormat.TXT -> "text/plain"
-		FileFormat.DOCX -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-		FileFormat.PNG -> "image/png"
-		FileFormat.JPEG -> "image/jpeg"
-		FileFormat.WEBP -> "image/webp"
-		FileFormat.HEIC -> "image/heic"
-	}
-
-	private fun normalizeNewlines(text: String): String = text.replace("\r\n", "\n")
-
-	private fun sha256(bytes: ByteArray): String =
-		HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes))
 }

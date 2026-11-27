@@ -23,6 +23,8 @@ class FakeObjectStorage : ObjectStorage {
 
 	fun exists(objectPath: String): Boolean = objects.containsKey(objectPath)
 
+	fun paths(): Set<String> = objects.keys.toSet()
+
 	override fun presignPut(objectPath: String, expiresIn: Duration): URI =
 		URI("https://storage.test/items/$objectPath?expires=${expiresIn.seconds}")
 
