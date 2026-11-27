@@ -1146,6 +1146,8 @@ function OutputLine({ line, failed, savedInBlock, onMoreRequested }: OutputLineP
       // commands 6절 "빠진 인자".
       if (line.command === "seek") return <Line tone="error">검색어 없음  예: 찾기 결제</Line>;
       // ARC-001 사용자 문구.
+      // #154 `고르기 빼기`를 번호 없이 치면 빼기 예시.
+      if (line.command === "pick" && line.sub === "unpick") return <Line tone="error">번호 없음  예: 고르기 빼기 131</Line>;
       if (line.command === "pick") return <Line tone="error">번호 없음  예: 고르기 131</Line>;
       // ARC-011 사용자 문구.
       if (line.command === "peek") return <Line tone="error">번호 없음  예: 열기 131</Line>;

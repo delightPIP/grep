@@ -1637,6 +1637,20 @@ describe("LoggedInView", () => {
   });
 
   describe("고르기 빼기·비우기(#108, commands 6절)", () => {
+    it("고르기빼기를번호없이쳤을때_화면을그리면_빼기예시를보이는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [
+        { kind: "prompt", text: "고르기 빼기" },
+        { kind: "missingArgument", command: "pick", sub: "unpick" },
+      ];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown.slice(1)).toEqual(["✗ 번호 없음  예: 고르기 빼기 131"]);
+    });
+
     it("선택에서뺐을때_화면을그리면_그때남은선택건수를보이는지", () => {
       // given
       const lines: LoggedInState["lines"] = [

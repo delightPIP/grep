@@ -157,7 +157,8 @@ export type TerminalLine =
   | { kind: "prompt"; text: string }
   /** suggestion: 가까운 명령으로 고친 입력 전체(`찾기 결제`, F17). 없으면 null(#118, 통합 승인) */
   | { kind: "unknownCommand"; name: string; suggestion?: string | null }
-  | { kind: "missingArgument"; command: CommandName }
+  /** sub: 하위 명령에서 인자가 빠졌다. `고르기 빼기`를 번호 없이 치면 "unpick"(#154, 통합 승인). 없거나 null이면 명령 자체 */
+  | { kind: "missingArgument"; command: CommandName; sub?: "unpick" | null }
   | { kind: "missingTag" }
   | { kind: "saved"; item: ItemSummary }
   | { kind: "alreadySaved"; item: ItemSummary }
