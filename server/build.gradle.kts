@@ -31,6 +31,10 @@ dependencies {
 	implementation("software.amazon.awssdk:s3")
 	// PDF 글자 추출(COM-004 형식 표). docx는 표준 라이브러리로 읽는다.
 	implementation("org.apache.pdfbox:pdfbox:3.0.8")
+	// 링크 가져오기(ARC-006). 검사한 IP로만 연결하도록 이름 풀이를 바꿀 수 있는 클라이언트(#117 DNS 재바인딩). 버전은 Spring Boot가 관리한다.
+	implementation("org.apache.httpcomponents.client5:httpclient5")
+	// 가져온 HTML에서 본문 영역을 고른다(#117).
+	implementation("org.jsoup:jsoup:1.24.1")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	implementation("tools.jackson.module:jackson-module-kotlin")
 	runtimeOnly("org.postgresql:postgresql")
