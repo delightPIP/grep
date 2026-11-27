@@ -1635,4 +1635,20 @@ describe("LoggedInView", () => {
       expect(shown.slice(1)).toEqual(["✓ 선택 비움"]);
     });
   });
+
+  describe("모든 기기 로그아웃 확인(#111, ACC-002·COM-007)", () => {
+    it("로그아웃모든기기를쳤을때_화면을그리면_다른기기반영시간과실행낱말을묻는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [{ kind: "prompt", text: "로그아웃 모든기기" }, { kind: "signOutEverywhereConfirm" }];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown.slice(1)).toEqual([
+        "! 로그아웃? 모든 기기 (다른 기기는 최대 1시간 뒤)",
+        "→ 실행: 로그아웃 다시 입력 · 취소: 그 외 입력",
+      ]);
+    });
+  });
 });

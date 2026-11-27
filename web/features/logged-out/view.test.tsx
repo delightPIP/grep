@@ -97,6 +97,7 @@ describe("LoggedOutView", () => {
     ["권한거부", { kind: "failed", reason: "denied" }, "✗ 로그인 실패: 권한 거부", "로그인 실패:"],
     ["만료", { kind: "expired" }, "! 로그인 만료 → 다시 로그인", "로그인 만료"],
     ["로그아웃", { kind: "signedOut" }, "✓ 로그아웃됨", "로그아웃됨"],
+    ["모든기기로그아웃", { kind: "signedOutEverywhere" }, "✓ 모든 기기 로그아웃됨", "모든 기기 로그아웃됨"],
   ])("알림이_%s일때_화면을그리면_정책문구를_핵심어만_굵게_보여주는지", (_, notice, text, bold) => {
     // given
     // when

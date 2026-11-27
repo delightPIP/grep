@@ -440,6 +440,19 @@ function BinEmptyConfirmLines({ total }: { total: number }) {
   );
 }
 
+/**
+ * ACC-002 모든 기기 로그아웃 확인. 정책 문구의 `· AI 도구 연결 N개`는 연결(F7)을 만들 때부터 적용한다(ACC-002 적용 범위).
+ * shortcut: 연결 수가 계약에 없어 그 칸을 뺐다. F7에서 연결 수를 계약에 더할 때 넣는다.
+ */
+function SignOutEverywhereConfirmLines() {
+  return (
+    <>
+      <Line tone="warn">로그아웃? 모든 기기 (다른 기기는 최대 1시간 뒤)</Line>
+      <ConfirmAnswer word="로그아웃" />
+    </>
+  );
+}
+
 /** 휴지통 행. 시각 칸에 영구 삭제까지 남은 날(ARC-008 규칙 10). */
 function TrashRow({ entry: { item, daysLeft } }: { entry: TrashEntry }) {
   return (
@@ -703,6 +716,8 @@ function OutputLine({ line, failed, onMoreRequested }: OutputLineProps) {
     case "binEmptied":
       // ARC-008 사용자 문구.
       return <Line tone="ok">{`비움  ${line.count}건 영구 삭제`}</Line>;
+    case "signOutEverywhereConfirm":
+      return <SignOutEverywhereConfirmLines />;
     case "unpicked":
       // commands 6절 선택 빼기. 남은 수는 그 시점 값을 줄이 들고 온다(지난 줄이 나중 선택에 따라 바뀌지 않게).
       return <Line tone="ok">{`뺌  선택 ${line.remaining}건 남음`}</Line>;
