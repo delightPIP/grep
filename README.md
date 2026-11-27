@@ -76,7 +76,7 @@ Docker가 켜져 있어야 한다(서버 테스트가 Postgres 컨테이너를 �
 cd server && ./gradlew test && cd ../core && swift test && cd ../web && npm test
 ```
 
-환경변수는 `server/.env.example`, `web/.env.example`을 본다. `web`의 wasm 빌드는 macOS·Linux에서만 된다.
+환경변수는 `server/.env.example`, `web/.env.example`을 본다. `web`의 wasm 빌드는 macOS·Linux에서만 된다. Windows는 Docker로 빌드한다([데모 실행 절차](docs/planning/demo-runbook.md)).
 
 ## 문서
 
