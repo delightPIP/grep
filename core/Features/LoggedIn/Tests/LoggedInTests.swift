@@ -36,6 +36,7 @@ final class LoggedInTests {
     private static let meJSON = #"{"userId":"6f1c0a52-0000-4000-8000-000000000001","authProvider":"google","itemCount":34}"#
 
     private static let tokenA = fakeAccessToken(subject: "user-a")
+    private static let noNoticesJSON = #"{"ended":[]}"#
     private let auth = FakeAuthService(token: LoggedInTests.tokenA)
     private let transport = FakeHTTPTransport()
     private let files = FakeFilePort()
@@ -66,6 +67,8 @@ final class LoggedInTests {
     private func attachLoaded() async {
         await attach()
         transport.respond(json: Self.meJSON)
+        await runCurrent()
+        transport.respond(json: Self.noNoticesJSON)
         await runCurrent()
     }
 
@@ -262,5 +265,42 @@ final class LoggedInTests {
         // then
         #expect(auth.signOutCount == 1)
         #expect(listener.signOutCount == 1)
+    }
+
+    // MARK: AI 도구 연결(#124, ACC-002)
+
+    @Test func 자료수를받았을때_끊긴연결알림이있으면_터미널에연결끊김줄을찍는지() async {
+        // given
+        await attach()
+        transport.respond(json: Self.meJSON)
+        await runCurrent()
+
+        // when
+        transport.respond(json: #"{"ended":[{"client":"Claude","reason":"expired"}]}"#)
+        await runCurrent()
+
+        // then
+        #expect(transport.requests.last?.method == .post)
+        #expect(transport.requests.last?.path == "/connections/notices")
+        #expect(view.state?.lines.last == .connectionEnded(client: "Claude", reason: .expired))
+    }
+
+    @Test func 로그아웃모든기기를확인했을때_연결을모두끊은뒤에전역로그아웃하는지() async {
+        // given
+        await attachLoaded()
+        await send(.submitted("로그아웃 모든기기"))
+        transport.respond(json: #"{"mcpUrl":"https://grep.example/mcp","connections":[]}"#)
+        await runCurrent()
+
+        // when
+        await send(.submitted("로그아웃"))
+        let signOutsBeforeRevoke = auth.signOutCount
+        transport.respond(json: #"{"count":0}"#)
+        await runCurrent()
+
+        // then
+        #expect(transport.requests.last?.path == "/connections/revoke-all")
+        #expect(signOutsBeforeRevoke == 0)
+        #expect(auth.signOutCount == 1)
     }
 }

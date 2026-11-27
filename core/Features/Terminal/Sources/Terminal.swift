@@ -94,6 +94,8 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     var pendingSavedSearchDelete: PendingSavedSearchDelete?
     /// `가져오기`를 치고 북마크 파일을 기다린다. 다른 입력을 치면 놓는다.
     var isAwaitingImport = false
+    /// 답을 기다리는 `연결 끊기 <번호>` 확인(ACC-002 규칙 8, COM-007).
+    var pendingDisconnect: PendingDisconnect?
     /// 답을 기다리는 `로그아웃 모든기기` 확인(ACC-002 규칙 4, COM-007).
     var pendingSignOutEverywhere = false
     /// 오타 제안(#118, commands.md 207줄). 빈 입력 엔터면 이 문자열을 실행하고, 다른 입력이면 지운다.
@@ -233,6 +235,11 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             confirmSavedSearchDelete(pending, typed: text)
             return
         }
+        if let pending = pendingDisconnect, pending.matches(text) {
+            pendingDisconnect = nil
+            confirmDisconnect(pending, typed: text)
+            return
+        }
         if pendingSignOutEverywhere {
             let answer = text.trimmingWhitespace()
             if answer == "로그아웃" || answer == "signout" {
@@ -249,8 +256,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             forgetHistory()
             listener?.didRequestSignOut()
         case .signOut where command.argument == "모든기기" || command.argument == "all":
-            pendingSignOutEverywhere = true
-            update(viewState.appending(lines: [.prompt(text), .signOutEverywhereConfirm(connectionCount: nil)]).with(input: ""))
+            askSignOutEverywhere(typed: text)
         case .keep where command.argument.isEmpty:
             update(viewState.appending(lines: [.prompt(text), .missingArgument(.keep)]).with(input: ""))
         case .keep:
@@ -276,6 +282,8 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             peek(command.argument, typed: text)
         case .gather:
             handleGather(command.argument, typed: text)
+        case .plug:
+            handleConnections(command.argument, typed: text)
         case .bring where command.argument.isEmpty:
             isAwaitingImport = true
             update(viewState.appending(lines: [.prompt(text), .importPrompt]).with(input: ""))
@@ -480,12 +488,14 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
 
     func cancelPendingConfirmations() {
         let hadPending = pendingHandoff != nil || pendingDrop != nil || pendingBinEmpty != nil
-            || pendingBundleDelete != nil || pendingSavedSearchDelete != nil || pendingSignOutEverywhere
+            || pendingBundleDelete != nil || pendingSavedSearchDelete != nil || pendingDisconnect != nil
+            || pendingSignOutEverywhere
         pendingHandoff = nil
         pendingDrop = nil
         pendingBinEmpty = nil
         pendingBundleDelete = nil
         pendingSavedSearchDelete = nil
+        pendingDisconnect = nil
         pendingSignOutEverywhere = false
         if hadPending {
             update(viewState.appending(lines: [.cancelled]).with(input: ""))

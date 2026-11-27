@@ -43,6 +43,7 @@ struct InputCommand: Equatable {
         "열기": .peek, "peek": .peek,
         "찾아두기": .gather, "gather": .gather,
         "가져오기": .bring, "bring": .bring,
+        "연결": .plug, "plug": .plug,
     ]
 }
 

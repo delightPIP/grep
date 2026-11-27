@@ -218,6 +218,7 @@ private struct StoredLine: Codable {
         case bundleDeleteConfirm, bundleDeleted, bundleNameInvalid, itemDetail, oneNumberOnly
         case searchSaved, savedSearchList, savedSearchPeriod, savedSearchTooLong, savedSearchDeleteConfirm
         case savedSearchDeleted, savedSearchNotFound, importPrompt, importProgress, importFinished
+        case connectionList, disconnectConfirm, disconnected, connectionNotFound, connectionEnded
     }
 
     let kind: Kind
@@ -245,10 +246,12 @@ private struct StoredLine: Codable {
     var extraCount: Int?
     var bundles: [BundleEntry]?
     var detail: ItemDetail?
-    var isSavedSearch: Bool?
+    /// 참·거짓 하나를 쓰는 줄의 값(찾아둔 여부, 이미 찾아둠·이미 끊김).
+    var flag: Bool?
     var searches: [SavedSearchEntry]?
     var importCounts: StoredImportCounts?
     var urls: [String]?
+    var connections: [ConnectionEntry]?
 
     /// 아직 남기지 않는 줄(계약 2, 각 이슈에서 더한다)이면 nil.
     init?(_ line: TerminalViewState.Line) {
@@ -290,7 +293,7 @@ private struct StoredLine: Codable {
             self.items = items
             self.hasMore = hasMore
             self.period = period
-            self.isSavedSearch = isSavedSearch
+            flag = isSavedSearch
         case .noResults(let query, let recent, let period):
             kind = .noResults
             self.query = StoredQuery(query)
@@ -414,7 +417,7 @@ private struct StoredLine: Codable {
             kind = .searchSaved
             text = query
             self.total = total
-            isSavedSearch = already
+            flag = already
         case .savedSearchList(let searches):
             kind = .savedSearchList
             self.searches = searches
@@ -432,9 +435,27 @@ private struct StoredLine: Codable {
         case .savedSearchNotFound(let query):
             kind = .savedSearchNotFound
             text = query
-        case .folderHint, .connectionList, .disconnectConfirm, .disconnected,
-             .connectionNotFound, .connectionEnded:
+        case .folderHint:
             return nil
+        case .connectionList(let mcpUrl, let connections):
+            kind = .connectionList
+            text = mcpUrl
+            self.connections = connections
+        case .disconnectConfirm(let number, let client):
+            kind = .disconnectConfirm
+            self.number = number
+            text = client
+        case .disconnected(let client, let already):
+            kind = .disconnected
+            text = client
+            flag = already
+        case .connectionNotFound(let number):
+            kind = .connectionNotFound
+            self.number = number
+        case .connectionEnded(let client, let reason):
+            kind = .connectionEnded
+            text = client
+            self.reason = reason.rawValue
         case .importPrompt: kind = .importPrompt
         case .importProgress(let done, let total):
             kind = .importProgress
@@ -469,7 +490,7 @@ private struct StoredLine: Codable {
             guard let query, let total, let items, let hasMore else { return nil }
             return .searchResult(
                 query: query.query, total: total, items: items, hasMore: hasMore, period: period,
-                isSavedSearch: isSavedSearch
+                isSavedSearch: flag
             )
         case .noResults:
             guard let query, let items else { return nil }
@@ -542,8 +563,8 @@ private struct StoredLine: Codable {
     private var savedSearchLine: TerminalViewState.Line? {
         switch kind {
         case .searchSaved:
-            guard let text, let total, let isSavedSearch else { return nil }
-            return .searchSaved(query: text, total: total, already: isSavedSearch)
+            guard let text, let total, let flag else { return nil }
+            return .searchSaved(query: text, total: total, already: flag)
         case .savedSearchList: return searches.map { .savedSearchList($0) }
         case .savedSearchPeriod:
             guard let text, let suggestion else { return nil }
@@ -553,6 +574,19 @@ private struct StoredLine: Codable {
         case .savedSearchDeleted: return text.map { .savedSearchDeleted(query: $0) }
         case .savedSearchNotFound: return text.map { .savedSearchNotFound(query: $0) }
         case .importPrompt: return .importPrompt
+        case .connectionList:
+            guard let text, let connections else { return nil }
+            return .connectionList(mcpUrl: text, connections: connections)
+        case .disconnectConfirm:
+            guard let number, let text else { return nil }
+            return .disconnectConfirm(number: number, client: text)
+        case .disconnected:
+            guard let text, let flag else { return nil }
+            return .disconnected(client: text, already: flag)
+        case .connectionNotFound: return number.map { .connectionNotFound(number: $0) }
+        case .connectionEnded:
+            guard let text, let reason = reason.flatMap(ConnectionEndReason.init(rawValue:)) else { return nil }
+            return .connectionEnded(client: text, reason: reason)
         case .importProgress:
             guard let count, let total else { return nil }
             return .importProgress(done: count, total: total)

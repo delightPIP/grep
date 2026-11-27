@@ -92,6 +92,17 @@ public enum BundleNameProblem: String, Equatable, Sendable, Codable {
     case reserved
 }
 
+/// 사용자가 모르는 사이 끊긴 연결 하나(api `ConnectionNotices.ended`).
+public struct ConnectionNotice: Equatable, Sendable, Codable {
+    public let client: String
+    public let reason: ConnectionEndReason
+
+    public init(client: String, reason: ConnectionEndReason) {
+        self.client = client
+        self.reason = reason
+    }
+}
+
 /// `! 연결 끊김: <AI 도구> (<이유>)` 이유(ACC-002 규칙 11).
 public enum ConnectionEndReason: String, Equatable, Sendable, Codable {
     case expired
