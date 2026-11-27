@@ -1,0 +1,3 @@
+// Grep 앱 타깃 빌드 설정. 값은 커밋하지 않는 Secrets.xcconfig에서 읽는다(docs/dev-team-config.md 비밀키 규칙).
+// 파일이 없으면(CI 등) 빈 값으로 빌드되고, 앱은 로그인 창을 열지 않고 `권한 거부`를 보인다.
+#include? "Secrets.xcconfig"

@@ -176,6 +176,9 @@ let appDependencies: [TargetDependency] = features.map { .target(name: "Feature\
 
 let appInfoPlist: InfoPlist = .extendingDefault(with: [
     "UILaunchScreen": .dictionary([:]),
+    // ACC-001 로그인. 값은 Config/App.xcconfig → 커밋하지 않는 Secrets.xcconfig에서 온다.
+    "SUPABASE_URL": "$(SUPABASE_URL)",
+    "SUPABASE_PUBLISHABLE_KEY": "$(SUPABASE_PUBLISHABLE_KEY)",
     "CFBundleURLTypes": .array([
         .dictionary([
             "CFBundleURLName": .string(bundlePrefix),
@@ -193,7 +196,13 @@ let appTarget: Target = .target(
     infoPlist: appInfoPlist,
     sources: ["App/Sources/**"],
     dependencies: appDependencies,
-    settings: swiftSettings
+    settings: .settings(
+        base: ["SWIFT_VERSION": "6.0"],
+        configurations: [
+            .debug(name: .debug, xcconfig: "Config/App.xcconfig"),
+            .release(name: .release, xcconfig: "Config/App.xcconfig"),
+        ]
+    )
 )
 
 let allTargets: [Target] =
