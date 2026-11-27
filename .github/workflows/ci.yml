@@ -21,6 +21,7 @@ jobs:
       server: ${{ steps.filter.outputs.server }}
       core: ${{ steps.filter.outputs.core }}
       web: ${{ steps.filter.outputs.web }}
+      ios: ${{ steps.filter.outputs.ios }}
       docs: ${{ steps.filter.outputs.docs }}
     steps:
       - uses: actions/checkout@v7
@@ -42,6 +43,10 @@ jobs:
               - *all
               - 'core/**'
               - 'web/**'
+            ios:
+              - *all
+              - 'core/**'
+              - 'ios/**'
             docs:
               - *all
               - 'docs/**'
@@ -105,6 +110,25 @@ jobs:
           npm ci
           npm test
           npm run build
+
+  ios:
+    needs: changes
+    if: needs.changes.outputs.ios == 'true'
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Tuist 설치
+        run: brew install --cask tuist
+      - name: iOS 테스트와 앱 빌드
+        working-directory: ios
+        run: |
+          DEVICE="$(xcrun simctl list devices available iPhone | grep -oE 'iPhone [^()]+' | head -n 1 | xargs)"
+          echo "Using simulator: $DEVICE"
+          tuist generate --no-open
+          tuist test --no-selective-testing --device "$DEVICE"
+          tuist generate --no-open
+          xcodebuild -workspace Grep.xcworkspace -scheme Grep -destination "platform=iOS Simulator,name=$DEVICE" -configuration Debug build -quiet
 
   docs:
     needs: changes
