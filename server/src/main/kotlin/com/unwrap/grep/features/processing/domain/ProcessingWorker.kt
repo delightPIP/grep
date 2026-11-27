@@ -178,7 +178,10 @@ class ProcessingWorker(
 		const val PARTIAL_BODY = "본문 일부만 가져옴"
 		const val NO_TEXT = "no_text"
 
-		/** 이미지는 원본 그대로 보낸다. shortcut: HEIC를 JPEG로 바꾸지 않는다(COM-004 규칙 5). Gemini가 HEIC를 받지 않으면 바꾼다. */
+		/**
+		 * 이미지는 원본 그대로 보낸다(COM-004 규칙 5). HEIC도 JPEG로 바꾸지 않는다.
+		 * Gemini가 image/heic를 받아 요약하는 것을 실측했다(2026-11-27, gemini-3.5-flash, GeminiSummarizerLiveTest, #117).
+		 */
 		val IMAGE_MIME = mapOf("png" to "image/png", "jpeg" to "image/jpeg", "webp" to "image/webp", "heic" to "image/heic")
 
 		private val KOREA: ZoneId = ZoneId.of("Asia/Seoul")
