@@ -9,7 +9,7 @@ import RIBsSwiftUI
 import SwiftUI
 
 enum TerminalDemoScenario: String, CaseIterable, Identifiable {
-    case welcome = "첫 화면 (자료 0건)"
+    case welcome = "첫 화면 (자료 0건 · 샘플 8건으로 해 보기)"
     case saved = "저장 완료 (링크)"
     case alreadySaved = "이미 저장됨 (중복)"
     case processing = "처리 중 (요약 생성 중)"
@@ -359,12 +359,47 @@ private final class ExampleTerminalTransport: HTTPTransport {
         switch (request.method, request.path) {
         case (.post, "/items/trash"), (.post, "/items/restore"):
             return HTTPResponse(status: 200, body: Array(Self.movedBody(for: request).utf8))
+        case (.post, "/samples"):
+            return HTTPResponse(status: 201, body: Array(#"{"firstNumber":1,"lastNumber":8}"#.utf8))
+        case (.get, "/items?limit=8"):
+            return HTTPResponse(status: 200, body: Self.encoded(SamplePage(items: Self.sampleItems(), total: 8, nextCursor: nil)))
         case (.get, "/items/status?numbers=131"):
             return HTTPResponse(status: 200, body: Self.encoded(LookupBody(items: [Self.reviseItem()], missing: [])))
         case (.patch, "/items/131"):
             return HTTPResponse(status: 200, body: Self.encoded(Self.revisedItem(for: request)))
         default:
             return HTTPResponse(status: 200, body: Array(#"{"items":[],"total":0,"nextCursor":null}"#.utf8))
+        }
+    }
+
+    private struct SamplePage: Encodable {
+        let items: [ItemSummary]
+        let total: Int
+        let nextCursor: String?
+    }
+
+    /// 시안 15 Sample ①의 마케터 캠페인 이야기 7건과 사용법 1건(제목은 시안용 예시).
+    private static func sampleItems() -> [ItemSummary] {
+        let rows: [(String, String)] = [
+            ("그렙 사용법: 담기 → 찾기 → 넘기기", "그렙"),
+            ("카페 텀블러 할인, 올겨울 캠페인 늘었다", "가상 기사"),
+            ("파란컵 텀블러 캠페인 캡처.png", "이미지"),
+            ("겨울 음료 트렌드 보고서.pdf", "PDF"),
+            ("경쟁사 굿즈 이벤트 정리", "메모"),
+            ("인스타 캠페인 반응 모음", "가상 기사"),
+            ("텀블러 지참 할인 매장 목록", "가상 기사"),
+            ("캠페인 카피 초안", "글"),
+        ]
+        return rows.enumerated().map { index, row in
+            ItemSummary(
+                number: 8 - index,
+                kind: .link,
+                title: row.0,
+                source: row.1,
+                status: .ready,
+                tags: [],
+                savedAt: "2026-11-27T01:00:00Z"
+            )
         }
     }
 
