@@ -457,7 +457,7 @@ describe("LoggedInView", () => {
       const { container } = renderView();
 
       // when
-      fireEvent.dragEnter(container.querySelector(".gt-screen")!, filesDrag());
+      fireEvent.dragEnter(container.querySelector(".gt-terminal")!, filesDrag());
 
       // then
       expect(screen.getByText("놓으면 저장")).toBeTruthy();
@@ -467,7 +467,7 @@ describe("LoggedInView", () => {
     it("파일을끌어온뒤_놓으면_파일들을알리고안내를닫는지", () => {
       // given
       const { container, onFilesDrop } = renderView();
-      const screenElement = container.querySelector(".gt-screen")!;
+      const screenElement = container.querySelector(".gt-terminal")!;
       const pdf = new File(["%PDF"], "예산안.pdf", { type: "application/pdf" });
       fireEvent.dragEnter(screenElement, filesDrag());
 
@@ -483,7 +483,7 @@ describe("LoggedInView", () => {
     it("파일을끌어오다가_화면밖으로나가면_안내를닫는지", () => {
       // given
       const { container } = renderView();
-      const screenElement = container.querySelector(".gt-screen")!;
+      const screenElement = container.querySelector(".gt-terminal")!;
       fireEvent.dragEnter(screenElement, filesDrag());
 
       // when
@@ -2883,7 +2883,7 @@ describe("LoggedInView", () => {
     it("파일을_끌어_오는_동안이면_가운데서_만세하고_떠나면_그치는지", () => {
       // given
       const { container } = renderWithMole(null);
-      const screenElement = container.querySelector(".gt-screen")!;
+      const screenElement = container.querySelector(".gt-terminal")!;
 
       // when
       fireEvent.dragEnter(screenElement, { dataTransfer: { types: ["Files"], files: [] } });

@@ -26,7 +26,7 @@ function mountAdapter(held: DroppedFile[] = [], lines: BridgedLoggedInState["lin
     adapter.render({ itemCount: 34, lines, input: "", selection: [], processingCount: 0, isOffline: false }),
   );
   // 붙여 넣기·놓기는 순수 뷰가 받는다. 이벤트는 뷰가 그린 화면에 보낸다.
-  const screen = host.querySelector("main")!;
+  const screen = host.querySelector(".gt-terminal")!;
   return { screen, handle, hold };
 }
 
