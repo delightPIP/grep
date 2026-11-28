@@ -180,9 +180,12 @@ jobs:
       - name: Android Swift 호스트 테스트
         working-directory: android/swift
         run: swift test --disable-sandbox
+      # PR은 Swift .so를 debug로 교차 빌드한다(release 최적화 빌드가 9분 가까이 걸렸다). main 푸시는 release로 확인한다.
       - name: Android 테스트와 디버그 APK 빌드
         working-directory: android
-        run: ./gradlew test assembleDebug
+        env:
+          SWIFT_CONFIGURATION: ${{ github.event_name == 'pull_request' && 'debug' || 'release' }}
+        run: ./gradlew test assembleDebug -PswiftConfiguration="$SWIFT_CONFIGURATION"
 
   docs:
     needs: changes
