@@ -4,6 +4,7 @@ import FoundationEssentials
 import Foundation
 #endif
 import FeatureArchiveInterface
+import GrepCore
 import GrepData
 
 /// 보관함 목록을 받을 곳(#168).
