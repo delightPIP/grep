@@ -1645,6 +1645,7 @@ export function TerminalScreen({
               placeholder="링크 붙여 넣기 또는 명령"
               onChange={onInputChange}
               onSubmit={onSubmit}
+              above={<Burrow action={moleCue.action} actionKey={moleCue.key} label="그렙 두더지. 누르면 땅속으로 들어갔다 나온다" />}
             />
           </>
         }
@@ -1660,10 +1661,6 @@ export function TerminalScreen({
           )}
         </ChipContext.Provider>
       </Window>
-      {/* 땅굴은 터미널 창 밖 아래에 둔다. 창 안에 두면 두더지가 뛰어오를 자리만큼 출력을 가린다(2026-11-28 사용자 결정). */}
-      <div className="gt-burrow-floor">
-        <Burrow action={moleCue.action} actionKey={moleCue.key} label="그렙 두더지. 누르면 땅속으로 들어갔다 나온다" />
-      </div>
       {isDragging && <DropGuide />}
     </div>
   );

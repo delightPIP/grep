@@ -110,8 +110,6 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
 
 /* Burrow: 땅굴 두더지(#175, 시안 bundle.css). 흙·두더지 색은 테마와 상관없이 같다(디자인 시스템 9절). */
 .gt-burrow { position: relative; width: 100%; user-select: none; }
-/* 터미널 창 밖 아래 자리(창과 같은 폭) */
-.gt-burrow-floor { flex: none; padding-top: var(--space-2); }
 .gt-burrow-sky { position: relative; height: calc(var(--b-size) * 1.9); overflow: hidden; }
 .gt-burrow-mole { position: absolute; bottom: 0; width: var(--b-size); height: var(--b-size); margin-left: calc(var(--b-size) / -2); padding: 0; border: 0; background: none; cursor: pointer; overflow: hidden; }
 .gt-burrow-mole:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: var(--radius-sm); }
