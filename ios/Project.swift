@@ -104,6 +104,7 @@ let loggedInAdapterTarget: Target = .target(
     dependencies: [
         .target(name: "FeatureLoggedInUI"),
         .package(product: "GrepCore"),
+        .package(product: "GrepData"),
     ],
     settings: swiftSettings
 )

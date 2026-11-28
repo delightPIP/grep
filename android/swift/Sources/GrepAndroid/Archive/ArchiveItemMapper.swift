@@ -11,22 +11,16 @@ public struct ArchiveRowValue: Equatable, Sendable, Encodable {
     public let tags: [String]
 }
 
-/// `ItemSummary`와 보관함 오류를 화면 값과 정책 문구로 바꾼다. iOS `ArchiveItemMapper`(#91)와 같은 규칙이다.
+/// `ItemSummary`와 보관함 오류를 화면 값과 정책 문구로 바꾼다. 행 글자 규칙은 코어 `ItemRowText`가 정한다(iOS와 같다).
 public enum ArchiveItemMapper {
-    private static let listTagLimit = 3
-    private static let textTitleLimit = 24
-
     public static func mapRow(_ item: ItemSummary) -> ArchiveRowValue {
-        let title = item.kind == .text ? textTitle(item.title) : item.title
-        let savedAt = formatSavedAt(item.savedAt)
-        let metaParts = [item.source, savedAt].compactMap { $0 }.filter { !$0.isEmpty }
-        return ArchiveRowValue(
+        ArchiveRowValue(
             number: item.number,
-            title: title,
-            meta: metaParts.joined(separator: " · "),
-            summary: rowSummary(item),
-            summaryIsWarning: item.status == .blocked || item.status == .failed,
-            tags: Array(item.tags.prefix(listTagLimit))
+            title: ItemRowText.title(item),
+            meta: ItemRowText.meta(item),
+            summary: ItemRowText.summary(item),
+            summaryIsWarning: ItemRowText.isWarning(item),
+            tags: ItemRowText.tags(item)
         )
     }
 
@@ -39,44 +33,9 @@ public enum ArchiveItemMapper {
         }
     }
 
-    static func textTitle(_ title: String) -> String {
-        let firstLine = title.split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: false).first.map(String.init) ?? ""
-        return String(firstLine.prefix(textTitleLimit))
-            .replacingOccurrences(of: "\\s+$", with: "", options: .regularExpression)
-    }
+    static func textTitle(_ title: String) -> String { ItemRowText.textTitle(title) }
 
-    private static func isProcessing(_ item: ItemSummary) -> Bool {
-        item.status == .received || item.status == .processing
-    }
-
-    private static func rowSummary(_ item: ItemSummary) -> String? {
-        if isProcessing(item) { return "· 요약 생성 중" }
-        if item.status == .blocked { return "! 본문 못 가져옴 → 고치기 \(item.number)" }
-        if item.status == .failed { return "! 요약 못 만듦  제목·출처만 넘김" }
-        guard let summary = item.listSummary else { return nil }
-        if let partial = item.partialNote, !partial.isEmpty {
-            return "\(summary) (\(partial))"
-        }
-        return summary
-    }
-
-    /// ARC-004 규칙 7: 저장 시각은 한국 시간(`Asia/Seoul`) `yyyy-MM-dd HH:mm`.
-    static func formatSavedAt(_ iso8601: String) -> String {
-        let parserWithFractional = ISO8601DateFormatter()
-        parserWithFractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        let parserPlain = ISO8601DateFormatter()
-        parserPlain.formatOptions = [.withInternetDateTime]
-
-        guard let date = parserWithFractional.date(from: iso8601) ?? parserPlain.date(from: iso8601) else {
-            return iso8601
-        }
-        let formatter = DateFormatter()
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = TimeZone(identifier: "Asia/Seoul")
-        formatter.dateFormat = "yyyy-MM-dd HH:mm"
-        return formatter.string(from: date)
-    }
+    static func formatSavedAt(_ iso8601: String) -> String { ItemRowText.savedAt(iso8601) }
 }
 
 /// 보관함 한 쪽 결과를 Kotlin 어댑터가 읽는 JSON으로 바꾼다.

@@ -1,5 +1,6 @@
 import Foundation
 import GrepCore
+import GrepData
 
 /// 보관함 목록 조회 실패 이유(COM-010).
 public enum ArchiveLoadFailure: Equatable, Sendable {
@@ -16,25 +17,9 @@ public enum ArchivePageOutcome: Equatable, Sendable {
     case cancelled
 }
 
-/// `GET /items`로 최근 저장 순 자료 목록을 불러온다(api/openapi.yaml `listRecentItems`).
-/// iOS `HTTPArchiveItemLoader`(#91)와 같은 규칙을 따른다.
+/// `GET /items`로 최근 저장 순 자료 목록을 불러온다. 요청과 응답 해석은 코어 `BrowseAPI`(GrepData)가 한다.
 @MainActor
 public final class HTTPArchiveItemLoader {
-    private static let itemsPath = "/items"
-    private static let unauthorizedStatus = 401
-    private static let successStatuses = 200..<300
-    private static let sessionExpiredCode = "session_expired"
-    private static let unreservedBytes = Set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~".utf8)
-
-    private struct PageBody: Decodable {
-        let items: [ItemSummary]
-        let nextCursor: String?
-    }
-
-    private struct ErrorBody: Decodable {
-        let code: String
-    }
-
     private let authService: any AuthService
     private let httpTransport: any HTTPTransport
 
@@ -47,42 +32,22 @@ public final class HTTPArchiveItemLoader {
         guard let token = await authService.accessToken() else {
             return .sessionExpired
         }
-        let query = "limit=\(limit)" + (cursor.map { "&cursor=\(Self.percentEncoded($0))" } ?? "")
-        let request = HTTPRequest(
-            method: .get,
-            path: "\(Self.itemsPath)?\(query)",
-            headers: ["Authorization": "Bearer \(token)"]
-        )
-
-        let response: HTTPResponse
-        do {
-            response = try await httpTransport.send(request)
-        } catch {
-            switch error {
-            case .cancelled: return .cancelled
-            case .unreachable: return .failed(.disconnected)
-            case .timedOut: return .failed(.timedOut)
-            }
+        switch await BrowseAPI.recent(limit: limit, cursor: cursor, transport: httpTransport, accessToken: token) {
+        case .page(let items, _, let nextCursor): return .page(items: items, nextCursor: nextCursor)
+        case .sessionExpired: return .sessionExpired
+        case .failed(let reason): return .failed(ArchiveLoadFailure(reason))
+        case .cancelled: return .cancelled
         }
-
-        if response.status == Self.unauthorizedStatus {
-            let errorBody = try? JSONDecoder().decode(ErrorBody.self, from: Data(response.body))
-            return errorBody?.code == Self.sessionExpiredCode ? .sessionExpired : .failed(.serverError)
-        }
-
-        guard Self.successStatuses.contains(response.status),
-              let page = try? JSONDecoder().decode(PageBody.self, from: Data(response.body))
-        else {
-            return .failed(.serverError)
-        }
-        return .page(items: page.items, nextCursor: page.nextCursor)
     }
+}
 
-    private static func percentEncoded(_ value: String) -> String {
-        value.utf8.map { byte in
-            unreservedBytes.contains(byte)
-                ? String(UnicodeScalar(byte))
-                : "%" + (byte < 16 ? "0" : "") + String(byte, radix: 16, uppercase: true)
-        }.joined()
+extension ArchiveLoadFailure {
+    /// 코어 명령 실패 이유를 보관함 실패 이유로. 보관함에는 클립보드가 없다.
+    init(_ reason: CommandFailure) {
+        switch reason {
+        case .disconnected: self = .disconnected
+        case .timedOut: self = .timedOut
+        case .serverError, .clipboardDenied: self = .serverError
+        }
     }
 }

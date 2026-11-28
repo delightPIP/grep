@@ -1,5 +1,6 @@
 import Foundation
 import GrepCore
+import GrepData
 
 /// 휴지통 한 줄(api `TrashItem`). `daysLeft`는 영구 삭제까지 남은 날(ARC-008 규칙 10).
 public struct TrashListEntry: Equatable, Sendable, Decodable {
@@ -45,48 +46,9 @@ public protocol TrashClient: AnyObject {
     func empty() async -> TrashEmptyOutcome
 }
 
-/// `/items/trash`·`/items/restore`를 부른다(api/openapi.yaml, 코어 `TrashAPI`와 같은 계약).
+/// `/items/trash`·`/items/restore`를 부른다. 요청과 응답 해석은 코어 `TrashAPI`(GrepData)가 한다.
 @MainActor
 public final class HTTPTrashClient: TrashClient {
-    private static let trashPath = "/items/trash"
-    private static let restorePath = "/items/restore"
-    private static let unauthorizedStatus = 401
-    private static let notFoundStatus = 404
-    private static let successStatuses = 200..<300
-    private static let sessionExpiredCode = "session_expired"
-    private static let unreservedBytes = Set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~".utf8)
-
-    private struct PageBody: Decodable {
-        let items: [TrashListEntry]
-        let total: Int
-        let nextCursor: String?
-    }
-
-    private struct NumbersBody: Codable {
-        let numbers: [Int]
-    }
-
-    private struct RefListBody: Decodable {
-        struct Ref: Decodable { let number: Int }
-        let items: [Ref]
-    }
-
-    private struct CountBody: Decodable {
-        let count: Int
-    }
-
-    private struct ErrorBody: Decodable {
-        let code: String
-    }
-
-    /// 보낸 결과. 응답을 받았으면 `response`, 못 받았으면 이유.
-    private enum Sent {
-        case response(HTTPResponse)
-        case sessionExpired
-        case failed(ArchiveLoadFailure)
-        case cancelled
-    }
-
     private let authService: any AuthService
     private let httpTransport: any HTTPTransport
 
@@ -96,85 +58,35 @@ public final class HTTPTrashClient: TrashClient {
     }
 
     public func loadPage(limit: Int, cursor: String?) async -> TrashPageOutcome {
-        let query = "limit=\(limit)" + (cursor.map { "&cursor=\(Self.percentEncoded($0))" } ?? "")
-        switch await send(method: .get, path: "\(Self.trashPath)?\(query)", body: nil) {
-        case .response(let response):
-            guard Self.successStatuses.contains(response.status),
-                  let page = Self.decode(PageBody.self, response) else {
-                return .failed(.serverError)
-            }
-            return .page(total: page.total, entries: page.items, nextCursor: page.nextCursor)
+        guard let token = await authService.accessToken() else { return .sessionExpired }
+        switch await TrashAPI.list(limit: limit, cursor: cursor, transport: httpTransport, accessToken: token) {
+        case .page(let total, let items, let nextCursor):
+            let entries = items.map { TrashListEntry(item: $0.item, daysLeft: $0.daysLeft) }
+            return .page(total: total, entries: entries, nextCursor: nextCursor)
         case .sessionExpired: return .sessionExpired
-        case .failed(let reason): return .failed(reason)
+        case .failed(let reason): return .failed(ArchiveLoadFailure(reason))
         case .cancelled: return .cancelled
         }
     }
 
     public func restore(numbers: [Int]) async -> TrashRestoreOutcome {
-        let body = (try? JSONEncoder().encode(NumbersBody(numbers: numbers))).flatMap { String(data: $0, encoding: .utf8) }
-        switch await send(method: .post, path: Self.restorePath, body: body) {
-        case .response(let response):
-            if response.status == Self.notFoundStatus, let missing = Self.decode(NumbersBody.self, response) {
-                return .notFound(numbers: missing.numbers)
-            }
-            guard Self.successStatuses.contains(response.status),
-                  let restored = Self.decode(RefListBody.self, response) else {
-                return .failed(.serverError)
-            }
-            return .restored(numbers: restored.items.map(\.number))
+        guard let token = await authService.accessToken() else { return .sessionExpired }
+        switch await TrashAPI.restore(numbers: numbers, transport: httpTransport, accessToken: token) {
+        case .moved(let items): return .restored(numbers: items.map(\.number))
+        case .notFound(let missing): return .notFound(numbers: missing)
         case .sessionExpired: return .sessionExpired
-        case .failed(let reason): return .failed(reason)
+        case .failed(let reason): return .failed(ArchiveLoadFailure(reason))
         case .cancelled: return .cancelled
         }
     }
 
     public func empty() async -> TrashEmptyOutcome {
-        switch await send(method: .delete, path: Self.trashPath, body: nil) {
-        case .response(let response):
-            guard Self.successStatuses.contains(response.status),
-                  let emptied = Self.decode(CountBody.self, response) else {
-                return .failed(.serverError)
-            }
-            return .emptied(count: emptied.count)
+        guard let token = await authService.accessToken() else { return .sessionExpired }
+        switch await TrashAPI.empty(transport: httpTransport, accessToken: token) {
+        case .emptied(let count): return .emptied(count: count)
         case .sessionExpired: return .sessionExpired
-        case .failed(let reason): return .failed(reason)
+        case .failed(let reason): return .failed(ArchiveLoadFailure(reason))
         case .cancelled: return .cancelled
         }
-    }
-
-    private func send(method: HTTPRequest.Method, path: String, body: String?) async -> Sent {
-        guard let token = await authService.accessToken() else {
-            return .sessionExpired
-        }
-        var headers = ["Authorization": "Bearer \(token)"]
-        if body != nil {
-            headers["Content-Type"] = "application/json"
-        }
-        let response: HTTPResponse
-        do {
-            response = try await httpTransport.send(HTTPRequest(method: method, path: path, headers: headers, body: body))
-        } catch {
-            switch error {
-            case .cancelled: return .cancelled
-            case .unreachable: return .failed(.disconnected)
-            case .timedOut: return .failed(.timedOut)
-            }
-        }
-        if response.status == Self.unauthorizedStatus {
-            return Self.decode(ErrorBody.self, response)?.code == Self.sessionExpiredCode ? .sessionExpired : .failed(.serverError)
-        }
-        return .response(response)
-    }
-
-    private static func decode<Body: Decodable>(_ type: Body.Type, _ response: HTTPResponse) -> Body? {
-        try? JSONDecoder().decode(type, from: Data(response.body))
-    }
-
-    private static func percentEncoded(_ value: String) -> String {
-        value.utf8.map { byte in
-            unreservedBytes.contains(byte)
-                ? String(UnicodeScalar(byte))
-                : "%" + (byte < 16 ? "0" : "") + String(byte, radix: 16, uppercase: true)
-        }.joined()
     }
 }

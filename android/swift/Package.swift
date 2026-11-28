@@ -39,7 +39,7 @@ let package = Package(
             name: "GrepAndroid",
             dependencies: [
                 ribs, ribsAndroid, "GrepAndroidSupport",
-                core("GrepCore"), core("GrepCoreTesting"), core("GrepAppRoot"),
+                core("GrepCore"), core("GrepCoreTesting"), core("GrepData"), core("GrepAppRoot"),
                 core("FeatureLoggedInInterface"), core("FeatureLoggedIn"),
             ]
                 + features.flatMap { name -> [Target.Dependency] in
