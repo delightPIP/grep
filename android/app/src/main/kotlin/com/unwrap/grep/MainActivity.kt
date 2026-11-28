@@ -1,18 +1,18 @@
 package com.unwrap.grep
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import com.unwrap.grep.core.AuthConfig
 import com.unwrap.grep.core.RibActivity
 import com.unwrap.grep.core.RibTreeStarter
 import com.unwrap.grep.core.SwiftBridge
-import com.unwrap.grep.feature.loggedin.ui.LoggedInTabContainer
+import com.unwrap.grep.feature.loggedin.adapter.LoggedInTabsModel
+import com.unwrap.grep.feature.loggedin.adapter.LoggedInTabsScreen
+import com.unwrap.grep.feature.loggedin.adapter.rememberSwiftArchiveItemLoader
 import com.unwrap.grep.feature.loggedout.adapter.LOGGED_OUT_KIND
 import com.unwrap.grep.feature.loggedout.adapter.LoggedOutScreen
 import com.unwrap.grep.feature.terminal.adapter.TERMINAL_KIND
+import com.unwrap.grep.feature.terminal.adapter.TerminalCommandSender
 import com.unwrap.grep.feature.terminal.adapter.TerminalScreen
 import org.json.JSONObject
 
@@ -39,20 +39,21 @@ class MainActivity : RibActivity() {
     }
 }
 
+/** 터미널 화면을 하단 탭 컨테이너(MOB-001)로 감싸고 보관함·설정 탭을 잇는다. */
 @Composable
 private fun LoggedInHostScreen(terminalScreenId: Long) {
-    var selectionCount by remember { mutableIntStateOf(0) }
-    var scrollToBottomTrigger by remember { mutableIntStateOf(0) }
+    val commandSender = remember(terminalScreenId) { TerminalCommandSender() }
+    val archiveLoader = rememberSwiftArchiveItemLoader()
+    val model = remember(terminalScreenId) {
+        LoggedInTabsModel(archiveLoader = archiveLoader, sendCommand = commandSender::send)
+    }
 
-    LoggedInTabContainer(
-        isSelecting = selectionCount > 0,
-        onReselectTerminal = { scrollToBottomTrigger += 1 },
-        terminalContent = {
-            TerminalScreen(
-                screenId = terminalScreenId,
-                scrollToBottomTrigger = scrollToBottomTrigger,
-                onSelectionCountChanged = { selectionCount = it },
-            )
-        },
-    )
+    LoggedInTabsScreen(model = model) { scrollToBottomTrigger ->
+        TerminalScreen(
+            screenId = terminalScreenId,
+            scrollToBottomTrigger = scrollToBottomTrigger,
+            onContextChanged = model::updateTerminalContext,
+            commandSender = commandSender,
+        )
+    }
 }

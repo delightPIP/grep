@@ -56,6 +56,7 @@ internal fun decodeTerminalState(jsonString: String): TerminalUiState {
             isOffline = isOffline,
         ),
         isOffline = isOffline,
+        itemCount = itemCount,
         input = input,
         selection = selection,
         blocks = blocks.map { TerminalBlockUi(it.id, it.prompt, it.failed, it.entries) },

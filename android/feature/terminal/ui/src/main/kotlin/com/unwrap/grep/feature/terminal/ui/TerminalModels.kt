@@ -104,6 +104,8 @@ data class TerminalUiState(
     val windowTitle: String = "처음",
     val statusText: String = "자료 · 선택 0",
     val isOffline: Boolean = false,
+    /** 자료 전체 수. 아직 모르면 null. 보관함 머리 줄(`자료 N`)이 함께 쓴다. */
+    val itemCount: Int? = null,
     val input: String = "",
     val selection: List<TerminalItemRefUi> = emptyList(),
     val blocks: List<TerminalBlockUi> = emptyList(),
