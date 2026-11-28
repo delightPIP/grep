@@ -1122,7 +1122,7 @@ function WelcomeLines() {
   );
 }
 
-/** commands 2절 `도움말` 화면. 명령 13줄에 휴지통 명령 3줄(ARC-008, #96)을 더한 16줄(한글·영문·뜻). */
+/** commands 2절 `도움말` 화면. 명령 18줄(한글·영문·뜻): 데모 13줄 + 휴지통 3줄(ARC-008, #96) + 열기·찾아두기(#131·#134). QA F-01 */
 const GUIDE_ROWS: ReadonlyArray<readonly [string, string, string]> = [
   ["담기", "keep", "자료 저장"],
   ["최근", "recent", "최근 자료 목록"],
