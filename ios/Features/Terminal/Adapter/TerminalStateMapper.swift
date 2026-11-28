@@ -5,32 +5,8 @@ import GrepCore
 
 /// `TerminalViewState`를 순수 뷰 모델(`TerminalPresentation`)로 변환한다.
 /// 정책 원문과 포맷 규칙은 `web/features/logged-in/view.tsx`와 동일하다.
+/// 줄 종류별 변환은 명령 묶음마다 `TerminalStateMapper+<묶음>.swift`에 있고, 공용 형식기는 `TerminalTextFormat`이다.
 public enum TerminalStateMapper {
-    private static let listTagLimit = 3
-    private static let textTitleLimit = 24
-    private static let bytesPerMB = 1024.0 * 1024.0
-    private static let handoffDirectLimit = 5
-    private static let handoffFirstLimit = 10
-
-    private static let guideRows: [TerminalGuideRow] = [
-        TerminalGuideRow(name: "담기", english: "keep", meaning: "자료 저장"),
-        TerminalGuideRow(name: "최근", english: "recent", meaning: "최근 자료 목록"),
-        TerminalGuideRow(name: "찾기", english: "seek", meaning: "검색"),
-        TerminalGuideRow(name: "고르기", english: "pick", meaning: "번호로 선택"),
-        TerminalGuideRow(name: "넘기기", english: "handoff", meaning: "AI 도구용 글 복사"),
-        TerminalGuideRow(name: "묶음", english: "pack", meaning: "선택에 이름 붙이기"),
-        TerminalGuideRow(name: "고치기", english: "revise", meaning: "제목·요약 수정"),
-        TerminalGuideRow(name: "버리기", english: "drop", meaning: "삭제"),
-        TerminalGuideRow(name: "되살리기", english: "revive", meaning: "휴지통에서 돌리기"),
-        TerminalGuideRow(name: "휴지통", english: "bin", meaning: "휴지통 목록"),
-        TerminalGuideRow(name: "휴지통 비우기", english: "bin empty", meaning: "휴지통 영구 삭제"),
-        TerminalGuideRow(name: "가져오기", english: "bring", meaning: "북마크 파일 가져오기"),
-        TerminalGuideRow(name: "연결", english: "plug", meaning: "AI 도구 연결"),
-        TerminalGuideRow(name: "로그아웃", english: "signout", meaning: "로그아웃"),
-        TerminalGuideRow(name: "도움말", english: "guide", meaning: "명령 목록"),
-        TerminalGuideRow(name: "설명", english: "about", meaning: "명령 설명"),
-    ]
-
     public static func map(_ state: TerminalViewState) -> TerminalPresentation {
         let pickedNumbers = Set(state.selection.map(\.number))
         return TerminalPresentation(
@@ -52,7 +28,7 @@ public enum TerminalStateMapper {
                 TerminalRevisePresentation(number: $0.number, title: $0.title, summary: $0.summary)
             },
             offersSamples: state.itemCount == 0,
-            itemCountLine: state.itemCount.map { "자료 \(groupedCount($0))건" }
+            itemCountLine: state.itemCount.map { "자료 \(TerminalTextFormat.groupedCount($0))건" }
         )
     }
 
@@ -83,22 +59,6 @@ public enum TerminalStateMapper {
         default:
             nil
         }
-    }
-
-    /// 웹 `toLocaleString("ko-KR")`과 같은 천 단위 쉼표.
-    private static func groupedCount(_ count: Int) -> String {
-        count.formatted(.number.grouping(.automatic).locale(Locale(identifier: "ko_KR")))
-    }
-
-    /// ACC-002 사용자 문구. 끊길 AI 도구 연결이 있으면 `· AI 도구 연결 N개`, 없거나 모르면 그 칸을 뺀다(웹과 같음).
-    private static func signOutEverywhereBody(_ connectionCount: Int?) -> String {
-        let connections = connectionCount.flatMap { $0 > 0 ? " · AI 도구 연결 \($0)개" : nil } ?? ""
-        return " 모든 기기\(connections) (다른 기기는 최대 1시간 뒤)"
-    }
-
-    /// 목록 머리 줄. 다음 쪽이 남았으면 `12건 중 1건`(commands 6절).
-    private static func countHeader(total: Int, shown: Int) -> String {
-        shown < total ? "\(total)건 중 \(shown)건" : "\(total)건"
     }
 
     private static func windowTitle(lines: [TerminalViewState.Line]) -> String {
@@ -163,183 +123,32 @@ public enum TerminalStateMapper {
         }
     }
 
+    /// 줄 종류를 명령 묶음별 변환으로 보낸다. 새 줄 종류가 생기면 여기서 컴파일 오류가 난다.
     private static func mapLine(
         _ line: TerminalViewState.Line,
         failed: Bool,
         pickedNumbers: Set<Int>
     ) -> [TerminalOutputBlockLine] {
         switch line {
-        case .prompt(let text):
-            return [.prompt(command: text, failed: failed)]
-        case .unknownCommand(let name, _):
-            return [.status(tone: .error, boldPrefix: "없는 명령:", body: " \(name)")]
-        case .missingArgument(let command, _):
-            switch command {
-            case .keep:
-                return [.status(tone: .error, boldPrefix: nil, body: "저장할 것 없음  예: 담기 https://…")]
-            case .seek:
-                return [.status(tone: .error, boldPrefix: nil, body: "검색어 없음  예: 찾기 결제")]
-            case .pick:
-                return [.status(tone: .error, boldPrefix: nil, body: "번호 없음  예: 고르기 131")]
-            default:
-                return []
-            }
-        case .missingTag:
-            return [.status(tone: .error, boldPrefix: nil, body: "태그 없음  예: 찾기 #결제")]
-        case .saved(let item):
-            let headline = item.kind == .text
-                ? "저장됨 (글)  \(textTitle(item.title))"
-                : "저장됨  \(withSource(item))"
-            var result: [TerminalOutputBlockLine] = [.status(tone: .ok, boldPrefix: nil, body: headline)]
-            if isProcessing(item) {
-                result.append(.plain(text: "· 요약 생성 중", dim: true))
-            }
-            return result
-        case .alreadySaved(let item):
-            return [
-                .status(tone: .warn, boldPrefix: nil, body: "이미 저장됨 → \(item.number)번 (새로 만들지 않음)"),
-                .itemRow(mapRow(item, isPicked: pickedNumbers.contains(item.number))),
-                .commandHint(prefix: "→ ", command: "고르기 \(item.number)", suffix: ""),
-            ]
-        case .inTrash(let number):
-            return [.status(tone: .warn, boldPrefix: nil, body: "휴지통에 있음 → \(number)번. 되살리기 \(number)")]
-        case .saveFailed(let reason, let recovery):
-            let headline = "저장 안 됨: \(failureText(reason))\(recoverySuffix(reason, recovery))"
-            var result: [TerminalOutputBlockLine] = [.status(tone: .error, boldPrefix: nil, body: headline)]
-            if case .retry(let command) = recovery {
-                result.append(.commandHint(prefix: "→ 다시: ", command: command, suffix: ""))
-            }
-            return result
-        case .recentList(let items, let hasMore, let total, let period):
-            // 시점이 없는 `최근`은 머리 줄 없이 목록만(commands 6절). 시점이 있으면 찾기와 같은 머리 줄.
-            return [periodList(items: items, total: total ?? items.count, hasMore: hasMore, period: period, pickedNumbers: pickedNumbers, showsCount: period != nil)]
-        case .searchResult(_, let total, let items, let hasMore, let period, _):
-            return [periodList(items: items, total: total, hasMore: hasMore, period: period, pickedNumbers: pickedNumbers, showsCount: true)]
-        case .noResults(let query, let recent, let period, _):
-            var result: [TerminalOutputBlockLine] = []
-            if let period {
-                // commands 6절 시점을 붙인 결과: `· 0건: "결제" (지난달)` 뒤에 `→ 기간 없이: 찾기 결제`.
-                let bare = ([query.words] + query.tags.map { "#\($0)" }).filter { !$0.isEmpty }.joined(separator: " ")
-                result.append(.status(tone: .info, boldPrefix: nil, body: #"0건: "\#(bare)" (\#(period.label))"#))
-                result.append(.commandHint(prefix: "→ 기간 없이: ", command: "찾기 \(bare)", suffix: ""))
-            } else {
-                result.append(.status(tone: .info, boldPrefix: nil, body: #"0건: "\#(query.text)""#))
-            }
-            if !recent.isEmpty {
-                result.append(.status(tone: .info, boldPrefix: nil, body: "최근 저장 \(recent.count)건 (검색 결과 아님)"))
-                result.append(.list(
-                    header: nil,
-                    items: recent.map { mapRow($0, isPicked: pickedNumbers.contains($0.number)) },
-                    hasMore: false
-                ))
-            }
-            return result
-        case .picked(let items):
-            let titleList = items.map(\.title).joined(separator: " · ")
-            return [
-                .status(tone: .ok, boldPrefix: nil, body: "선택 \(items.count)건  \(titleList)"),
-                .commandHint(prefix: "→ ", command: "넘기기", suffix: " 또는 묶음 <이름>"),
-            ]
-        case .notFound(let numbers):
-            let list = numbers.map(String.init).joined(separator: ", ")
-            return [.status(tone: .error, boldPrefix: nil, body: "없는 번호: \(list)")]
-        case .invalidNumber(let input):
-            return [.status(tone: .error, boldPrefix: nil, body: "잘못된 번호: \(input)  예: 고르기 131 140")]
-        case .handedOff(let result):
-            return [.handedOff(TerminalHandoffPresentation(
-                items: result.items.map { TerminalItemRef(number: $0.number, title: $0.title) },
-                charCountText: formatCharCount(result.charCount),
-                missingSummaryCount: result.missingSummaryCount,
-                text: result.text
-            ))]
-        case .handoffFailed(let reason, let preview):
-            return [.handoffFailed(
-                reasonLabel: commandFailureLabel(reason),
-                preview: preview,
-                isClipboardDenied: reason == .clipboardDenied
-            )]
-        case .handoffConfirm(let total):
-            var choices: [TerminalChoiceItem] = []
-            if total > handoffFirstLimit {
-                choices.append(TerminalChoiceItem(command: "앞\(handoffFirstLimit)", label: "앞 \(handoffFirstLimit)건만"))
-            }
-            choices.append(TerminalChoiceItem(command: "전부", label: "\(total)건 전부"))
-            choices.append(TerminalChoiceItem(command: "취소", label: "그 외 입력"))
-            return [.handoffConfirm(total: total, choices: choices)]
-        case .cancelled:
-            return [.status(tone: .info, boldPrefix: nil, body: "취소됨")]
-        case .commandFailed(let command, let reason, let retry):
-            return [
-                .status(tone: .error, boldPrefix: nil, body: "\(commandLabel(command)) 안 됨: \(commandFailureLabel(reason))"),
-                .commandHint(prefix: "→ 다시: ", command: retry, suffix: ""),
-            ]
-        case .welcome:
-            return [.welcome]
-        case .guide:
-            return [.guide(rows: guideRows)]
-        case .about(let command):
-            return [.status(tone: .info, boldPrefix: "\(commandLabel(command))", body: "  \(aboutDescription(command))")]
-        case .reconnected:
-            return [.status(tone: .ok, boldPrefix: nil, body: "연결됨")]
-        case .dropConfirm(let total):
-            // ARC-008 사용자 문구. 답은 확인 시트의 낱말 버튼으로 받는다(MOB-002 규칙 4, 시안 M9).
-            return [.status(tone: .warn, boldPrefix: "버리기?", body: " \(total)건 (휴지통으로)")]
-        case .dropped(let items):
-            // ARC-008 사용자 문구. 되살리기는 `<번호...>`를 받으므로 옮긴 번호를 모두 적는다.
-            let numbers = items.map { String($0.number) }.joined(separator: " ")
-            return [.status(tone: .ok, boldPrefix: "휴지통 \(items.count)건", body: " (30일 뒤 삭제, 되살리기 \(numbers))")]
-        case .revived(let items):
-            // ARC-008 사용자 문구.
-            return [.status(tone: .ok, boldPrefix: "되살림 \(items.count)건", body: "")]
-        case .binList(let total, let items, let hasMore):
-            // ARC-008 규칙 5. 순서는 서버가 지운 날 최신순으로 준다.
-            guard total > 0 else { return [emptyBinLine] }
-            return [.trashList(header: countHeader(total: total, shown: items.count), rows: items.map(mapTrashRow), hasMore: hasMore)]
-        case .binEmptyConfirm(let total):
-            // ARC-008 사용자 문구. 답은 확인 시트의 낱말 버튼으로 받는다(MOB-002 규칙 4, 시안 M11 ②).
-            return [.status(tone: .warn, boldPrefix: "비우기?", body: " \(total)건 (되돌릴 수 없음)")]
-        case .binEmptied(let count):
-            // 빈 휴지통을 비우면 `0건 영구 삭제` 대신 비어 있다고만 알린다(웹과 같음).
-            guard count > 0 else { return [emptyBinLine] }
-            // ARC-008 사용자 문구.
-            return [.status(tone: .ok, boldPrefix: "비움", body: "  \(count)건 영구 삭제")]
-        case .revised(let item):
-            // 시안 Edit ②. 직접 고친 요약에는 ARC-004 규칙 1 이름표를 붙인다(웹 `RevisedLines`와 같음).
-            var result: [TerminalOutputBlockLine] = [
-                .status(tone: .ok, boldPrefix: "고침", body: "  \(item.number)번  \(item.title)"),
-            ]
-            if item.summarySource == .user, let summary = item.listSummary {
-                result.append(.plain(text: "요약 (직접 고침)  \(summary)", dim: true))
-            }
-            return result
-        case .tagsRemoved(let item, let tags):
-            // 시안 Edit ③(문구 제안). 지운 태그는 다시 붙지 않는다(ARC-002 규칙 2).
-            let removed = tags.map { "#\($0)" }.joined(separator: " ")
-            return [.status(tone: .ok, boldPrefix: "태그 지움", body: " \(removed) (\(item.number)번)")]
-        case .samplesSaved(let firstNumber, let lastNumber, let items):
-            // ARC-010 규칙 4·6 사용자 문구. 받은 번호 범위와 치우는 법, 이어서 `최근`과 같은 목록.
-            let range = "\(firstNumber)-\(lastNumber)"
-            var result: [TerminalOutputBlockLine] = [
-                .status(tone: .ok, boldPrefix: "샘플 \(lastNumber - firstNumber + 1)건 저장 (\(range)번)", body: ""),
-                .commandHint(prefix: "· 치우려면: ", command: "버리기 \(range)", suffix: ""),
-            ]
-            if !items.isEmpty {
-                result.append(.list(
-                    header: nil,
-                    items: items.map { mapRow($0, isPicked: pickedNumbers.contains($0.number)) },
-                    hasMore: false
-                ))
-            }
-            return result
-        case .unpicked(_, let remaining):
-            // commands 6절 선택 빼기. 남은 수는 그 시점 값을 줄이 들고 온다(지난 줄이 나중 선택에 따라 바뀌지 않게).
-            return [.status(tone: .ok, boldPrefix: "뺌", body: "  선택 \(remaining)건 남음")]
-        case .pickCleared:
-            // commands 6절 "모두 풀면 `✓ 선택 비움`". 건수는 문구에 없다.
-            return [.status(tone: .ok, boldPrefix: "선택 비움", body: "")]
-        case .signOutEverywhereConfirm(let connectionCount):
-            // ACC-002 사용자 문구. 답은 확인 시트의 낱말 버튼으로 받는다(MOB-002 규칙 4).
-            return [.status(tone: .warn, boldPrefix: "로그아웃?", body: signOutEverywhereBody(connectionCount))]
+        case .prompt, .unknownCommand, .missingArgument, .missingTag, .cancelled, .commandFailed,
+             .welcome, .guide, .about, .reconnected:
+            return mapIntroLine(line, failed: failed)
+        case .saved, .alreadySaved, .inTrash, .saveFailed:
+            return mapKeepLine(line, pickedNumbers: pickedNumbers)
+        case .recentList, .searchResult, .noResults:
+            return mapPeriodLine(line, pickedNumbers: pickedNumbers)
+        case .picked, .notFound, .invalidNumber, .unpicked, .pickCleared:
+            return mapPickLine(line)
+        case .handedOff, .handoffFailed, .handoffConfirm:
+            return mapHandoffLine(line)
+        case .dropConfirm, .dropped, .revived, .binList, .binEmptyConfirm, .binEmptied:
+            return mapTrashLine(line)
+        case .revised, .tagsRemoved:
+            return mapReviseLine(line)
+        case .samplesSaved:
+            return mapSamplesLine(line, pickedNumbers: pickedNumbers)
+        case .signOutEverywhereConfirm:
+            return mapSignOutEverywhereLine(line)
         case .bundleList, .bundleAdded, .bundleView, .bundleNotFound, .bundleUnpicked, .notInBundle,
              .bundleDeleteConfirm, .bundleDeleted, .bundleNameInvalid, .folderHint, .itemDetail, .oneNumberOnly,
              .searchSaved, .savedSearchList, .savedSearchPeriod, .savedSearchTooLong, .savedSearchDeleteConfirm,
@@ -349,191 +158,5 @@ public enum TerminalStateMapper {
             // 후속 iOS 이슈(#109~)에서 정책 원문으로 추가한다.
             return []
         }
-    }
-
-    /// 빈 휴지통. 정책 문구가 없어 웹과 같은 문구를 쓴다.
-    private static let emptyBinLine = TerminalOutputBlockLine.status(tone: .info, boldPrefix: nil, body: "휴지통 비어 있음")
-
-    /// 휴지통 행. 시각 칸에 영구 삭제까지 남은 날(ARC-008 규칙 10).
-    private static func mapTrashRow(_ entry: TrashEntry) -> TerminalTrashRow {
-        let item = entry.item
-        let title = item.kind == .text ? textTitle(item.title) : item.title
-        let metaParts = [item.source, "\(entry.daysLeft)일 남음"].compactMap { $0 }.filter { !$0.isEmpty }
-        return TerminalTrashRow(number: item.number, title: title, meta: metaParts.joined(separator: " · "))
-    }
-
-    /// 찾기·최근 목록. 시점이 있으면 머리 줄 뒤에 ` · 지난달 (10/1~10/31)`, 여러 주면 주 구분선(웹 `SearchResultLines`).
-    private static func periodList(
-        items: [ItemSummary],
-        total: Int,
-        hasMore: Bool,
-        period: Period?,
-        pickedNumbers: Set<Int>,
-        showsCount: Bool
-    ) -> TerminalOutputBlockLine {
-        var rows = items.map { mapRow($0, isPicked: pickedNumbers.contains($0.number)) }
-        var header = showsCount ? countHeader(total: total, shown: items.count) : nil
-        if let period {
-            header = [header, PeriodFormat.label(period)].compactMap { $0 }.joined(separator: " · ")
-            let dividers = PeriodFormat.dividers(for: items.map(\.savedAt), in: period)
-            rows = zip(rows, dividers).map { $0.with(dividerBefore: $1) }
-        }
-        return .list(header: header, items: rows, hasMore: hasMore)
-    }
-
-    private static func mapRow(_ item: ItemSummary, isPicked: Bool) -> TerminalItemRow {
-        let title = item.kind == .text ? textTitle(item.title) : item.title
-        let savedAt = formatSavedAt(item.savedAt)
-        let metaParts = [item.source, savedAt].compactMap { $0 }.filter { !$0.isEmpty }
-        let matchLabel: String? = item.matchedIn == .imageText ? "이미지 속 글자" : nil
-        return TerminalItemRow(
-            number: item.number,
-            title: title,
-            meta: metaParts.joined(separator: " · "),
-            summary: rowSummary(item),
-            summaryIsWarning: item.status == .blocked || item.status == .failed,
-            matchLabel: matchLabel,
-            tags: Array(item.tags.prefix(listTagLimit)),
-            isPicked: isPicked
-        )
-    }
-
-    private static func isProcessing(_ item: ItemSummary) -> Bool {
-        item.status == .received || item.status == .processing
-    }
-
-    private static func withSource(_ item: ItemSummary) -> String {
-        if let source = item.source, !source.isEmpty {
-            return "\(item.title) (\(source))"
-        }
-        return item.title
-    }
-
-    private static func textTitle(_ title: String) -> String {
-        let firstLine = title.split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: false).first.map(String.init) ?? ""
-        return String(firstLine.prefix(textTitleLimit)).replacingOccurrences(of: "\\s+$", with: "", options: .regularExpression)
-    }
-
-    private static func rowSummary(_ item: ItemSummary) -> String? {
-        if isProcessing(item) { return "· 요약 생성 중" }
-        if item.status == .blocked { return "! 본문 못 가져옴 → 고치기 \(item.number)" }
-        if item.status == .failed { return "! 요약 못 만듦  제목·출처만 넘김" }
-        guard let summary = item.listSummary else { return nil }
-        if let partial = item.partialNote, !partial.isEmpty {
-            return "\(summary) (\(partial))"
-        }
-        return summary
-    }
-
-    private static func failureText(_ reason: SaveFailure) -> String {
-        switch reason {
-        case .disconnected: "연결 끊김"
-        case .timedOut: "응답 없음"
-        case .serverError: "서버 오류"
-        case .unsupportedFormat(let ext): "받지 않는 형식 (.\(ext))"
-        case .tooLarge(let fileName, let bytes): "20MB 넘음 (\(fileName) · \(formatMegabytes(bytes)))"
-        }
-    }
-
-    private static func recoverySuffix(_ reason: SaveFailure, _ recovery: SaveRecovery) -> String {
-        switch recovery {
-        case .inputKept:
-            return "  입력은 남겨 둠"
-        case .file(let name):
-            switch reason {
-            case .disconnected, .timedOut, .serverError:
-                return " (\(name))"
-            case .unsupportedFormat, .tooLarge:
-                return ""
-            }
-        case .retry:
-            return ""
-        }
-    }
-
-    private static func formatMegabytes(_ bytes: Int) -> String {
-        let rounded = (Double(bytes) / bytesPerMB * 10).rounded() / 10
-        return rounded.truncatingRemainder(dividingBy: 1) == 0
-            ? "\(Int(rounded))MB"
-            : String(format: "%.1fMB", rounded)
-    }
-
-    private static func formatCharCount(_ count: Int) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.locale = Locale(identifier: "ko_KR")
-        let formatted = formatter.string(from: NSNumber(value: count)) ?? String(count)
-        return "\(formatted)자"
-    }
-
-    private static func commandLabel(_ command: CommandName) -> String {
-        switch command {
-        case .keep: "담기"
-        case .recent: "최근"
-        case .seek: "찾기"
-        case .pick: "고르기"
-        case .handoff: "넘기기"
-        case .guide: "도움말"
-        case .about: "설명"
-        case .signOut: "로그아웃"
-        case .revise: "고치기"
-        case .drop: "버리기"
-        case .revive: "되살리기"
-        case .bin: "휴지통"
-        case .pack: "묶음"
-        case .peek: "열기"
-        case .gather: "찾아두기"
-        case .bring: "가져오기"
-        case .plug: "연결"
-        }
-    }
-
-    private static func aboutDescription(_ command: CommandName) -> String {
-        switch command {
-        case .keep: "링크·글 저장  예: 담기 https://…"
-        case .recent: "최근 자료 목록  예: 최근"
-        case .seek: "검색어·#태그 검색  예: 찾기 결제 #sdk"
-        case .pick: "번호로 자료 선택  예: 고르기 131 140"
-        case .handoff: "선택한 자료를 AI 도구용 글로 복사  예: 넘기기"
-        case .guide: "전체 명령 목록  예: 도움말"
-        case .about: "명령 사용법 안내  예: 설명 찾기"
-        case .signOut: "이 기기의 세션 종료  예: 로그아웃"
-        case .revise: "제목·요약 수정, 태그 지우기  예: 고치기 131 -#위젯"
-        case .drop: "자료를 휴지통으로  예: 버리기 131, 버리기 1-8"
-        case .revive: "휴지통에서 돌리기  예: 되살리기 131"
-        case .bin: "휴지통 목록·비우기  예: 휴지통, 휴지통 비우기"
-        case .pack: "선택한 자료를 묶음에 넣기·보기  예: 묶음 결제조사"
-        case .peek: "자료 하나 자세히 보기  예: 열기 131"
-        case .gather: "검색어를 저장해 자료 모으기  예: 찾아두기 텀블러 캠페인"
-        case .bring: "북마크 파일의 링크 한 번에 저장  예: 가져오기"
-        case .plug: "AI 도구 연결 주소·목록  예: 연결, 연결 끊기 1"
-        }
-    }
-
-    private static func commandFailureLabel(_ reason: CommandFailure) -> String {
-        switch reason {
-        case .disconnected: "연결 끊김"
-        case .timedOut: "응답 없음"
-        case .serverError: "서버 오류"
-        case .clipboardDenied: "클립보드 거부"
-        }
-    }
-
-    /// ARC-004 규칙 7: 저장 시각은 한국 시간(`Asia/Seoul`) `yyyy-MM-dd HH:mm`.
-    static func formatSavedAt(_ iso8601: String) -> String {
-        let parserWithFractional = ISO8601DateFormatter()
-        parserWithFractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        let parserPlain = ISO8601DateFormatter()
-        parserPlain.formatOptions = [.withInternetDateTime]
-
-        guard let date = parserWithFractional.date(from: iso8601) ?? parserPlain.date(from: iso8601) else {
-            return iso8601
-        }
-        let formatter = DateFormatter()
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = TimeZone(identifier: "Asia/Seoul")
-        formatter.dateFormat = "yyyy-MM-dd HH:mm"
-        return formatter.string(from: date)
     }
 }
