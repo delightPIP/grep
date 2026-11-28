@@ -97,6 +97,7 @@ extension TerminalInteractor {
                 update(viewState.with(selection: []).appending(lines: [
                     .bundleAdded(name: added.name, count: added.count, alreadyCount: added.alreadyCount),
                 ]))
+                refreshArchiveIfOpened()
                 return
             }
             show(outcome, name: name, typed: typed) { _ in nil }

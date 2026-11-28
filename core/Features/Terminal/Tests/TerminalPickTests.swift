@@ -221,4 +221,29 @@ struct TerminalPickTests {
         #expect(fixture.state.selection.isEmpty)
         #expect(fixture.state.lines.last == .pickCleared(count: 2))
     }
+
+    // MARK: #179 선택 칩 종류(ARC-003 규칙 14)
+
+    @Test func 글과파일자료를고를때_모두있다고답하면_선택에종류와출처를담는지() async {
+        // given
+        await fixture.attach()
+        let note = ItemSummary(
+            number: 12, kind: .text, title: "메모", source: nil, status: .ready, tags: [],
+            savedAt: "2026-11-27T10:00:00+09:00"
+        )
+        let file = ItemSummary(
+            number: 25, kind: .file, title: "명세.pdf", source: "pdf", status: .ready, tags: [],
+            savedAt: "2026-11-27T10:00:00+09:00"
+        )
+        await fixture.submit("고르기 25 12")
+
+        // when
+        await fixture.respond(json: Fixture.lookupJSON([note, file]))
+
+        // then
+        #expect(fixture.state.selection == [
+            ItemRef(number: 25, title: "명세.pdf", kind: .file, source: "pdf"),
+            ItemRef(number: 12, title: "메모", kind: .text, source: nil),
+        ])
+    }
 }

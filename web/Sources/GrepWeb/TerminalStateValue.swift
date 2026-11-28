@@ -25,6 +25,8 @@ extension TerminalViewState {
             "isOffline": isOffline,
             "revising": revising?.bridgeValue,
             "mole": mole.map { object(["action": $0.action.rawValue, "seq": $0.seq]) },
+            "archive": archive?.bridgeValue,
+            "settings": settings?.bridgeValue,
         ])
         guard let object = state.object else { preconditionFailure("state should convert to a JS object") }
         return object
@@ -215,7 +217,47 @@ extension ItemSummary {
 }
 
 extension ItemRef {
-    fileprivate var bridgeValue: JSValue { object(["number": number, "title": title]) }
+    fileprivate var bridgeValue: JSValue {
+        object(["number": number, "title": title, "kind": kind.rawValue, "source": source])
+    }
+}
+
+extension ArchiveState {
+    fileprivate var bridgeValue: JSValue {
+        object([
+            "groups": groups.map(\.bridgeValue),
+            "bundles": bundles.map(\.bridgeValue),
+            "savedSearches": savedSearches.map(\.bridgeValue),
+            "filter": filter.bridgeValue,
+            "items": items.map(\.bridgeValue),
+            "hasMore": hasMore,
+            "status": status.rawValue,
+        ])
+    }
+}
+
+extension AutoGroupEntry {
+    fileprivate var bridgeValue: JSValue { object(["group": group.rawValue, "value": value, "count": count]) }
+}
+
+extension ArchiveFilter {
+    fileprivate var bridgeValue: JSValue {
+        switch self {
+        case .all: object(["kind": "all"])
+        case .auto(let group, let value): object(["kind": "auto", "group": group.rawValue, "value": value])
+        case .bundle(let name): object(["kind": "bundle", "name": name])
+        case .savedSearch(let query): object(["kind": "savedSearch", "query": query])
+        }
+    }
+}
+
+extension SettingsState {
+    fileprivate var bridgeValue: JSValue {
+        object([
+            "account": account.map { object(["authProvider": $0.authProvider.rawValue, "itemCount": $0.itemCount]) },
+            "connections": connections.map(\.bridgeValue),
+        ])
+    }
 }
 
 extension SearchQuery {

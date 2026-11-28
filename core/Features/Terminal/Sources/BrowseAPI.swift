@@ -69,7 +69,7 @@ enum BrowseAPI {
         let code: String
     }
 
-    private enum Reply<Body> {
+    enum Reply<Body> {
         case body(Body)
         case sessionExpired
         case unauthorized
@@ -92,6 +92,12 @@ enum BrowseAPI {
             params.append("from=\(percentEncoded(period.from))")
             params.append("to=\(percentEncoded(period.to))")
         }
+        return await items(params, transport: transport, accessToken: accessToken)
+    }
+
+    /// `GET /items?<params>`. `params`는 퍼센트 인코딩한 `이름=값`이다. 보관함 자동 묶음 조건(#168)도 여기로 보낸다.
+    @MainActor
+    static func items(_ params: [String], transport: any HTTPTransport, accessToken: String) async -> PageOutcome {
         switch await get("\(itemsPath)?\(params.joined(separator: "&"))", as: PageBody.self, transport: transport, accessToken: accessToken) {
         case .body(let page): return .page(items: page.items, total: page.total, nextCursor: page.nextCursor)
         case .sessionExpired: return .sessionExpired
@@ -158,7 +164,7 @@ enum BrowseAPI {
     }
 
     @MainActor
-    private static func get<Body: Decodable>(
+    static func get<Body: Decodable>(
         _ path: String,
         as type: Body.Type,
         transport: any HTTPTransport,

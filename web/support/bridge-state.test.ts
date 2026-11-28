@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { type BridgedLoggedInState, toLoggedInState, toLoggedOutState } from "./bridge-state";
+import { type BridgedLoggedInState, flattenArchiveFilter, toLoggedInState, toLoggedOutState } from "./bridge-state";
+import type { ArchiveFilter, ArchiveState } from "./view-state";
 
 describe("브리지 값을 뷰 상태로 바꾸기", () => {
   it("알림이없을때_로그인화면값을바꾸면_알림없는상태가되는지", () => {
@@ -111,7 +112,7 @@ describe("브리지 값을 뷰 상태로 바꾸기", () => {
   it("고른자료와상태줄값이있을때_터미널값을바꾸면_선택과처리중수와연결상태가들어가는지", () => {
     // given
     const bridged = terminal({
-      selection: [{ number: 131, title: "결제 연동 가이드" }],
+      selection: [{ number: 131, title: "결제 연동 가이드", kind: "link", source: "docs.toss.im" }],
       processingCount: 2,
       isOffline: true,
     });
@@ -120,7 +121,7 @@ describe("브리지 값을 뷰 상태로 바꾸기", () => {
     const state = toLoggedInState(bridged);
 
     // then
-    expect(state.selection).toEqual([{ number: 131, title: "결제 연동 가이드" }]);
+    expect(state.selection).toEqual([{ number: 131, title: "결제 연동 가이드", kind: "link", source: "docs.toss.im" }]);
     expect(state.processingCount).toBe(2);
     expect(state.isOffline).toBe(true);
   });
@@ -145,6 +146,42 @@ describe("브리지 값을 뷰 상태로 바꾸기", () => {
 
     // then
     expect(convert).toThrow("deleted");
+  });
+
+  it("보관함과설정값이있을때_터미널값을바꾸면_그대로들어가는지", () => {
+    // given
+    const archive: ArchiveState = {
+      groups: [{ group: "format", value: "link", count: 3 }],
+      bundles: [{ name: "결제", count: 0 }],
+      savedSearches: [],
+      filter: { kind: "auto", group: "format", value: "link" },
+      items: [],
+      hasMore: false,
+      status: "loading",
+    };
+    const settings = { account: { authProvider: "github" as const, itemCount: 3 }, connections: [] };
+
+    // when
+    const state = toLoggedInState(terminal({ archive, settings }));
+
+    // then
+    expect(state.archive).toEqual(archive);
+    expect(state.settings).toEqual(settings);
+  });
+});
+
+describe("보관함 거르기를 브리지 인자로 펴기", () => {
+  it.each<[ArchiveFilter, [string, string | null, string | null]]>([
+    [{ kind: "all" }, ["all", null, null]],
+    [{ kind: "auto", group: "source", value: "direct" }, ["auto", "source", "direct"]],
+    [{ kind: "bundle", name: "결제" }, ["bundle", null, "결제"]],
+    [{ kind: "savedSearch", query: "#swift" }, ["savedSearch", null, "#swift"]],
+  ])("거르기가%o일때_펴면_%o가되는지", (filter, expected) => {
+    // given, when
+    const flattened = flattenArchiveFilter(filter);
+
+    // then
+    expect(flattened).toEqual(expected);
   });
 });
 

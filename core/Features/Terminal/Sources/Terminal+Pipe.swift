@@ -50,13 +50,13 @@ extension TerminalInteractor {
         case .page(let items, _, _, _, let related) where items.isEmpty:
             await showNoResults(for: query, period: period, related: related, typed: typed, accessToken: token)
         case .page(let items, let total, _, _, _) where total <= PendingHandoff.instantLimit:
-            await handOff(items.map(\.number), typed: typed, accessToken: token)
+            await handOff(items.map(ItemRef.init), typed: typed, accessToken: token)
         // 기다리는 동안 다른 입력이 있었으면 그 입력이 이미 답이다. 묻자마자 취소한다(COM-007 규칙 1·3).
         case .page(_, let total, _, _, _) where inputSequence != sequence:
             update(viewState.appending(lines: [.handoffConfirm(total: total), .cancelled]))
         case .page(let items, let total, let nextCursor, _, _):
             pendingHandoff = PendingHandoff(
-                query: query, total: total, firstPage: items.map(\.number), nextCursor: nextCursor
+                query: query, total: total, firstPage: items.map(ItemRef.init), nextCursor: nextCursor
             )
             update(viewState.appending(lines: [.handoffConfirm(total: total)]))
         case .failed(let reason):
@@ -72,7 +72,7 @@ extension TerminalInteractor {
     func confirmHandoff(_ pending: PendingHandoff, choice: PendingHandoff.Choice, typed: String) {
         run(typed: typed) { [weak self] token in
             guard let self else { return }
-            var numbers = pending.firstPage
+            var refs = pending.firstPage
             var cursor = choice == .all ? pending.nextCursor : nil
             while let next = cursor {
                 let outcome = await BrowseAPI.search(
@@ -82,7 +82,7 @@ extension TerminalInteractor {
                 guard !Task.isCancelled else { return }
                 switch outcome {
                 case .page(let items, _, let nextCursor, _, _):
-                    numbers += items.map(\.number)
+                    refs += items.map(ItemRef.init)
                     cursor = nextCursor
                 case .failed(let reason):
                     update(viewState.appending(lines: [.handoffFailed(reason: reason, preview: nil)]))
@@ -94,7 +94,7 @@ extension TerminalInteractor {
                     return
                 }
             }
-            await handOff(numbers, typed: typed, accessToken: token)
+            await handOff(refs, typed: typed, accessToken: token)
         }
     }
 

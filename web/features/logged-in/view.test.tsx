@@ -1,6 +1,6 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { CommandFailure, ItemDetail, ItemSummary, LoggedInState, TerminalLine } from "../../support/view-state";
+import type { CommandFailure, ItemDetail, ItemRef, ItemSummary, LoggedInState, TerminalLine } from "../../support/view-state";
 import { LoggedInView } from "./view";
 
 afterEach(cleanup);
@@ -90,6 +90,42 @@ function item(overrides: Partial<ItemSummary> = {}): ItemSummary {
 const KEEP = { kind: "prompt", text: "담기 https://example.com/a" } as const;
 
 describe("LoggedInView", () => {
+  describe("출력과 입력줄 자리(실제 터미널처럼 함께 스크롤)", () => {
+    it("화면을그렸을때_선택줄과땅굴과입력줄을보면_출력스크롤칸맨끝에있어함께스크롤되는지", () => {
+      // given
+      // when
+      const { container } = renderView({
+        lines: [{ kind: "prompt", text: "최근" }],
+        selection: [{ number: 7, title: "자료 7", kind: "text", source: null }],
+      });
+
+      // then
+      const log = screen.getByRole("log");
+      const dock = container.querySelector(".gt-dock")!;
+      expect(log.contains(container.querySelector(".gt-selection"))).toBe(true);
+      expect(dock.contains(screen.getByRole("textbox", { name: "명령 입력" }))).toBe(true);
+      expect(dock.contains(container.querySelector(".gt-burrow"))).toBe(true);
+      expect(log.lastElementChild).toBe(dock);
+    });
+
+    it("출력이늘었을때_출력칸을보면_맨아래로내려가는지", () => {
+      // given
+      const props = {
+        itemCount: null, input: "", selection: [], processingCount: 0, isOffline: false,
+        onInputChange: vi.fn(), onSubmit: vi.fn(), onPaste: vi.fn(), onFilesDrop: vi.fn(), onMoreRequested: vi.fn(),
+      };
+      const { rerender } = render(<LoggedInView {...props} lines={[{ kind: "prompt", text: "최근" }]} />);
+      const log = screen.getByRole("log");
+      Object.defineProperty(log, "scrollHeight", { configurable: true, value: 900 });
+
+      // when
+      rerender(<LoggedInView {...props} lines={[{ kind: "prompt", text: "최근" }, { kind: "prompt", text: "도움말" }]} />);
+
+      // then
+      expect(log.scrollTop).toBe(900);
+    });
+  });
+
   it("자료수를받았을때_화면을그리면_상태줄에자료N과도움말키를보여주는지", () => {
     // given
     // when
@@ -457,7 +493,7 @@ describe("LoggedInView", () => {
       const { container } = renderView();
 
       // when
-      fireEvent.dragEnter(container.querySelector(".gt-screen")!, filesDrag());
+      fireEvent.dragEnter(container.querySelector(".gt-terminal")!, filesDrag());
 
       // then
       expect(screen.getByText("놓으면 저장")).toBeTruthy();
@@ -467,7 +503,7 @@ describe("LoggedInView", () => {
     it("파일을끌어온뒤_놓으면_파일들을알리고안내를닫는지", () => {
       // given
       const { container, onFilesDrop } = renderView();
-      const screenElement = container.querySelector(".gt-screen")!;
+      const screenElement = container.querySelector(".gt-terminal")!;
       const pdf = new File(["%PDF"], "예산안.pdf", { type: "application/pdf" });
       fireEvent.dragEnter(screenElement, filesDrag());
 
@@ -483,7 +519,7 @@ describe("LoggedInView", () => {
     it("파일을끌어오다가_화면밖으로나가면_안내를닫는지", () => {
       // given
       const { container } = renderView();
-      const screenElement = container.querySelector(".gt-screen")!;
+      const screenElement = container.querySelector(".gt-terminal")!;
       fireEvent.dragEnter(screenElement, filesDrag());
 
       // when
@@ -720,9 +756,9 @@ describe("LoggedInView", () => {
 
   describe("고르기와 칩·번호 누르기(#62, ARC-001·commands 6절)", () => {
     const PICK = { kind: "prompt", text: "고르기 131 97" } as const;
-    const PICKED = [
-      { number: 131, title: "결제위젯 연동 가이드" },
-      { number: 97, title: "PG사 수수료 비교 정리.pdf" },
+    const PICKED: ItemRef[] = [
+      { number: 131, title: "결제위젯 연동 가이드", kind: "text", source: null },
+      { number: 97, title: "PG사 수수료 비교 정리.pdf", kind: "file", source: "pdf" },
     ];
 
     it("두건을골랐을때_화면을그리면_선택N건과제목과다음명령을보이는지", () => {
@@ -813,8 +849,24 @@ describe("LoggedInView", () => {
 
       // then
       expect(container.querySelector(".gt-selection")!.textContent).toBe(
-        "선택 2  결제위젯 연동 가이드 · PG사 수수료 비교 정리.pdf",
+        "선택 2  글 131 · PDF 97",
       );
+    });
+
+    it("종류를아는자료를골랐을때_화면을그리면_선택줄에종류낱말과번호를보이는지", () => {
+      // given
+      const selection = [
+        { number: 25, title: "보고서.pdf", kind: "file" as const, source: null },
+        { number: 12, title: "회의 메모", kind: "text" as const, source: null },
+        { number: 3, title: "결제 가이드", kind: "link" as const, source: "example.com" },
+        { number: 9, title: "화면.png", kind: "file" as const, source: null },
+      ];
+
+      // when
+      const { container } = renderView({ selection } as Partial<LoggedInState>);
+
+      // then
+      expect(container.querySelector(".gt-selection")!.textContent).toBe("선택 4  PDF 25 · 글 12 · example.com 3 · PNG 9");
     });
 
     it("선택이없을때_화면을그리면_선택줄이없는지", () => {
@@ -834,11 +886,27 @@ describe("LoggedInView", () => {
       ];
 
       // when
-      const { container } = renderView({ lines, selection: [{ number: 131, title: "t" }] });
+      const { container } = renderView({ lines, selection: [{ number: 131, title: "t", kind: "text" as const, source: null }] });
 
       // then
       const numbers = Array.from(container.querySelectorAll(".gt-row-num"), (cell) => cell.textContent);
       expect(numbers).toEqual(["▸131", "130"]);
+    });
+
+    it("고른자료가목록에있을때_그번호를다시누르면_입력줄에고르기빼기번호를찍기만하는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [
+        { kind: "prompt", text: "최근" },
+        { kind: "recentList", items: [item({ number: 131 }), item({ number: 130 })], hasMore: false },
+      ];
+      const { onInputChange, onSubmit } = renderView({ lines, selection: [{ number: 131, title: "t", kind: "text" as const, source: null }] });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "131" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("고르기 빼기 131");
+      expect(onSubmit).not.toHaveBeenCalled();
     });
 
     it("목록이있을때_행번호를누르면_입력줄에고르기번호를찍기만하는지", () => {
@@ -881,8 +949,8 @@ describe("LoggedInView", () => {
           kind: "handedOff",
           result: {
             items: [
-              { number: 131, title: "결제위젯 연동 가이드" },
-              { number: 97, title: "PG사 수수료 비교 정리.pdf" },
+              { number: 131, title: "결제위젯 연동 가이드", kind: "text" as const, source: null },
+              { number: 97, title: "PG사 수수료 비교 정리.pdf", kind: "text" as const, source: null },
             ],
             charCount: 1240,
             missingSummaryCount,
@@ -1292,7 +1360,7 @@ describe("LoggedInView", () => {
       // given
       const lines: LoggedInState["lines"] = [
         { kind: "prompt", text: "버리기 131" },
-        { kind: "dropped", items: [{ number: 131, title: "결제 오류 정리" }] },
+        { kind: "dropped", items: [{ number: 131, title: "결제 오류 정리", kind: "text" as const, source: null }] },
       ];
 
       // when
@@ -1309,8 +1377,8 @@ describe("LoggedInView", () => {
         {
           kind: "dropped",
           items: [
-            { number: 131, title: "결제 오류 정리" },
-            { number: 57, title: "환불 규정" },
+            { number: 131, title: "결제 오류 정리", kind: "text" as const, source: null },
+            { number: 57, title: "환불 규정", kind: "text" as const, source: null },
           ],
         },
       ];
@@ -1329,8 +1397,8 @@ describe("LoggedInView", () => {
         {
           kind: "revived",
           items: [
-            { number: 131, title: "결제 오류 정리" },
-            { number: 57, title: "환불 규정" },
+            { number: 131, title: "결제 오류 정리", kind: "text" as const, source: null },
+            { number: 57, title: "환불 규정", kind: "text" as const, source: null },
           ],
         },
       ];
@@ -1655,7 +1723,7 @@ describe("LoggedInView", () => {
       // given
       const lines: LoggedInState["lines"] = [
         { kind: "prompt", text: "고르기 빼기 140" },
-        { kind: "unpicked", items: [{ number: 140, title: "환불 규정" }], remaining: 2 },
+        { kind: "unpicked", items: [{ number: 140, title: "환불 규정", kind: "text" as const, source: null }], remaining: 2 },
       ];
 
       // when
@@ -2000,7 +2068,7 @@ describe("LoggedInView", () => {
       const line: TerminalLine = {
         kind: "handedOff",
         result: {
-          items: [{ number: 30, title: "카페 텀블러 할인" }],
+          items: [{ number: 30, title: "카페 텀블러 할인", kind: "text" as const, source: null }],
           bundle: "겨울캠페인",
           removedCount: 1,
           charCount: 240,
@@ -2018,7 +2086,7 @@ describe("LoggedInView", () => {
 
     it("고른뒤일때_묶음칩을누르면_입력줄에묶음과빈칸을찍는지", () => {
       // given
-      const { onInputChange } = renderView({ lines: [{ kind: "picked", items: [{ number: 131, title: "결제위젯 연동 가이드" }] }] });
+      const { onInputChange } = renderView({ lines: [{ kind: "picked", items: [{ number: 131, title: "결제위젯 연동 가이드", kind: "text" as const, source: null }] }] });
 
       // when
       fireEvent.click(screen.getByRole("button", { name: "묶음 <이름>" }));
@@ -2285,7 +2353,7 @@ describe("LoggedInView", () => {
     it("목록일때_제목을누르면_입력줄에열기번호를찍는지", () => {
       // given
       const { onInputChange } = renderView({
-        lines: [{ kind: "recentList", items: [item({ number: 97, title: "PG사 수수료 비교 정리.pdf" })], hasMore: false }],
+        lines: [{ kind: "recentList", items: [item({ number: 97, title: "PG사 수수료 비교 정리.pdf", kind: "text" as const, source: null })], hasMore: false }],
       });
 
       // when
@@ -2883,7 +2951,7 @@ describe("LoggedInView", () => {
     it("파일을_끌어_오는_동안이면_가운데서_만세하고_떠나면_그치는지", () => {
       // given
       const { container } = renderWithMole(null);
-      const screenElement = container.querySelector(".gt-screen")!;
+      const screenElement = container.querySelector(".gt-terminal")!;
 
       // when
       fireEvent.dragEnter(screenElement, { dataTransfer: { types: ["Files"], files: [] } });

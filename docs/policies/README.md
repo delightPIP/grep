@@ -35,6 +35,8 @@
 | [COM-008](common/COM-008-handoff-count-and-copy-failure.md) | 넘기기는 이어 쓰기 결과가 5건을 넘으면 묻고, 복사에 성공하면 선택을 풀고, 실패하면 선택을 남기고 직접 복사할 길을 보인다 | 확정 | 공통 |
 | [COM-009](common/COM-009-terminal-history-kept.md) | 터미널 출력 기록·치던 글·선택은 이 기기에 남기고, 로그아웃하거나 다른 계정으로 로그인하면 지운다 | 확정 | 공통 |
 | [COM-010](common/COM-010-server-unreachable.md) | 서버에 닿지 못하면 명령 실패를 알리고 상태줄에 표시하며, 끊긴 동안 친 명령은 저절로 다시 하지 않는다 | 확정 | 공통 |
+| [COM-011](common/COM-011-web-layout-by-width.md) | 웹 화면은 폭에 따라 사이드바·아이콘 레일·하단 탭으로 나누어 터미널·보관함·설정을 오간다 | 검토 중 (PO 확인 대기) | 공통 |
+| [COM-012](common/COM-012-theme-choice.md) | 웹은 밝게·어둡게·시스템 따름 중 고른 테마를 이 기기에만 남긴다 | 검토 중 (PO 확인 대기) | 공통 |
 | [DSK-001](desktop/DSK-001-resident-mole.md) | 데스크톱 두더지는 화면 오른쪽 아래에 상주하고, 사용자가 숨기거나 끌 수 있다 | 검토 중 (데스크톱 실험 뒤 확정) | 데스크톱 |
 | [DSK-002](desktop/DSK-002-drop-to-save.md) | 데스크톱 두더지에 끌어다 놓으면 묻지 않고 저장한다 | 검토 중 (데스크톱 실험 뒤 확정) | 데스크톱 |
 | [DSK-003](desktop/DSK-003-quick-window-shortcut.md) | 빠른 창은 두더지를 누르거나 전역 단축키로 열고 닫는다 | 검토 중 (데스크톱 실험 뒤 확정) | 데스크톱 |

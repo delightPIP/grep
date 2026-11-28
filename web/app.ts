@@ -6,6 +6,10 @@ import { browserClipboard } from "./support/browser-clipboard";
 import { BrowserFilePort } from "./support/browser-file-port";
 import { localHistoryStore } from "./support/local-history-store";
 import { init } from "./support/swift";
+import { applyStoredTheme } from "./support/theme-store";
+
+// Wasm을 받기 전에 적용해 로그인 화면이 다른 테마로 잠깐 보이지 않게 한다(COM-012 규칙 4).
+applyStoredTheme();
 
 const { exports } = await init();
 const files = new BrowserFilePort();

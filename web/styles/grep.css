@@ -87,9 +87,12 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
   .gt-input-field { font-size: 16px; }
 }
 
-/* Dock: 입력줄을 화면 아래에 고정하고 옅은 테두리. */
+/* Dock: 입력줄은 출력 끝에 붙어 함께 스크롤된다(실제 터미널처럼). 출력이 짧으면 창 아래에 둔다. */
 .gt-body:has(> .gt-dock) { display: flex; flex-direction: column; }
-.gt-dock { position: sticky; bottom: 0; margin-top: auto !important; padding-top: var(--space-3); background: var(--surface); }
+.gt-dock { margin-top: auto !important; padding-top: var(--space-3); }
+/* 선택 줄은 입력줄과 함께 아래에 붙는다. */
+.gt-body > .gt-selection:has(+ .gt-dock) { margin-top: auto !important; }
+.gt-body > .gt-selection + .gt-dock { margin-top: 0 !important; }
 .gt-dock-line { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); background: var(--bg); }
 .gt-dock-line:focus-within { border-color: var(--command); }
 
@@ -168,3 +171,65 @@ html, body, #root, #app { height: 100%; }
 .gt-detail-image { display: block; max-width: min(100%, 320px); max-height: 240px; border: 1px solid var(--line); border-radius: var(--radius-sm); }
 .gt-row-title { text-align: left; }
 .gt-name-row { display: flex; flex-wrap: wrap; column-gap: 2ch; padding-left: 2ch; }
+
+/* 배치(COM-011): 1008px 이상 사이드바, 600~1007px 아이콘 레일, 600px 미만 하단 탭(MOB-001). 폭 판단은 뷰(layout.ts)가 한다. */
+/* 화면 높이를 창 높이로 묶어 사이드바와 본문이 따로 스크롤한다(사이드바가 길어도 본문이 늘지 않게). */
+.gt-shell { flex-direction: row; gap: var(--space-4); height: 100dvh; }
+.gt-shell-tabs { flex-direction: column; gap: 0; padding-bottom: 0; }
+.gt-shell-content { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.gt-pane { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.gt-pane[hidden] { display: none; }
+.gt-terminal { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+.gt-nav-list { list-style: none; margin: 0; padding: 0; }
+.gt-nav-item { display: flex; align-items: center; gap: 1ch; width: 100%; min-height: 44px; padding: 0 var(--space-3); font: inherit; color: var(--ink-muted); background: none; border: 0; border-radius: var(--radius-sm); cursor: pointer; text-align: left; }
+.gt-nav-item:hover { color: var(--ink); }
+.gt-nav-item[aria-current="page"] { color: var(--ink); background: var(--select); font-weight: 700; }
+.gt-nav-item:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.gt-nav-icon { flex: none; width: 2ch; text-align: center; color: var(--command); }
+.gt-sidebar { flex: none; width: 240px; min-height: 0; overflow: auto; }
+.gt-rail { flex: none; width: 72px; }
+.gt-rail .gt-nav-item { flex-direction: column; justify-content: center; gap: 0; padding: var(--space-2) 0; font-size: 12px; line-height: 18px; text-align: center; }
+.gt-tabbar { flex: none; border-top: 1px solid var(--line); background: var(--surface-raised); margin: var(--space-4) calc(var(--space-4) * -1) 0; padding-bottom: env(safe-area-inset-bottom); }
+.gt-tabbar .gt-nav-list { display: grid; grid-template-columns: repeat(3, 1fr); }
+.gt-tabbar .gt-nav-item { flex-direction: column; justify-content: center; gap: 0; font-size: 12px; line-height: 18px; text-align: center; border-radius: 0; }
+
+/* 보관함 구역(ARC-007): 묶음 → 저장한 찾기 → 형식·출처·날짜·태그 */
+.gt-sections { margin: var(--space-2) 0 var(--space-4) var(--space-3); }
+.gt-section { margin-top: var(--space-3); }
+.gt-section-title { font-size: 12px; line-height: 18px; color: var(--ink-muted); }
+.gt-section-list { list-style: none; margin: 0; padding: 0; }
+.gt-section-entry { display: flex; justify-content: space-between; gap: 1ch; width: 100%; min-height: 32px; padding: 0 var(--space-2); font: inherit; color: var(--ink); background: none; border: 0; border-radius: var(--radius-sm); cursor: pointer; text-align: left; }
+.gt-section-entry[aria-current="true"] { background: var(--chip); color: var(--command); }
+.gt-section-entry:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.gt-section-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gt-section-count { color: var(--ink-muted); }
+/* 좁은 폭: 구역은 목록 위에 줄지어 */
+.gt-archive-list > .gt-sections { margin: 0 0 var(--space-4); }
+.gt-archive-list > .gt-sections .gt-section-list { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.gt-archive-list > .gt-sections .gt-section-entry { width: auto; background: var(--chip); }
+
+/* 보관함 화면. 넓으면 목록 오른쪽에 자세히 보기 칸(ARC-011 규칙 8) */
+.gt-archive { flex: 1; min-height: 0; display: flex; gap: var(--space-4); }
+.gt-archive-list, .gt-detail-pane { flex: 1; min-width: 0; overflow: auto; padding: var(--space-4); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); }
+.gt-archive-list > * + *, .gt-detail-pane > * + * { margin-top: var(--space-1); }
+.gt-detail-close { float: right; }
+.gt-archive-title { font-weight: 700; margin-bottom: var(--space-2); }
+.gt-back { margin-bottom: var(--space-3); }
+
+/* 설정(시안 26) */
+.gt-settings { flex: 1; overflow: auto; padding: var(--space-4); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); }
+.gt-setting-group + .gt-setting-group { margin-top: var(--space-6); }
+.gt-setting-title { margin: 0 0 var(--space-2); font-size: 12px; line-height: 18px; font-weight: 400; color: var(--ink-muted); }
+.gt-setting-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-4); padding: var(--space-2) 0; border-bottom: 1px solid var(--line); }
+.gt-setting-text { min-width: 0; }
+.gt-button-danger { color: var(--danger); }
+.gt-segmented { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius-sm); overflow: hidden; }
+.gt-segment { min-height: 44px; padding: 0 var(--space-3); font: inherit; color: var(--ink-muted); background: var(--surface); border: 0; cursor: pointer; }
+.gt-segment + .gt-segment { border-left: 1px solid var(--line); }
+.gt-segment[aria-checked="true"] { color: var(--ink); background: var(--select); font-weight: 700; }
+.gt-segment:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+
+/* 스크롤 막대는 숨긴다. 휠·터치·키보드 스크롤은 그대로다. */
+.gt-body, .gt-sidebar, .gt-archive-list, .gt-detail-pane { scrollbar-width: none; }
+.gt-body::-webkit-scrollbar, .gt-sidebar::-webkit-scrollbar, .gt-archive-list::-webkit-scrollbar, .gt-detail-pane::-webkit-scrollbar { display: none; }

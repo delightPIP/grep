@@ -59,6 +59,8 @@ public struct PlatformServices {
     public let files: any FilePort
     public let historyStore: any HistoryStore
     public let sleeper: any Sleeper
+    /// 보관함 날짜 묶음을 나눌 기기 시간대(ARC-007 값).
+    public let deviceTime: DeviceTime
 
     public init(
         authService: any AuthService,
@@ -66,7 +68,8 @@ public struct PlatformServices {
         clipboard: any ClipboardPort,
         files: any FilePort,
         historyStore: any HistoryStore,
-        sleeper: any Sleeper = TaskSleeper()
+        sleeper: any Sleeper = TaskSleeper(),
+        deviceTime: DeviceTime = .system
     ) {
         self.authService = authService
         self.httpTransport = httpTransport
@@ -74,6 +77,7 @@ public struct PlatformServices {
         self.files = files
         self.historyStore = historyStore
         self.sleeper = sleeper
+        self.deviceTime = deviceTime
     }
 }
 
@@ -85,6 +89,7 @@ final class RootComponent: EmptyComponent, LoggedOutDependency, LoggedInDependen
     let files: any FilePort
     let historyStore: any HistoryStore
     let sleeper: any Sleeper
+    let deviceTime: DeviceTime
 
     init(platform: PlatformServices) {
         authService = platform.authService
@@ -93,6 +98,7 @@ final class RootComponent: EmptyComponent, LoggedOutDependency, LoggedInDependen
         files = platform.files
         historyStore = platform.historyStore
         sleeper = platform.sleeper
+        deviceTime = platform.deviceTime
         super.init()
     }
 }
