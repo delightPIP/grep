@@ -79,6 +79,48 @@ extension TerminalInteractor {
         }
     }
 
+    // MARK: 북마크 파일 제안(#172)
+
+    /// 받지 않는 형식이어도 북마크 파일일 수 있는 확장자. 점 없이, 소문자.
+    private static let bookmarkExtensions: Set<String> = ["html", "htm"]
+
+    /// 저장 결과가 받지 않는 형식이고 확장자가 `html`·`htm`이면 `가져오기`를 제안한다.
+    static func suggestsImport(_ outcome: ItemsAPI.SaveOutcome) -> Bool {
+        guard case .failed(.unsupportedFormat(let fileExtension)) = outcome else { return false }
+        return bookmarkExtensions.contains(fileExtension.lowercased())
+    }
+
+    /// 인자 없는 `가져오기`(`bring`)인지.
+    static func isBareImport(_ text: String) -> Bool {
+        guard let command = InputCommand(text) else { return false }
+        return command.name == .bring && command.argument.isEmpty
+    }
+
+    /// 실패 줄 다음에 제안 줄을 찍고 그 파일을 기억한다. 앞서 기억한 파일은 놓는다.
+    func suggestImport(of file: DroppedFile, reason: SaveFailure) {
+        forgetSuggestedImport()
+        suggestedImport = file
+        update(viewState.appending(lines: [
+            .saveFailed(reason, .file(name: file.name)), .importSuggest(fileName: file.name),
+        ]))
+    }
+
+    /// 제안한 파일이 있으면 친 줄을 찍고 그 파일 내용으로 바로 가져온다. 없으면 false.
+    func importSuggested(typed: String) -> Bool {
+        guard let file = suggestedImport else { return false }
+        suggestedImport = nil
+        update(viewState.appending(lines: [.prompt(typed)]).with(input: ""))
+        importBookmarks([file])
+        return true
+    }
+
+    /// 기억한 파일을 놓는다. `가져오기`가 아닌 입력이 오면 부른다.
+    func forgetSuggestedImport() {
+        guard let file = suggestedImport else { return }
+        suggestedImport = nil
+        files.release(file.id)
+    }
+
     private func showImportFailure(_ reason: CommandFailure) {
         update(viewState.appending(lines: [
             .commandFailed(command: .bring, reason: reason, retry: Self.importRetry),
