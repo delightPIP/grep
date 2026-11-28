@@ -2,9 +2,9 @@ package com.unwrap.grep.features.demoseed.domain
 
 import com.unwrap.grep.features.account.domain.AuthProvider
 import com.unwrap.grep.features.archive.api.ItemBody
-import com.unwrap.grep.features.archive.domain.ItemKind
-import com.unwrap.grep.features.archive.domain.ObjectStorage
-import com.unwrap.grep.features.archive.domain.StoredFile
+import com.unwrap.grep.features.archive.item.domain.ItemKind
+import com.unwrap.grep.features.archive.item.domain.ObjectStorage
+import com.unwrap.grep.features.archive.item.domain.StoredFile
 import org.springframework.transaction.support.TransactionTemplate
 import java.nio.file.Files
 import java.nio.file.Path

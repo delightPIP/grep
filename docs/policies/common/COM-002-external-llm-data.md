@@ -45,7 +45,7 @@
 - 기획서 11절과 14절(PO 결정, 2026-11-25), PR #3의 PO 답변
 - ADR-BCK-005(이미지 글자 읽기), ADR-BCK-008(요약 방식), ADR-BCK-016(임베딩)
 - PO 결정(2026-11-28): 뜻 찾기 검색어를 보낼 수 있는 것에 더한다([QA 검수 보고](../../planning/qa-2026-11-28-demo-readiness.md) Q-4)
-- 구현: 요약·글자 읽기 `server/src/main/kotlin/com/unwrap/grep/features/processing/`, 자료 임베딩 `processing/domain/EmbeddingWorker.kt`, 검색어 임베딩 `archive/domain/RelatedSearch.kt`
+- 구현: 요약·글자 읽기 `server/src/main/kotlin/com/unwrap/grep/features/processing/`, 자료 임베딩 `processing/domain/EmbeddingWorker.kt`, 검색어 임베딩 `archive/search/domain/RelatedSearch.kt`
 
 ## 검증 방법
 

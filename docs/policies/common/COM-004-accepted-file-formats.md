@@ -52,7 +52,7 @@
 - [백엔드 설계](../../planning/backend-design.md) 1절(저장, 텍스트 추출), 미해결 2번(Tika 한국어 추출 품질)
 - ADR-0001(서버가 최종 판정), ADR-BCK-005(이미지 글자 읽기는 서버 LLM 비전), COM-001(같은 파일 판정)
 - 2026-11-26 PO 결정(문서 PDF·md·txt·docx, 이미지 PNG·JPEG·WebP와 HEIC 변환)
-- 구현: `server/src/main/kotlin/com/unwrap/grep/features/archive/domain/FileFormatDetector.kt`(내용 판별), `server/src/main/kotlin/com/unwrap/grep/features/archive/domain/SaveItemService.kt`(저장 때 판정·크기 확인), `server/src/main/kotlin/com/unwrap/grep/features/archive/domain/UploadService.kt`(업로드 자리 크기 확인, 받는 형식 목록)
+- 구현: `server/src/main/kotlin/com/unwrap/grep/features/archive/item/domain/FileFormatDetector.kt`(내용 판별), `server/src/main/kotlin/com/unwrap/grep/features/archive/item/domain/SaveItemService.kt`(저장 때 판정·크기 확인), `server/src/main/kotlin/com/unwrap/grep/features/archive/item/domain/UploadService.kt`(업로드 자리 크기 확인, 받는 형식 목록)
 
 ## 검증 방법
 

@@ -51,7 +51,7 @@
 - PO 결정(2026-11-26): 자동 태그를 보이기만 한다. 자료당 최대 5개, 목록에는 3개. 사용자가 직접 붙이거나 고치지 않는다. 새 명령은 두지 않는다
 - 기획서 F2(자동 태그), STATE 11절(자동 태그는 내부 재료였음, E-11: 태그로 찾기는 성공률이 낮고 느림. 그래서 직접 태그 관리는 넣지 않음)
 - PO 결정(2026-11-28): 고치기 뒤에도 옛 제목·요약과 지운 태그 낱말이 일반 찾기로 찾히는 지금 동작을 그대로 둔다(규칙 12, [QA 검수 보고](../../planning/qa-2026-11-28-demo-readiness.md) Q-7)
-- 구현: `찾기`의 검색어·`#태그` 나누기와 `태그 없음` 줄은 `core/Features/Terminal/Sources/Commands/SeekCommand.swift`, 서버 검색은 `PgroongaItemSearch.kt`(#61). 태그를 만드는 처리(규칙 1)는 `server/src/main/kotlin/com/unwrap/grep/features/processing/adapters/gemini/GeminiSummarizer.kt`, 값 표대로 정리하는 곳은 `server/src/main/kotlin/com/unwrap/grep/features/processing/domain/Tags.kt`(#59). 규칙 12는 `server/src/main/kotlin/com/unwrap/grep/features/archive/adapters/postgres/JdbcItemRevisionRepository.kt`(검색 글에 고친 제목·요약을 덧붙이기만 함)
+- 구현: `찾기`의 검색어·`#태그` 나누기와 `태그 없음` 줄은 `core/Features/Terminal/Sources/Commands/SeekCommand.swift`, 서버 검색은 `PgroongaItemSearch.kt`(#61). 태그를 만드는 처리(규칙 1)는 `server/src/main/kotlin/com/unwrap/grep/features/processing/adapters/gemini/GeminiSummarizer.kt`, 값 표대로 정리하는 곳은 `server/src/main/kotlin/com/unwrap/grep/features/processing/domain/Tags.kt`(#59). 규칙 12는 `server/src/main/kotlin/com/unwrap/grep/features/archive/item/adapters/postgres/JdbcItemRevisionRepository.kt`(검색 글에 고친 제목·요약을 덧붙이기만 함)
 
 ## 검증 방법
 

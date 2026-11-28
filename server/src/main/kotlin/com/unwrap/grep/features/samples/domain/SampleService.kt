@@ -1,6 +1,6 @@
 package com.unwrap.grep.features.samples.domain
 
-import com.unwrap.grep.features.archive.domain.ObjectStorage
+import com.unwrap.grep.features.archive.item.domain.ObjectStorage
 import com.unwrap.grep.features.demoseed.domain.DemoSeedRepository
 import com.unwrap.grep.features.demoseed.domain.PremadeItems
 import com.unwrap.grep.features.demoseed.domain.SeedEntry

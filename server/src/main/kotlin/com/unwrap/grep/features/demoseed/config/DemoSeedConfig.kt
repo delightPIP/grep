@@ -1,6 +1,6 @@
 package com.unwrap.grep.features.demoseed.config
 
-import com.unwrap.grep.features.archive.domain.ObjectStorage
+import com.unwrap.grep.features.archive.item.domain.ObjectStorage
 import com.unwrap.grep.features.demoseed.domain.DemoSeedRepository
 import com.unwrap.grep.features.demoseed.domain.DemoSeedService
 import org.springframework.context.annotation.Bean
