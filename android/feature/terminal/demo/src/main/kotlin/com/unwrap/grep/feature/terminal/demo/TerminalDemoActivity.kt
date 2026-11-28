@@ -68,6 +68,9 @@ enum class TerminalDemoScenario(val rawValue: String, val label: String) {
     HANDOFF_DENIED("handoffDenied", "넘기기 실패 (클립보드 거부)"),
     GUIDE("guide", "도움말 (13줄 명령 목록)"),
     EXPIRED("expired", "로그인 만료 이벤트"),
+    CLEANUP_LINES("cleanupLines", "정리·고치기·고르기 빼기 줄"),
+    BUNDLE_LINES("bundleLines", "묶음·찾아두기 줄"),
+    DETAIL_LINES("detailLines", "자세히 보기·연결·가져오기 줄"),
 }
 
 class TerminalDemoViewModel : ViewModel() {
