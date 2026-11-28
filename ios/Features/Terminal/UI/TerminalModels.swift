@@ -170,6 +170,8 @@ public struct TerminalPresentation: Equatable, Sendable {
     public let revising: TerminalRevisePresentation?
     /// 0건 첫 화면의 `→ 샘플 8건으로 해 보기`를 보일지(ARC-010 규칙 1). 자료가 0건일 때만 true.
     public let offersSamples: Bool
+    /// 터미널 머리 아래 `자료 N건`(COM-009 규칙 5). 건수를 아직 받지 못했으면 nil이고 그 줄을 뺀다.
+    public let itemCountLine: String?
 
     public init(
         title: String = "처음",
@@ -180,7 +182,8 @@ public struct TerminalPresentation: Equatable, Sendable {
         isOffline: Bool = false,
         pendingConfirm: TerminalConfirmPrompt? = nil,
         revising: TerminalRevisePresentation? = nil,
-        offersSamples: Bool = false
+        offersSamples: Bool = false,
+        itemCountLine: String? = nil
     ) {
         self.title = title
         self.statusText = statusText
@@ -191,5 +194,6 @@ public struct TerminalPresentation: Equatable, Sendable {
         self.pendingConfirm = pendingConfirm
         self.revising = revising
         self.offersSamples = offersSamples
+        self.itemCountLine = itemCountLine
     }
 }

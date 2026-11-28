@@ -19,3 +19,6 @@ build/
 .idea/
 .vscode/
 .DS_Store
+
+# iOS 앱 비밀값. ios/Config/Secrets.example.xcconfig만 커밋한다.
+ios/Config/Secrets.xcconfig

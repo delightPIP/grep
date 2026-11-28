@@ -19,6 +19,8 @@
 
 Xcode와 Tuist 4가 필요하다.
 
+로그인하려면 `Config/Secrets.example.xcconfig`를 `Config/Secrets.xcconfig`로 복사해 Supabase 주소와 공개 키를 채운다(값은 `web/.env.local`과 같다). `Secrets.xcconfig`는 커밋하지 않는다. 없으면 빌드는 되지만 로그인 버튼은 `권한 거부`를 보인다.
+
 ```sh
 cd ios
 tuist generate --no-open
