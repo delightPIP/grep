@@ -1,9 +1,3 @@
-/// 로그인 방식. ACC-001 값: Google, GitHub 둘뿐이다.
-public enum AuthProvider: String, Equatable, Sendable, CaseIterable {
-    case google
-    case github
-}
-
 /// 외부 로그인 실패 이유. ACC-001 사용자 문구 `✗ 로그인 실패: <이유>`의 세 가지.
 public enum SignInFailureReason: Equatable, Sendable {
     /// `연결 끊김`

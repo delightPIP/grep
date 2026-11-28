@@ -3,7 +3,8 @@ import PackageDescription
 
 // 그렙 공유 코어(ADR-WEB-007, ADR-0010). 웹(wasm)·iOS·Android가 같이 쓴다.
 // carti-RIBs-Swift Samples/TodoModular/Shared 구조를 따른다: 피처마다 Interface·Impl·Testing·Tests.
-//   GrepCore                     플랫폼이 구현해 주입하는 계약(AuthService, HTTPTransport)과 도메인 값
+//   GrepDomain                   도메인 값·규칙·Repository 계약(Core/Domain). 플랫폼·RIBs를 모른다
+//   GrepCore                     플랫폼이 구현해 주입하는 계약(AuthService, HTTPTransport). GrepDomain을 다시 내보낸다(Core/Ports)
 //   GrepCoreTesting              계약의 가짜 구현과 테스트 도구
 //   GrepData                     서버 API 클라이언트(요청을 만들고 응답을 해석한다). 피처 Impl이 같이 쓴다
 //   FeatureLoggedOutInterface    로그인 화면 계약(ViewState·ViewAction·Presentable)
@@ -56,7 +57,7 @@ let featureTargets: [Target] = features.flatMap { (name: String) -> [Target] in
 }
 
 /// 플랫폼이 모듈별로 받을 수 있도록 테스트가 아닌 타깃마다 제품을 둔다.
-let libraryNames = ["GrepCore", "GrepCoreTesting", "GrepData", "GrepAppRoot"]
+let libraryNames = ["GrepDomain", "GrepCore", "GrepCoreTesting", "GrepData", "GrepAppRoot"]
     + features.flatMap { ["Feature\($0)Interface", "Feature\($0)", "Feature\($0)Testing"] }
 
 let appRootDependencies: [Target.Dependency] = [ribs, "GrepCore"] + features.flatMap {
@@ -69,9 +70,11 @@ let appRootTestDependencies: [Target.Dependency] = [ribs, "GrepCore", "GrepCoreT
     }
 
 let baseTargets: [Target] = [
-    .target(name: "GrepCore", dependencies: [ribs], path: "Core/Sources"),
+    .target(name: "GrepDomain", path: "Core/Domain/Sources"),
+    .testTarget(name: "GrepDomainTests", dependencies: ["GrepDomain"], path: "Core/Domain/Tests"),
+    .target(name: "GrepCore", dependencies: [ribs, "GrepDomain"], path: "Core/Ports/Sources"),
     .target(name: "GrepCoreTesting", dependencies: [ribs, "GrepCore"], path: "Core/Testing"),
-    .target(name: "GrepData", dependencies: ["GrepCore"], path: "Data/Sources"),
+    .target(name: "GrepData", dependencies: ["GrepCore"], path: "Core/Data/Sources"),
     .testTarget(name: "GrepCoreTests", dependencies: ["GrepCore"], path: "Core/Tests"),
     .target(name: "GrepAppRoot", dependencies: appRootDependencies, path: "App/Sources"),
     .testTarget(name: "GrepAppRootTests", dependencies: appRootTestDependencies, path: "App/Tests"),

@@ -1,4 +1,4 @@
-import GrepCore
+import GrepDomain
 import Testing
 
 /// 보관함 한 행 글자 규칙(ARC-004 규칙 7, ARC-005, #91).
