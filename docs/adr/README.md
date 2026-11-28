@@ -51,3 +51,4 @@
 | [ADR-BCK-018](backend/ADR-BCK-018-mcp-server-without-sdk.md) | MCP 서버는 SDK 없이 Spring MVC에서 JSON-RPC로 직접 만든다 | 채택 | 2026-11-28 |
 | [ADR-0015](ADR-0015-mobile-feature-modules-per-issue.md) | iOS·Android 앱은 공유 코어의 피처마다 UI·Adapter·Example 모듈로 만들고, 웹 이슈가 끝날 때마다 짧은 브랜치로 따라간다 | 채택 | 2026-11-27 |
 | [ADR-0016](ADR-0016-server-serves-web-keep-awake.md) | 데모 배포에서 웹은 서버가 함께 내보내고, 무료 서버는 외부 핑으로 깨워 둔다 | 채택 | 2026-11-28 |
+| [ADR-0017](ADR-0017-core-archive-settings-features-data-module.md) | 공유 코어는 보관함·설정을 피처로 따로 두고, 서버 API 클라이언트를 GrepData 모듈로 모은다 | 채택 | 2026-11-28 |

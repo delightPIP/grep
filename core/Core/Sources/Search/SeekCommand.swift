@@ -3,11 +3,10 @@ import FoundationEssentials
 #else
 import Foundation
 #endif
-import FeatureTerminalInterface
 
 /// `찾기 <검색어> [시점]`(commands 3절, #114). 검색어와 `#태그`, 마지막 낱말 시점을 나눈다(ARC-002 규칙 5~7).
-enum SeekCommand {
-    enum Parsed: Equatable {
+public enum SeekCommand {
+    public enum Parsed: Equatable {
         case query(SearchQuery, period: Period?)
         /// 인자가 없다. `✗ 검색어 없음`
         case missingArgument
@@ -16,12 +15,12 @@ enum SeekCommand {
     }
 
     /// 한 쪽 건수(commands 3절: 10건 초과 시 앞 10건과 전체 건수).
-    static let pageSize = 10
+    public static let pageSize = 10
     /// 0건일 때 함께 보이는 최근 저장 건수(commands 6절).
-    static let noResultsRecentCount = 3
+    public static let noResultsRecentCount = 3
     private static let tagPrefix: Character = "#"
 
-    static func parse(_ argument: String, now: Date = Date()) -> Parsed {
+    public static func parse(_ argument: String, now: Date = Date()) -> Parsed {
         var tokens = argument.split(whereSeparator: \.isWhitespace).map(String.init)
         guard !tokens.isEmpty else { return .missingArgument }
 

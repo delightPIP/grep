@@ -8,7 +8,9 @@ import PackageDescription
 //   GrepData                     서버 API 클라이언트(요청을 만들고 응답을 해석한다). 피처 Impl이 같이 쓴다
 //   FeatureLoggedOutInterface    로그인 화면 계약(ViewState·ViewAction·Presentable)
 //   FeatureTerminalInterface     터미널 화면 계약(상태·동작·뷰 계약)
-//   FeatureLoggedInInterface     로그인한 동안의 컨테이너 계약. 자식 Terminal을 붙인다(ADR-0015)
+//   FeatureArchiveInterface      보관함 탭 계약(#168, ARC-007)
+//   FeatureSettingsInterface     설정 탭 계약(#168)
+//   FeatureLoggedInInterface     로그인한 동안의 컨테이너 계약. 자식 Terminal·Archive·Settings를 붙인다(ADR-0015)
 //   GrepAppRoot                  조립 모듈. 피처 Impl을 아는 곳은 여기 하나다
 // Impl은 자기 Interface와 GrepCore, 그리고 붙이는 자식의 Interface만 의존한다. 계약 타깃을 바꾸려면 #31에 먼저 알린다.
 
@@ -45,9 +47,9 @@ func feature(_ name: String, children: [String] = []) -> [Target] {
     ]
 }
 
-let features = ["LoggedOut", "Terminal", "LoggedIn"]
+let features = ["LoggedOut", "Terminal", "Archive", "Settings", "LoggedIn"]
 /// 피처가 붙이는 자식 피처.
-let children: [String: [String]] = ["LoggedIn": ["Terminal"]]
+let children: [String: [String]] = ["LoggedIn": ["Terminal", "Archive", "Settings"]]
 
 let featureTargets: [Target] = features.flatMap { (name: String) -> [Target] in
     feature(name, children: children[name] ?? [])

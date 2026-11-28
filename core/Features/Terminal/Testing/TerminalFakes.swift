@@ -33,6 +33,10 @@ public final class FakeTerminalListener: TerminalListener {
     public private(set) var signOutEverywhereRequestCount = 0
     /// 만료를 알릴 때 함께 온 입력줄 글.
     public private(set) var expiredInputs: [String] = []
+    /// 자료가 바뀌었다고 알린 횟수.
+    public private(set) var itemsChangedCount = 0
+    /// 연결이 바뀌었다고 알린 횟수.
+    public private(set) var connectionsChangedCount = 0
 
     public init() {}
 
@@ -40,4 +44,6 @@ public final class FakeTerminalListener: TerminalListener {
     public func didRequestSignOutEverywhere() { signOutEverywhereRequestCount += 1 }
 
     public func didExpire(input: String) { expiredInputs.append(input) }
+    public func didChangeItems() { itemsChangedCount += 1 }
+    public func didChangeConnections() { connectionsChangedCount += 1 }
 }

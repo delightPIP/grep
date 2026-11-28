@@ -1,3 +1,5 @@
+import FeatureArchiveInterface
+import FeatureSettingsInterface
 import FeatureTerminalInterface
 import GrepCore
 import JavaScriptKit
@@ -14,15 +16,24 @@ import JavaScriptKit
 @JS protocol LoggedInViewBridge {
     func mount(host: JSObject, handle: LoggedInScreenHandle)
     /// `state`는 `web/support/view-state.ts`의 `LoggedInState`와 같은 모양의 객체다(`TerminalStateValue.swift`).
+    /// 터미널·보관함·설정 상태를 `LoggedInComposer`가 합쳐 넘긴다.
     func render(state: JSObject)
 }
 
-/// 웹 뷰가 `mount`에서 받아 쥐고 입력을 보낸다. 메서드는 `TerminalViewAction`의 case와 하나씩 짝이다.
+/// 웹 뷰가 `mount`에서 받아 쥐고 입력을 보낸다. 메서드는 터미널·보관함·설정 뷰 동작의 case와 하나씩 짝이다.
 @JS final class LoggedInScreenHandle: Sendable {
     private let send: @MainActor @Sendable (TerminalViewAction) -> Void
+    private let sendArchive: @MainActor @Sendable (ArchiveViewAction) -> Void
+    private let sendSettings: @MainActor @Sendable (SettingsViewAction) -> Void
 
-    init(send: @escaping @MainActor @Sendable (TerminalViewAction) -> Void) {
+    init(
+        send: @escaping @MainActor @Sendable (TerminalViewAction) -> Void,
+        sendArchive: @escaping @MainActor @Sendable (ArchiveViewAction) -> Void,
+        sendSettings: @escaping @MainActor @Sendable (SettingsViewAction) -> Void
+    ) {
         self.send = send
+        self.sendArchive = sendArchive
+        self.sendSettings = sendSettings
     }
 
     @JS func inputChanged(text: String) {
@@ -59,22 +70,22 @@ import JavaScriptKit
     }
 
     @JS func archiveOpen() {
-        MainActor.assumeIsolated { send(.archiveOpen) }
+        MainActor.assumeIsolated { sendArchive(.open) }
     }
 
     /// `kind`는 `ArchiveFilter`의 kind. `group`은 auto일 때만, `value`는 auto의 값·묶음 이름·찾아둔 검색어.
     /// 계약에 없는 값이면 무시한다.
     @JS func archiveSelect(kind: String, group: String?, value: String?) {
         guard let filter = ArchiveFilter(bridgeKind: kind, group: group, value: value) else { return }
-        MainActor.assumeIsolated { send(.archiveSelect(filter)) }
+        MainActor.assumeIsolated { sendArchive(.select(filter)) }
     }
 
     @JS func archiveMore() {
-        MainActor.assumeIsolated { send(.archiveMore) }
+        MainActor.assumeIsolated { sendArchive(.more) }
     }
 
     @JS func settingsOpen() {
-        MainActor.assumeIsolated { send(.settingsOpen) }
+        MainActor.assumeIsolated { sendSettings(.open) }
     }
 }
 

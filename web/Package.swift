@@ -39,6 +39,7 @@ let package = Package(
                 ribs, ribsWeb, javaScriptKit, "GrepWebSupport",
                 .product(name: "JavaScriptEventLoop", package: "JavaScriptKit"),
                 core("GrepCore"), core("GrepAppRoot"),
+                core("FeatureArchiveInterface"), core("FeatureSettingsInterface"),
             ] + features.flatMap { name -> [Target.Dependency] in
                 [.target(name: "Feature\(name)Web"), core("Feature\(name)Interface")]
             },

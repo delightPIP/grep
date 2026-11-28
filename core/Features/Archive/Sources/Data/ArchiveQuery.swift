@@ -3,7 +3,7 @@ import FoundationEssentials
 #else
 import Foundation
 #endif
-import FeatureTerminalInterface
+import FeatureArchiveInterface
 import GrepData
 
 /// 보관함 목록을 받을 곳(#168).

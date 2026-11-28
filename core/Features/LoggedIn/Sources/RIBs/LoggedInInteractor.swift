@@ -1,17 +1,22 @@
+import FeatureArchiveInterface
 import FeatureLoggedInInterface
+import FeatureSettingsInterface
 import FeatureTerminalInterface
 import GrepCore
 import RIBs
 
 /// 로그인한 동안의 컨테이너(ADR-0015 결정 1). 계정에 딸린 일만 한다: `GET /me`, 만료 전에 치던 줄 되살리기, 만료, 로그아웃.
-/// 화면에 그리는 것은 자식 `Terminal`이 한다.
-final class LoggedInInteractor: Interactor, TerminalListener {
+/// 화면에 그리는 것은 자식 `Terminal`·`Archive`·`Settings`가 한다. 컨테이너는 자식 사이 알림을 잇는다.
+final class LoggedInInteractor: Interactor, TerminalListener, ArchiveListener, SettingsListener {
 
     private let authService: any AuthService
     private let httpTransport: ObservedTransport
     private weak var listener: (any LoggedInListener)?
     /// 자식 터미널. Router가 쥐고 있어 약하게 든다.
     weak var terminal: (any TerminalHandle)?
+    /// 자식 보관함·설정. 붙이지 않은 조립이면 nil.
+    weak var archive: (any ArchiveHandle)?
+    weak var settings: (any SettingsHandle)?
     private var isSigningOut = false
     /// 만료 전에 치던 줄. 접근 토큰의 계정이 같을 때만 되살리고, 토큰을 받으면 비운다.
     private var pendingInput: PendingInput?
@@ -72,6 +77,24 @@ final class LoggedInInteractor: Interactor, TerminalListener {
 
     func didExpire(input: String) {
         expire(input: input)
+    }
+
+    func didChangeItems() {
+        archive?.refreshIfOpened()
+    }
+
+    func didChangeConnections() {
+        settings?.refreshConnectionsIfOpened()
+    }
+
+    // MARK: ArchiveListener, SettingsListener
+
+    func archiveDidExpire() {
+        expire(input: terminal?.input ?? "")
+    }
+
+    func settingsDidExpire() {
+        expire(input: terminal?.input ?? "")
     }
 
     /// 모르는 사이 끊긴 AI 도구 연결을 그렙을 열 때 한 번 알린다(ACC-002 규칙 11).

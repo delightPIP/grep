@@ -18,10 +18,6 @@ public struct TerminalViewState: Equatable, Sendable {
     public var revising: Revising?
     /// #175 땅굴 두더지가 지금 할 동작. 아직 없으면 nil.
     public var mole: Mole?
-    /// #168 보관함 탭. 처음 열기 전이면 nil.
-    public var archive: ArchiveState?
-    /// #168 설정 탭. 처음 열기 전이면 nil.
-    public var settings: SettingsState?
 
     public init(
         itemCount: Int? = nil,
@@ -31,9 +27,7 @@ public struct TerminalViewState: Equatable, Sendable {
         processingCount: Int = 0,
         isOffline: Bool = false,
         revising: Revising? = nil,
-        mole: Mole? = nil,
-        archive: ArchiveState? = nil,
-        settings: SettingsState? = nil
+        mole: Mole? = nil
     ) {
         self.itemCount = itemCount
         self.lines = lines
@@ -43,7 +37,5 @@ public struct TerminalViewState: Equatable, Sendable {
         self.isOffline = isOffline
         self.revising = revising
         self.mole = mole
-        self.archive = archive
-        self.settings = settings
     }
 }

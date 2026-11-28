@@ -24,11 +24,17 @@ enum ViewMounts {
         }
     }
 
-    static func loggedIn(_ view: any LoggedInViewBridge) -> TerminalWebViewFactory {
+    /// 터미널 화면이 붙을 때 보관함·설정 상태를 모으는 `composer`도 새로 잇는다.
+    static func loggedIn(_ view: any LoggedInViewBridge, composer: LoggedInComposer) -> TerminalWebViewFactory {
         TerminalWebViewFactory { screen in
-            let handle = LoggedInScreenHandle { [weak screen] action in screen?.send(action) }
+            let handle = LoggedInScreenHandle(
+                send: { [weak screen] action in screen?.send(action) },
+                sendArchive: { [weak composer] action in composer?.sendArchive(action) },
+                sendSettings: { [weak composer] action in composer?.sendSettings(action) }
+            )
             view.mount(host: screen.element, handle: handle)
-            screen.attach { state in view.render(state: state.bridgeValue) }
+            composer.attach { state in view.render(state: state) }
+            screen.attach { state in composer.showTerminal(state) }
         }
     }
 }

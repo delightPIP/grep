@@ -47,7 +47,7 @@ extension TerminalInteractor {
             switch outcome {
             case .success(let ended):
                 update(viewState.appending(lines: [.disconnected(client: ended.client, already: ended.already)]))
-                await refreshSettingsConnectionsIfOpened(accessToken: token)
+                notifyConnectionsChanged()
             case .notFound:
                 update(viewState.appending(lines: [.connectionNotFound(number: pending.number)]))
             case .failed(let reason):

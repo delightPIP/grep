@@ -19,12 +19,4 @@ public enum TerminalViewAction: Equatable, Sendable {
     case reviseSubmitted(number: Int, title: String, summary: String)
     /// `고치기` 편집 칸에서 Esc로 취소했다.
     case reviseCancelled
-    /// #168 보관함 탭을 열었다. 자동 묶음·묶음·찾아둔 검색·자료 첫 쪽을 받는다.
-    case archiveOpen
-    /// #168 보관함에서 거를 것을 골랐다.
-    case archiveSelect(ArchiveFilter)
-    /// #168 보관함 목록 맨 아래 `더 보기`.
-    case archiveMore
-    /// #168 설정 탭을 열었다. 계정과 AI 도구 연결을 받는다.
-    case settingsOpen
 }

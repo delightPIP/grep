@@ -1,4 +1,4 @@
-import FeatureTerminalInterface
+import FeatureSettingsInterface
 import GrepCore
 import GrepData
 
@@ -12,7 +12,7 @@ enum SettingsAPI {
     }
 
     @MainActor
-    static func account(transport: any HTTPTransport, accessToken: String) async -> ArchiveAPI.Outcome<SettingsAccount> {
+    static func account(transport: any HTTPTransport, accessToken: String) async -> FetchOutcome<SettingsAccount> {
         switch await BrowseAPI.get(mePath, as: MeBody.self, transport: transport, accessToken: accessToken) {
         case .body(let me):
             guard let provider = AuthProvider(rawValue: me.authProvider) else { return .failed }

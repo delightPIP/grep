@@ -3,14 +3,13 @@ import FoundationEssentials
 #else
 import Foundation
 #endif
-import FeatureTerminalInterface
 
 /// 한국 시간(`UTC+9`, 주는 월요일 시작) 기준으로 시점 낱말을 반열린 구간 `[from, to)`으로 바꾼다(#114, F22).
-enum PeriodParser {
+public enum PeriodParser {
     private static let kstOffsetSeconds = 9 * 3600
     private static let maxWeeksAgo = 52
 
-    static func parse(_ token: String, now: Date = Date()) -> Period? {
+    public static func parse(_ token: String, now: Date = Date()) -> Period? {
         guard let timeZone = TimeZone(secondsFromGMT: kstOffsetSeconds) else { return nil }
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = timeZone

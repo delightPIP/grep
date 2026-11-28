@@ -28,10 +28,12 @@ private struct JSPlatform {
         authService: authService, clipboard: clipboard, files: files, historyStore: historyStore
     )
     MainActor.assumeIsolated {
+        let composer = LoggedInComposer()
         GrepWebApp.start(
             viewFactory: WebViewFactory(
                 loggedOut: ViewMounts.loggedOut(loggedOutView),
-                loggedIn: ViewMounts.loggedIn(loggedInView)
+                loggedIn: ViewMounts.loggedIn(loggedInView, composer: composer),
+                composer: composer
             ),
             platform: PlatformServices(
                 authService: JSAuthService(service: platform.authService),

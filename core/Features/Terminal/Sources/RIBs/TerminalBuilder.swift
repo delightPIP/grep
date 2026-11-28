@@ -25,7 +25,6 @@ public final class TerminalBuilder: Builder<any TerminalDependency>, TerminalBui
             files: dependency.files,
             historyStore: dependency.historyStore,
             sleeper: dependency.sleeper,
-            deviceTime: dependency.deviceTime,
             listener: listener
         )
         return TerminalBuild(router: TerminalRouter(interactor: interactor, viewController: view), handle: interactor)

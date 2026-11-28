@@ -37,10 +37,6 @@ final class TerminalFixture: TerminalDependency {
     var files: any FilePort { fakeFiles }
     var historyStore: any HistoryStore { fakeHistory }
     var sleeper: any Sleeper { fakeSleeper }
-    /// 2026-11-28(토) 13:00 한국 시간, 기기 시간대 Asia/Seoul.
-    var deviceTime: DeviceTime {
-        DeviceTime(timeZone: TimeZone(identifier: "Asia/Seoul")!, now: { Date(timeIntervalSince1970: 1_795_838_400) })
-    }
 
     init(history: HistoryRecord? = nil) {
         fakeHistory = FakeHistoryStore(record: history)

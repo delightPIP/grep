@@ -1,3 +1,5 @@
+import FeatureArchiveInterface
+import FeatureSettingsInterface
 import FeatureTerminalInterface
 import GrepCore
 import JavaScriptKit
@@ -15,7 +17,8 @@ private func line(_ kind: String, _ fields: Fields = [:]) -> JSValue {
 }
 
 extension TerminalViewState {
-    var bridgeValue: JSObject {
+    /// 터미널 상태에 보관함·설정 탭 상태를 더한 `LoggedInState` 객체. 세 RIB의 상태를 뷰 하나에 넘긴다.
+    func bridgeValue(archive: ArchiveState?, settings: SettingsState?) -> JSObject {
         let state = object([
             "itemCount": itemCount,
             "lines": lines.map(\.bridgeValue),

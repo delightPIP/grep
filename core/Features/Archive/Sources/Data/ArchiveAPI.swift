@@ -1,16 +1,9 @@
-import FeatureTerminalInterface
+import FeatureArchiveInterface
 import GrepCore
 import GrepData
 
 /// 보관함 API(api/openapi.yaml `listAutoGroups`·`listRecentItems`·`getBundle`·`searchItems`). 응답 해석까지만 한다.
 enum ArchiveAPI {
-    enum Outcome<Value: Equatable>: Equatable {
-        case success(Value)
-        case sessionExpired
-        case failed
-        case cancelled
-    }
-
     struct Page: Equatable {
         let items: [ItemSummary]
         let nextCursor: String?
@@ -33,7 +26,7 @@ enum ArchiveAPI {
 
     /// 자동 묶음. 0건은 뺀다(ARC-007). `tz`는 기기 시간대(IANA).
     @MainActor
-    static func groups(timeZone: String, transport: any HTTPTransport, accessToken: String) async -> Outcome<[AutoGroupEntry]> {
+    static func groups(timeZone: String, transport: any HTTPTransport, accessToken: String) async -> FetchOutcome<[AutoGroupEntry]> {
         let path = "\(groupsPath)?tz=\(BrowseAPI.percentEncoded(timeZone))"
         switch await BrowseAPI.get(path, as: GroupsBody.self, transport: transport, accessToken: accessToken) {
         case .body(let body):
@@ -57,7 +50,7 @@ enum ArchiveAPI {
         cursor: String?,
         transport: any HTTPTransport,
         accessToken: String
-    ) async -> Outcome<Page> {
+    ) async -> FetchOutcome<Page> {
         switch request {
         case .items(let conditions):
             let params = conditions + ["limit=\(pageSize)"] + (cursor.map { ["cursor=\(BrowseAPI.percentEncoded($0))"] } ?? [])

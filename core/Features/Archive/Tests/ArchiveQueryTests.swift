@@ -3,10 +3,11 @@ import FoundationEssentials
 #else
 import Foundation
 #endif
-import FeatureTerminalInterface
+import FeatureArchiveInterface
+import GrepCore
 import Testing
 
-@testable import FeatureTerminal
+@testable import FeatureArchive
 
 /// #168 보관함 거르기를 요청으로 바꾸기(ARC-007).
 struct ArchiveQueryTests {
