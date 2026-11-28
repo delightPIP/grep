@@ -34,13 +34,12 @@ import type {
   TrashEntry,
 } from "../../support/view-state";
 import { Burrow, type MoleAction } from "../../ui/burrow";
-import type { PickedRef } from "./contract";
 import { pickWords } from "./pick-word";
 import { Banner, DockInput, Line, Prompt, StatusBar, Window, type StatusItem } from "../../ui/grep";
 
 export type TerminalScreenProps = Omit<LoggedInState, "selection"> & {
   /** 고른 자료. #179 kind·source가 오면 선택 줄에 종류 낱말로 쓴다. */
-  selection: PickedRef[];
+  selection: ItemRef[];
   onInputChange: (text: string) => void;
   onSubmit: (text: string) => void;
   /** 입력줄이 빈 채로 붙여 넣었다. 붙여 넣기만 해도 저장한다(commands 3절 담기). */
@@ -1521,7 +1520,7 @@ function DropGuide() {
 }
 
 /** 입력줄 바로 위 `선택 3  PDF 25 · 글 12 · example.com 3`(commands 6절 고르기, ARC-003 규칙 14). 선택이 없으면 없다. */
-function SelectionLine({ selection }: { selection: PickedRef[] }) {
+function SelectionLine({ selection }: { selection: ItemRef[] }) {
   if (selection.length === 0) return null;
   return <div className="gt-selection">{`선택 ${selection.length}  ${pickWords(selection)}`}</div>;
 }

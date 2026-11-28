@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ItemDetail, ItemSummary, TerminalLine } from "../../support/view-state";
-import type { ArchiveState, SettingsState } from "./contract";
+import type { ArchiveState, SettingsState } from "../../support/view-state";
 import { layoutFor } from "./layout";
 import { LoggedInView, type LoggedInViewProps } from "./view";
 
@@ -148,7 +148,7 @@ describe("폭별 배치(COM-011)", () => {
   it("보관함을_보다가_폭이_바뀌었을때_화면을_보면_보던_화면과_치던_글과_선택이_남는지", () => {
     // given
     setWidth(1200);
-    const { container } = renderView({ archive: ARCHIVE, input: "찾기 결", selection: [{ number: 7, title: "자료 7" }] });
+    const { container } = renderView({ archive: ARCHIVE, input: "찾기 결", selection: [{ number: 7, title: "자료 7", kind: "text" as const, source: null }] });
     fireEvent.click(navItem("보관함"));
 
     // when
@@ -195,7 +195,7 @@ describe("폭별 배치(COM-011)", () => {
   });
 
   it.each<[string, Partial<LoggedInViewProps>]>([
-    ["고르기 중", { selection: [{ number: 7, title: "자료 7" }] }],
+    ["고르기 중", { selection: [{ number: 7, title: "자료 7", kind: "text" as const, source: null }] }],
     ["확인 줄", { lines: [{ kind: "dropConfirm", total: 3 }] }],
     ["고치기 칸", { revising: { number: 7, title: "자료 7", summary: "" } }],
   ])("좁은_폭에서_%s일때_하단_탭을_보면_숨는지", (_name, state) => {

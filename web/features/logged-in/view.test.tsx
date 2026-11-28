@@ -1,6 +1,6 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { CommandFailure, ItemDetail, ItemSummary, LoggedInState, TerminalLine } from "../../support/view-state";
+import type { CommandFailure, ItemDetail, ItemRef, ItemSummary, LoggedInState, TerminalLine } from "../../support/view-state";
 import { LoggedInView } from "./view";
 
 afterEach(cleanup);
@@ -720,9 +720,9 @@ describe("LoggedInView", () => {
 
   describe("고르기와 칩·번호 누르기(#62, ARC-001·commands 6절)", () => {
     const PICK = { kind: "prompt", text: "고르기 131 97" } as const;
-    const PICKED = [
-      { number: 131, title: "결제위젯 연동 가이드" },
-      { number: 97, title: "PG사 수수료 비교 정리.pdf" },
+    const PICKED: ItemRef[] = [
+      { number: 131, title: "결제위젯 연동 가이드", kind: "text", source: null },
+      { number: 97, title: "PG사 수수료 비교 정리.pdf", kind: "file", source: "pdf" },
     ];
 
     it("두건을골랐을때_화면을그리면_선택N건과제목과다음명령을보이는지", () => {
@@ -813,7 +813,7 @@ describe("LoggedInView", () => {
 
       // then
       expect(container.querySelector(".gt-selection")!.textContent).toBe(
-        "선택 2  결제위젯 연동 가이드 · PG사 수수료 비교 정리.pdf",
+        "선택 2  글 131 · PDF 97",
       );
     });
 
@@ -850,7 +850,7 @@ describe("LoggedInView", () => {
       ];
 
       // when
-      const { container } = renderView({ lines, selection: [{ number: 131, title: "t" }] });
+      const { container } = renderView({ lines, selection: [{ number: 131, title: "t", kind: "text" as const, source: null }] });
 
       // then
       const numbers = Array.from(container.querySelectorAll(".gt-row-num"), (cell) => cell.textContent);
@@ -897,8 +897,8 @@ describe("LoggedInView", () => {
           kind: "handedOff",
           result: {
             items: [
-              { number: 131, title: "결제위젯 연동 가이드" },
-              { number: 97, title: "PG사 수수료 비교 정리.pdf" },
+              { number: 131, title: "결제위젯 연동 가이드", kind: "text" as const, source: null },
+              { number: 97, title: "PG사 수수료 비교 정리.pdf", kind: "text" as const, source: null },
             ],
             charCount: 1240,
             missingSummaryCount,
@@ -1308,7 +1308,7 @@ describe("LoggedInView", () => {
       // given
       const lines: LoggedInState["lines"] = [
         { kind: "prompt", text: "버리기 131" },
-        { kind: "dropped", items: [{ number: 131, title: "결제 오류 정리" }] },
+        { kind: "dropped", items: [{ number: 131, title: "결제 오류 정리", kind: "text" as const, source: null }] },
       ];
 
       // when
@@ -1325,8 +1325,8 @@ describe("LoggedInView", () => {
         {
           kind: "dropped",
           items: [
-            { number: 131, title: "결제 오류 정리" },
-            { number: 57, title: "환불 규정" },
+            { number: 131, title: "결제 오류 정리", kind: "text" as const, source: null },
+            { number: 57, title: "환불 규정", kind: "text" as const, source: null },
           ],
         },
       ];
@@ -1345,8 +1345,8 @@ describe("LoggedInView", () => {
         {
           kind: "revived",
           items: [
-            { number: 131, title: "결제 오류 정리" },
-            { number: 57, title: "환불 규정" },
+            { number: 131, title: "결제 오류 정리", kind: "text" as const, source: null },
+            { number: 57, title: "환불 규정", kind: "text" as const, source: null },
           ],
         },
       ];
@@ -1671,7 +1671,7 @@ describe("LoggedInView", () => {
       // given
       const lines: LoggedInState["lines"] = [
         { kind: "prompt", text: "고르기 빼기 140" },
-        { kind: "unpicked", items: [{ number: 140, title: "환불 규정" }], remaining: 2 },
+        { kind: "unpicked", items: [{ number: 140, title: "환불 규정", kind: "text" as const, source: null }], remaining: 2 },
       ];
 
       // when
@@ -2016,7 +2016,7 @@ describe("LoggedInView", () => {
       const line: TerminalLine = {
         kind: "handedOff",
         result: {
-          items: [{ number: 30, title: "카페 텀블러 할인" }],
+          items: [{ number: 30, title: "카페 텀블러 할인", kind: "text" as const, source: null }],
           bundle: "겨울캠페인",
           removedCount: 1,
           charCount: 240,
@@ -2034,7 +2034,7 @@ describe("LoggedInView", () => {
 
     it("고른뒤일때_묶음칩을누르면_입력줄에묶음과빈칸을찍는지", () => {
       // given
-      const { onInputChange } = renderView({ lines: [{ kind: "picked", items: [{ number: 131, title: "결제위젯 연동 가이드" }] }] });
+      const { onInputChange } = renderView({ lines: [{ kind: "picked", items: [{ number: 131, title: "결제위젯 연동 가이드", kind: "text" as const, source: null }] }] });
 
       // when
       fireEvent.click(screen.getByRole("button", { name: "묶음 <이름>" }));
@@ -2301,7 +2301,7 @@ describe("LoggedInView", () => {
     it("목록일때_제목을누르면_입력줄에열기번호를찍는지", () => {
       // given
       const { onInputChange } = renderView({
-        lines: [{ kind: "recentList", items: [item({ number: 97, title: "PG사 수수료 비교 정리.pdf" })], hasMore: false }],
+        lines: [{ kind: "recentList", items: [item({ number: 97, title: "PG사 수수료 비교 정리.pdf", kind: "text" as const, source: null })], hasMore: false }],
       });
 
       // when

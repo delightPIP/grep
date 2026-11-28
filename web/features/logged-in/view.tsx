@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { TerminalLine } from "../../support/view-state";
 import { ArchiveScreen, ArchiveSections } from "./archive";
-import type { ArchiveFilter, LoggedInStateWithScreens } from "./contract";
+import type { ArchiveFilter, LoggedInState } from "../../support/view-state";
 import { useLayout, type Tab } from "./layout";
 import { Nav } from "./nav";
 import { SettingsScreen, type ThemeChoice } from "./settings";
@@ -12,7 +12,7 @@ import { TerminalScreen, type TerminalScreenProps } from "./terminal";
 export type { ThemeChoice } from "./settings";
 
 export type LoggedInViewProps = Omit<TerminalScreenProps, "selection"> &
-  LoggedInStateWithScreens & {
+  LoggedInState & {
     /**
      * 보관함·설정을 열었다, 보관함 구역을 골랐다, 보관함 `더 보기`(계약 `archiveOpen`·`archiveSelect`·`archiveMore`·`settingsOpen`).
      * shortcut: 선택 속성. 어댑터가 handle로 이으면(통합) 필수로 바꾼다.

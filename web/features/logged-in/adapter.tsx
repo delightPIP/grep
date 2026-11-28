@@ -1,7 +1,8 @@
 import type { ComponentType } from "react";
-import { type BridgedLoggedInState, toLoggedInState } from "../../support/bridge-state";
+import { type BridgedLoggedInState, flattenArchiveFilter, toLoggedInState } from "../../support/bridge-state";
 import { ReactScreen } from "../../support/react-screen";
 import type { LoggedInScreenHandle, LoggedInViewBridge } from "../../support/swift";
+import { applyTheme, readTheme, saveTheme, type Theme } from "../../support/theme-store";
 import type { DroppedFile } from "../../support/view-state";
 import { LoggedInView, type LoggedInViewProps } from "./view";
 
@@ -21,6 +22,9 @@ const ExtendedLoggedInView = LoggedInView as ComponentType<ExtendedLoggedInViewP
 export class LoggedInAdapter implements LoggedInViewBridge {
   #screen = new ReactScreen<LoggedInScreenHandle>();
   #files: FileHolder;
+  /** COM-012 고른 테마. 뷰 상태라 코어를 거치지 않는다. */
+  #theme: Theme = readTheme();
+  #lastState: BridgedLoggedInState | null = null;
 
   constructor(files: FileHolder) {
     this.#files = files;
@@ -31,6 +35,7 @@ export class LoggedInAdapter implements LoggedInViewBridge {
   }
 
   render(state: BridgedLoggedInState): void {
+    this.#lastState = state;
     const viewState = toLoggedInState(state);
     this.#screen.render((handle) => (
       <ExtendedLoggedInView
@@ -43,7 +48,20 @@ export class LoggedInAdapter implements LoggedInViewBridge {
         onReviseSubmit={(number, title, summary) => handle.reviseSubmitted(number, title, summary)}
         onReviseCancel={() => handle.reviseCancelled()}
         onSamplesRequest={() => handle.samplesRequested()}
+        onArchiveOpen={() => handle.archiveOpen()}
+        onArchiveSelect={(filter) => handle.archiveSelect(...flattenArchiveFilter(filter))}
+        onArchiveMore={() => handle.archiveMore()}
+        onSettingsOpen={() => handle.settingsOpen()}
+        theme={this.#theme}
+        onThemeChange={(theme) => this.#changeTheme(theme)}
       />
     ));
+  }
+
+  #changeTheme(theme: Theme): void {
+    this.#theme = theme;
+    saveTheme(theme);
+    applyTheme(theme);
+    if (this.#lastState) this.render(this.#lastState);
   }
 }

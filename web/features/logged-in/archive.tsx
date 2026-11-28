@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react";
 import type { ItemDetail, ItemRef, TerminalLine } from "../../support/view-state";
 import { Line } from "../../ui/grep";
-import type { ArchiveFilter, ArchiveState, AutoGroup, AutoGroupEntry } from "./contract";
+import type { ArchiveFilter, ArchiveState, AutoGroup, AutoGroupEntry } from "../../support/view-state";
 import type { Layout } from "./layout";
 import { ChipContext, ItemDetailLines, ListRow, MoreChip, Plain, type TerminalChips } from "./terminal";
 

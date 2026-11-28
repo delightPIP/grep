@@ -15,6 +15,10 @@ function mountAdapter(held: DroppedFile[] = [], lines: BridgedLoggedInState["lin
     samplesRequested: vi.fn(),
     reviseSubmitted: vi.fn(),
     reviseCancelled: vi.fn(),
+    archiveOpen: vi.fn(),
+    archiveSelect: vi.fn(),
+    archiveMore: vi.fn(),
+    settingsOpen: vi.fn(),
     release: vi.fn(),
   } satisfies LoggedInScreenHandle;
   const hold = vi.fn((_files: readonly File[]) => held);
