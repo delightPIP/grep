@@ -248,4 +248,49 @@ struct PlatformPortsTests {
         #expect(token == nil)
         #expect(store.session == nil)
     }
+
+    @Test func 모든기기로그아웃을확인했을때_signOutEverywhere를호출하면_global로그아웃을보내고세션을지우는지() async throws {
+        // given
+        StubURLProtocol.reset(reply: .response(status: 204, body: Data()))
+        let store = InMemorySessionStore(
+            session: AuthSession(accessToken: "acc-123", refreshToken: "ref-456", expiresAt: .distantFuture)
+        )
+        let service = WebAuthService(
+            configuration: .init(supabaseURL: URL(string: "https://auth.test")!, publishableKey: "pub-key"),
+            webSession: StubWebSessionRunner(),
+            sessionStore: store,
+            urlSession: StubURLProtocol.makeSession()
+        )
+
+        // when
+        await service.signOutEverywhere()
+
+        // then
+        let sent = try #require(StubURLProtocol.requests.first)
+        #expect(sent.url?.absoluteString == "https://auth.test/auth/v1/logout?scope=global")
+        #expect(sent.httpMethod == "POST")
+        #expect(sent.value(forHTTPHeaderField: "Authorization") == "Bearer acc-123")
+        #expect(sent.value(forHTTPHeaderField: "apikey") == "pub-key")
+        #expect(store.session == nil)
+    }
+
+    @Test func 서버에닿지못할때_signOutEverywhere를호출하면_이기기세션은지우는지() async {
+        // given
+        StubURLProtocol.reset(reply: .failure(.notConnectedToInternet))
+        let store = InMemorySessionStore(
+            session: AuthSession(accessToken: "acc-123", refreshToken: "ref-456", expiresAt: .distantFuture)
+        )
+        let service = WebAuthService(
+            configuration: .init(supabaseURL: URL(string: "https://auth.test")!, publishableKey: "pub-key"),
+            webSession: StubWebSessionRunner(),
+            sessionStore: store,
+            urlSession: StubURLProtocol.makeSession()
+        )
+
+        // when
+        await service.signOutEverywhere()
+
+        // then
+        #expect(store.session == nil)
+    }
 }

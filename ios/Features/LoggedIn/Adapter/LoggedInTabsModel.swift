@@ -24,6 +24,7 @@ public final class LoggedInTabsModel {
     @ObservationIgnored private let archiveLoader: any ArchiveItemLoader
     @ObservationIgnored private let pageLimit: Int
     @ObservationIgnored private let onSignOut: @MainActor () -> Void
+    @ObservationIgnored private let onSignOutEverywhere: (@MainActor () -> Void)?
     @ObservationIgnored private let onPickItem: (@MainActor (Int) -> Void)?
     @ObservationIgnored private let onUnpickItem: (@MainActor (Int) -> Void)?
     @ObservationIgnored private let onClearPicked: (@MainActor () -> Void)?
@@ -40,6 +41,7 @@ public final class LoggedInTabsModel {
         initialTab: LoggedInTab = .terminal,
         pageLimit: Int = LoggedInTabsModel.defaultPageLimit,
         onSignOut: @escaping @MainActor () -> Void,
+        onSignOutEverywhere: (@MainActor () -> Void)? = nil,
         onPickItem: (@MainActor (Int) -> Void)? = nil,
         onUnpickItem: (@MainActor (Int) -> Void)? = nil,
         onClearPicked: (@MainActor () -> Void)? = nil,
@@ -49,12 +51,13 @@ public final class LoggedInTabsModel {
         self.selectedTab = initialTab
         self.pageLimit = pageLimit
         self.onSignOut = onSignOut
+        self.onSignOutEverywhere = onSignOutEverywhere
         self.onPickItem = onPickItem
         self.onUnpickItem = onUnpickItem
         self.onClearPicked = onClearPicked
         self.onSessionExpired = onSessionExpired
         self.archivePresentation = ArchivePresentation()
-        self.settingsPresentation = SettingsPresentation()
+        self.settingsPresentation = SettingsPresentation(canSignOutEverywhere: onSignOutEverywhere != nil)
     }
 
     public func updateTerminalContext(itemCount: Int?, pickedNumbers: Set<Int>) {
@@ -126,6 +129,13 @@ public final class LoggedInTabsModel {
         guard !settingsPresentation.isSigningOut else { return }
         settingsPresentation.isSigningOut = true
         onSignOut()
+    }
+
+    /// 설정의 확인 시트에서 `로그아웃`을 누른 뒤에 부른다(ACC-002 규칙 4).
+    public func requestSignOutEverywhere() {
+        guard !settingsPresentation.isSigningOut, let onSignOutEverywhere else { return }
+        settingsPresentation.isSigningOut = true
+        onSignOutEverywhere()
     }
 
     /// 고른 자료를 다시 누르면 뺀다(시안 M6 `빼기`). 빼기 콜백이 없으면 고르기 콜백이 스스로 넣고 뺀다(Example).
