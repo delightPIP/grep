@@ -37,7 +37,7 @@ public final class TerminalConnectionCommands: TerminalCommandBase, TerminalComm
             let answer = text.trimmingWhitespace()
             if answer == "로그아웃" || answer == "signout" {
                 pendingSignOutEverywhere = false
-                context.requestSignOutEverywhere()
+                context?.requestSignOutEverywhere()
                 return true
             }
         }

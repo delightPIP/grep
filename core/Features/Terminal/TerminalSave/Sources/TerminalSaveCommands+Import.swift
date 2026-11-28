@@ -1,11 +1,12 @@
-import FeatureTerminalInterface
 import TerminalDomain
 import GrepCore
 import GrepData
+import TerminalCommandKit
+import TerminalDomain
 
 // MARK: 북마크 가져오기(#127, F8, user-flow 10절)
 
-extension TerminalInteractor {
+extension TerminalSaveCommands {
     /// 진행을 묻는 주기. 처리 중 자료 폴링(ARC-005 규칙 10)과 같은 2초.
     private static let importPollInterval: Duration = .seconds(2)
     /// 실패 줄의 `→ 다시`에 쓰는 명령.
@@ -93,7 +94,7 @@ extension TerminalInteractor {
     }
 
     /// 인자 없는 `가져오기`(`bring`)인지.
-    static func isBareImport(_ text: String) -> Bool {
+    public static func isBareImport(_ text: String) -> Bool {
         guard let command = InputCommand(text) else { return false }
         return command.name == .bring && command.argument.isEmpty
     }
@@ -108,7 +109,7 @@ extension TerminalInteractor {
     }
 
     /// 제안한 파일이 있으면 친 줄을 찍고 그 파일 내용으로 바로 가져온다. 없으면 false.
-    func importSuggested(typed: String) -> Bool {
+    public func importSuggested(typed: String) -> Bool {
         guard let file = suggestedImport else { return false }
         suggestedImport = nil
         update(viewState.appending(lines: [.prompt(typed)]).with(input: ""))
@@ -117,7 +118,7 @@ extension TerminalInteractor {
     }
 
     /// 기억한 파일을 놓는다. `가져오기`가 아닌 입력이 오면 부른다.
-    func forgetSuggestedImport() {
+    public func forgetSuggestedImport() {
         guard let file = suggestedImport else { return }
         suggestedImport = nil
         files.release(file.id)

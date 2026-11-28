@@ -51,6 +51,8 @@ public protocol TerminalContext: AnyObject {
     ) async
     /// 찾기 결과를 넘기기로 잇는다(`찾기 … | 넘기기`, `찾아두기 … | 넘기기`).
     func searchThenHandOff(_ query: SearchQuery, period: Period?, typed: String, sequence: Int, accessToken: String) async
+    /// 붙여 넣기·파일 놓기처럼 엔터 없이 들어온 입력. 입력 차례를 늘리고 기다리던 확인을 버린다.
+    func beginUserInput()
     /// `로그아웃 모든기기` 확인이 끝났다.
     func requestSignOutEverywhere()
 }

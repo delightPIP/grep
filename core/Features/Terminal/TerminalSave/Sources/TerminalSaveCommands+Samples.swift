@@ -1,12 +1,13 @@
-import FeatureTerminalInterface
 import TerminalDomain
 import GrepCore
 import GrepData
+import TerminalCommandKit
+import TerminalDomain
 
 // MARK: 샘플 8건 저장(#102, ARC-010)
 
-extension TerminalInteractor {
-    func saveSamples() {
+extension TerminalSaveCommands {
+    public func saveSamples() {
         guard !isSavingSamples else { return }
         isSavingSamples = true
         startTask { [weak self] in
