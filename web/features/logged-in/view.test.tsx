@@ -457,7 +457,7 @@ describe("LoggedInView", () => {
       const { container } = renderView();
 
       // when
-      fireEvent.dragEnter(container.querySelector(".gt-screen")!, filesDrag());
+      fireEvent.dragEnter(container.querySelector(".gt-terminal")!, filesDrag());
 
       // then
       expect(screen.getByText("놓으면 저장")).toBeTruthy();
@@ -467,7 +467,7 @@ describe("LoggedInView", () => {
     it("파일을끌어온뒤_놓으면_파일들을알리고안내를닫는지", () => {
       // given
       const { container, onFilesDrop } = renderView();
-      const screenElement = container.querySelector(".gt-screen")!;
+      const screenElement = container.querySelector(".gt-terminal")!;
       const pdf = new File(["%PDF"], "예산안.pdf", { type: "application/pdf" });
       fireEvent.dragEnter(screenElement, filesDrag());
 
@@ -483,7 +483,7 @@ describe("LoggedInView", () => {
     it("파일을끌어오다가_화면밖으로나가면_안내를닫는지", () => {
       // given
       const { container } = renderView();
-      const screenElement = container.querySelector(".gt-screen")!;
+      const screenElement = container.querySelector(".gt-terminal")!;
       fireEvent.dragEnter(screenElement, filesDrag());
 
       // when
@@ -815,6 +815,22 @@ describe("LoggedInView", () => {
       expect(container.querySelector(".gt-selection")!.textContent).toBe(
         "선택 2  결제위젯 연동 가이드 · PG사 수수료 비교 정리.pdf",
       );
+    });
+
+    it("종류를아는자료를골랐을때_화면을그리면_선택줄에종류낱말과번호를보이는지", () => {
+      // given
+      const selection = [
+        { number: 25, title: "보고서.pdf", kind: "file" as const, source: null },
+        { number: 12, title: "회의 메모", kind: "text" as const, source: null },
+        { number: 3, title: "결제 가이드", kind: "link" as const, source: "example.com" },
+        { number: 9, title: "화면.png", kind: "file" as const, source: null },
+      ];
+
+      // when
+      const { container } = renderView({ selection } as Partial<LoggedInState>);
+
+      // then
+      expect(container.querySelector(".gt-selection")!.textContent).toBe("선택 4  PDF 25 · 글 12 · example.com 3 · PNG 9");
     });
 
     it("선택이없을때_화면을그리면_선택줄이없는지", () => {
@@ -2883,7 +2899,7 @@ describe("LoggedInView", () => {
     it("파일을_끌어_오는_동안이면_가운데서_만세하고_떠나면_그치는지", () => {
       // given
       const { container } = renderWithMole(null);
-      const screenElement = container.querySelector(".gt-screen")!;
+      const screenElement = container.querySelector(".gt-terminal")!;
 
       // when
       fireEvent.dragEnter(screenElement, { dataTransfer: { types: ["Files"], files: [] } });
