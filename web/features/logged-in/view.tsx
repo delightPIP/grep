@@ -2,14 +2,14 @@
 // 순수 뷰: 받은 상태만 그린다. 탭·폭·자세히 보기 칸은 뷰 상태이고, 세 화면은 늘 붙여 둬 폭·탭이 바뀌어도 상태가 남는다.
 import { useState } from "react";
 import type { TerminalLine } from "../../support/view-state";
-import { ArchiveScreen, ArchiveSections } from "./archive";
+import { ArchiveScreen, ArchiveSections } from "../archive/archive";
 import type { ArchiveFilter, LoggedInState } from "../../support/view-state";
 import { useLayout, type Tab } from "./layout";
 import { Nav } from "./nav";
-import { SettingsScreen, type ThemeChoice } from "./settings";
+import { SettingsScreen, type ThemeChoice } from "../settings/settings";
 import { TerminalScreen, type TerminalScreenProps } from "../terminal/terminal-screen";
 
-export type { ThemeChoice } from "./settings";
+export type { ThemeChoice } from "../settings/settings";
 
 export type LoggedInViewProps = Omit<TerminalScreenProps, "selection"> &
   LoggedInState & {

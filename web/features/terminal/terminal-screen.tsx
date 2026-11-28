@@ -1,7 +1,7 @@
 // 터미널 화면(배치는 view.tsx가 감싼다). 순수 뷰: 받은 상태만 그리고, 입력은 onInputChange·onSubmit·onPaste·onFilesDrop으로만 알린다.
 // 배치는 시안 Main·Errors·Logout ③ 아트보드, 출력 비우기(로그아웃·다른 계정 로그인, COM-009)는 코어가 lines로 내려준다.
 import { type ClipboardEvent, type DragEvent, useEffect, useRef, useState } from "react";
-import { pickWords } from "../logged-in/pick-word";
+import { pickWords } from "./format/pick-word";
 import { Block } from "./block";
 import { windowTitle } from "./format/title";
 import { TerminalIntro } from "./lines/guide";

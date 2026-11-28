@@ -53,3 +53,7 @@ export function spansWeeks(period: Period): boolean {
 
 /** 연결 목록 날짜 `11/20`. 한국 날짜다(ARC-004 규칙 7). */
 export const connectionDay = (iso: string) => monthDay(kstDay(Date.parse(iso)));
+
+/** 한국 날짜 `MM/DD`. 설정 화면 연결 목록 표기(ACC-002 규칙 7). */
+const PADDED_DAY_FORMAT = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Seoul", month: "2-digit", day: "2-digit" });
+export const paddedKstMonthDay = (iso: string) => PADDED_DAY_FORMAT.format(new Date(iso));

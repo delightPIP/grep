@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import type { ItemDetail, ItemRef, TerminalLine } from "../../support/view-state";
 import { Line } from "../../ui/grep";
 import type { ArchiveFilter, ArchiveState, AutoGroup, AutoGroupEntry } from "../../support/view-state";
-import type { Layout } from "./layout";
+import type { Layout } from "../logged-in/layout";
 import { ItemDetailLines } from "../terminal/lines/detail";
 import { ListRow } from "../terminal/lines/list";
 import { ChipContext, MoreChip, Plain, type TerminalChips } from "../terminal/parts";
