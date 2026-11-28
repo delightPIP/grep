@@ -39,3 +39,42 @@ describe("밝은 테마(#169, 디자인 시스템 토큰 두 테마·시안 06)"
     expect(html).toContain('<meta name="color-scheme" content="dark light"');
   });
 });
+
+describe("테마 고르기(#169, COM-012)", () => {
+  it("밝게를_골랐을때_시스템이_어두우면_밝은_토큰이_어두운_기본값보다_뒤에_와서_이기는지", () => {
+    // given
+    const tokens = read("../styles/tokens.css");
+
+    // when
+    const darkAt = tokens.indexOf(':root, [data-theme="dark"]');
+    const lightAt = tokens.indexOf('[data-theme="light"]');
+
+    // then
+    expect(darkAt).toBeGreaterThanOrEqual(0);
+    expect(lightAt).toBeGreaterThan(darkAt);
+  });
+
+  it("어둡게를_골랐을때_시스템이_밝으면_시스템_따름_블록이_적용되지_않는지", () => {
+    // given
+    const css = read("../styles/grep.css");
+
+    // when
+    const followSelector = /@media \(prefers-color-scheme: light\) \{\s*([^{]+)\{/.exec(css)?.[1].trim();
+
+    // then
+    expect(followSelector).toBe(':root:not([data-theme="dark"])');
+  });
+
+  it("두더지_색을_보면_테마_토큰을_쓰지_않는지", () => {
+    // given
+    const css = read("../styles/grep.css");
+
+    // when
+    const burrowRules = css.split(/\r?\n/).filter((line) => line.startsWith(".gt-burrow"));
+
+    // then
+    expect(burrowRules.length).toBeGreaterThan(0);
+    // 크기 변수(--b-size)는 색이 아니다.
+    expect(burrowRules.filter((line) => /(background|border-top)[^;]*var\(--(?!b-size)/.test(line))).toEqual([]);
+  });
+});

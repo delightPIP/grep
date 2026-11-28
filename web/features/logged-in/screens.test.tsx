@@ -401,3 +401,38 @@ describe("설정 화면(#168, 시안 26)", () => {
     expect(current()).toContain("터미널");
   });
 });
+
+describe("테마 줄(#169, COM-012)", () => {
+  function openTheme(state: Partial<LoggedInViewProps> = {}) {
+    setWidth(1200);
+    const view = renderView(state);
+    fireEvent.click(navItem("설정"));
+    return view;
+  }
+
+  it("고른_테마가_없을때_테마_줄을_보면_세_가지_차례이고_시스템_따름이_골라져_있는지", () => {
+    // given
+    // when
+    openTheme();
+
+    // then
+    const group = screen.getByRole("radiogroup", { name: "테마" });
+    const options = within(group).getAllByRole("radio");
+    expect(options.map((option) => option.textContent)).toEqual(["시스템 따름", "밝게", "어둡게"]);
+    expect(within(group).getByRole("radio", { checked: true }).textContent).toBe("시스템 따름");
+  });
+
+  it("어둡게를_눌렀을때_알림을_보면_dark를_넘기고_고른_값이_표시되는지", () => {
+    // given
+    const { onThemeChange, rerender } = openTheme({ theme: "light" });
+    expect(screen.getByRole("radio", { checked: true }).textContent).toBe("밝게");
+
+    // when
+    fireEvent.click(screen.getByRole("radio", { name: "어둡게" }));
+    rerender({ theme: "dark" });
+
+    // then
+    expect(onThemeChange).toHaveBeenCalledWith("dark");
+    expect(screen.getByRole("radio", { checked: true }).textContent).toBe("어둡게");
+  });
+});
