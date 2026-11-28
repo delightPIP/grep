@@ -802,8 +802,9 @@ extension TerminalViewState {
         return next
     }
 
+    /// 줄을 찍는다. 찍는 줄에 두더지 동작이 있으면 함께 넣는다(#175).
     func appending(lines added: [Line]) -> TerminalViewState {
-        var next = self
+        var next = movingMole(for: added)
         next.lines += added
         return next
     }
