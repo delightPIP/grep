@@ -38,6 +38,9 @@ abstract class ArchiveApiTestSupport {
 			registry.add("spring.security.oauth2.resourceserver.jwt.jwk-set-uri") { FakeSupabaseAuth.jwkSetUri }
 			registry.add("spring.security.oauth2.resourceserver.jwt.issuer-uri") { FakeSupabaseAuth.issuer }
 			registry.add("grep.web-origin") { "http://web.test" }
+			registry.add("grep.public-url") { "http://grep.test" }
+			registry.add("grep.supabase.url") { FakeSupabaseAuth.baseUrl }
+			registry.add("grep.supabase.publishable-key") { FakeSupabaseAuth.PUBLISHABLE_KEY }
 		}
 	}
 
