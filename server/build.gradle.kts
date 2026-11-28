@@ -15,6 +15,8 @@ java {
 }
 
 repositories {
+	// Maven Central의 Google 미러(settings.gradle.kts 주석). 미러에 없으면 원래 저장소에서 받는다
+	maven("https://maven-central.storage-download.googleapis.com/maven2/")
 	mavenCentral()
 }
 
