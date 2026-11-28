@@ -4,7 +4,8 @@ import type { ReactNode } from "react";
 import type { ConnectionEntry } from "../../support/view-state";
 import { Line } from "../../ui/grep";
 import type { SettingsState } from "../../support/view-state";
-import { Plain } from "./terminal";
+import { paddedKstMonthDay } from "../terminal/format/date";
+import { Plain } from "../terminal/parts";
 
 /** COM-012 테마 세 가지. 저장은 `support/theme-store.ts`(M)가 한다. */
 export type ThemeChoice = "system" | "light" | "dark";
@@ -17,10 +18,6 @@ const THEME_OPTIONS: ReadonlyArray<readonly [ThemeChoice, string]> = [
 ];
 
 const PROVIDER_LABEL = { google: "Google", github: "GitHub" } as const;
-
-/** 한국 날짜 `MM/DD`. 터미널 `연결` 목록과 같은 표기(ACC-002 규칙 7). */
-const DAY_FORMAT = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Seoul", month: "2-digit", day: "2-digit" });
-const day = (iso: string) => DAY_FORMAT.format(new Date(iso));
 
 function SettingRow({ label, sub, children }: { label: string; sub?: string; children?: ReactNode }) {
   return (
@@ -52,9 +49,9 @@ function ActionButton({ label, danger = false, onPress }: { label: string; dange
 }
 
 function ConnectionRow({ connection, onRun }: { connection: ConnectionEntry; onRun: (command: string) => void }) {
-  const read = connection.lastReadAt === null ? "" : `  읽음 ${day(connection.lastReadAt)}`;
+  const read = connection.lastReadAt === null ? "" : `  읽음 ${paddedKstMonthDay(connection.lastReadAt)}`;
   return (
-    <SettingRow label={connection.client} sub={`연결 ${day(connection.connectedAt)}${read}`}>
+    <SettingRow label={connection.client} sub={`연결 ${paddedKstMonthDay(connection.connectedAt)}${read}`}>
       <ActionButton label="끊기" onPress={() => onRun(`연결 끊기 ${connection.number}`)} />
     </SettingRow>
   );

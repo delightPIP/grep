@@ -1,5 +1,5 @@
 // #179 선택 칩·선택 줄의 자료 낱말(ARC-003 규칙 14): `<종류 낱말> <번호>`.
-import type { ItemRef } from "../../support/view-state";
+import type { ItemRef } from "../../../support/view-state";
 
 const EXTENSION = /\.([A-Za-z0-9]+)$/;
 
