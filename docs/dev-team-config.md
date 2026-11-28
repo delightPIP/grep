@@ -46,7 +46,7 @@
 - 브랜치·커밋·PR: 루트 `AGENTS.md`의 Freshness & Rebase Gate. 커밋 메시지는 `종류: 요약` 형식(git 기록 기준)
 - 문서를 고친 뒤: `bash Scripts/check-docs.sh`
 - 리뷰 스킬: `{{}}` / 필수 승인 수: `{{}}`
-- 필수 검사 명령: `cd server && ./gradlew test && cd ../core && swift test && cd ../web && npm test`(Docker 필요, 루트 README 테스트 절)
+- 필수 검사 명령: `cd server && ./gradlew test`, 공유 코어는 패키지마다 `for p in core/Core core/Features/* core/App; do (cd $p && swift test); done`, `cd web && npm test`(Docker 필요, 루트 README 테스트 절)
 - 테스트 작성(개발자 결정 2026-11-26, 모든 플랫폼): 테스트 메서드 안을 `// given`, `// when`, `// then` 주석으로 나누고, 이름은 그 순서대로 `~했을때_~하면_~하는지`로 짓는다. `_`는 given·when·then 경계 두 곳에만 쓰고, 각 부분 안의 낱말은 띄우지 않고 붙인다(예: `로그인창이열려있을때_버튼을다시누르면_창을하나더띄우지않는지`)
 - 작은 개선 상한: `{{}}` / 긴급 기준: `{{}}`
 - 비밀키: API 키·토큰은 `.env` 같은 저장소 밖에서만 관리하고 커밋하지 않는다. LLM·Supabase 비밀 키는 클라이언트에 두지 않는다. 확인한 사람: AI 초안(2026-11-26 PO 승인), 개발자 확인 대기

@@ -1,6 +1,6 @@
 # iOS 앱
 
-뷰는 SwiftUI, 뷰를 뺀 코드는 [`core/`](../core/Package.swift)를 쓴다(ADR-WEB-007, ADR-IOS-009).
+뷰는 SwiftUI, 뷰를 뺀 코드는 [`core/`](../core/Core/Package.swift)(패키지 여러 개: `Core`·`Features/*`·`App`)를 쓴다(ADR-WEB-007, ADR-IOS-009).
 구조는 carti-RIBs-Swift `Samples/TodoModular/iOS`를 따른다.
 피처마다 UI·Adapter·Example 모듈로 나누고, 웹 이슈가 머지될 때마다 `feat/m<번호>-ios` 브랜치로 따라간다([ADR-0015](../docs/adr/ADR-0015-mobile-feature-modules-per-issue.md)).
 

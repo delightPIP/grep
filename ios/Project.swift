@@ -1,7 +1,7 @@
 import ProjectDescription
 
 // 그렙 iOS 앱(ADR-0015). 생성: `ios/`에서 `tuist generate --no-open`.
-// 피처 로직은 공유 SwiftPM 패키지(../core)에 있고, 여기에는 플랫폼 포트와 SwiftUI 화면만 둔다.
+// 피처 로직은 공유 SwiftPM 패키지들(../core/Core·Features/*·App)에 있고, 여기에는 플랫폼 포트와 SwiftUI 화면만 둔다.
 //   GrepPlatform       HTTPTransport·AuthService·ClipboardPort·FilePort·HistoryStore iOS 구현
 //   FeatureXxxUI       순수 SwiftUI 뷰. 값과 콜백만 받는다. SwiftUI에만 의존한다
 //   FeatureXxxAdapter  코어 ViewContract 구현과 XxxScreenFactory
@@ -223,8 +223,15 @@ let allTargets: [Target] =
 
 let project = Project(
     name: "Grep",
+    // 공유 코어는 패키지 여러 개다(ADR-0017). 제품은 이름으로 찾는다.
     packages: [
-        .local(path: "../core"),
+        .local(path: "../core/Core"),
+        .local(path: "../core/Features/LoggedOut"),
+        .local(path: "../core/Features/Terminal"),
+        .local(path: "../core/Features/Archive"),
+        .local(path: "../core/Features/Settings"),
+        .local(path: "../core/Features/LoggedIn"),
+        .local(path: "../core/App"),
         .remote(url: "https://github.com/carti1108/carti-RIBs-Swift.git", requirement: .exact("0.1.0")),
     ],
     targets: allTargets

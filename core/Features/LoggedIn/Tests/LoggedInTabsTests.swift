@@ -1,9 +1,11 @@
+import ArchiveData
 import FeatureArchive
 import FeatureArchiveInterface
 import FeatureArchiveTesting
 import FeatureLoggedInInterface
 import FeatureLoggedInTesting
 import FeatureSettings
+import SettingsData
 import FeatureSettingsInterface
 import FeatureSettingsTesting
 import FeatureTerminal
@@ -25,9 +27,14 @@ private final class TabsDependency: LoggedInDependency, TerminalDependency, Arch
     let historyStore: any HistoryStore = FakeHistoryStore()
     let sleeper: any Sleeper = FakeSleeper()
 
+    let archiveRepository: any ArchiveRepository
+    let settingsRepository: any SettingsRepository
+
     init(authService: any AuthService, httpTransport: any HTTPTransport) {
         self.authService = authService
         self.httpTransport = httpTransport
+        archiveRepository = ArchiveRepositoryImpl(authService: authService, httpTransport: httpTransport, deviceTime: .system)
+        settingsRepository = SettingsRepositoryImpl(authService: authService, httpTransport: httpTransport)
     }
 }
 

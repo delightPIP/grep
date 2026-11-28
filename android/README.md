@@ -1,6 +1,6 @@
 # Android 앱
 
-공유 코어([`core/`](../core/Package.swift))를 Swift Android SDK(6.4.2)로 `.so` 빌드하고 `swift-java`로 Kotlin/Compose에 연결한 Android 앱이다([ADR-0015](../docs/adr/ADR-0015-mobile-feature-modules-per-issue.md), 이슈 #79).
+공유 코어([`core/`](../core/Core/Package.swift)(패키지 여러 개: `Core`·`Features/*`·`App`))를 Swift Android SDK(6.4.2)로 `.so` 빌드하고 `swift-java`로 Kotlin/Compose에 연결한 Android 앱이다([ADR-0015](../docs/adr/ADR-0015-mobile-feature-modules-per-issue.md), 이슈 #79).
 피처 `demo` 앱은 하단 시나리오 바 대신 **시나리오 목록 화면 → 항목 선택 시 전체 화면으로 피처 표시 + 닫기(뒤로 가기) 복귀** 패턴을 따른다(iOS `Example` 앱과 통일).
 
 ## 구조

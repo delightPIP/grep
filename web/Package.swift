@@ -14,7 +14,16 @@ let ribsWeb: Target.Dependency = .product(name: "RIBsWeb", package: "carti-RIBs-
 let javaScriptKit: Target.Dependency = .product(name: "JavaScriptKit", package: "JavaScriptKit")
 let features = ["LoggedOut", "Terminal"]
 
-func core(_ name: String) -> Target.Dependency { .product(name: name, package: "GrepCore") }
+/// 공유 코어(`../core`)는 패키지 여러 개다(ADR-0017). 제품 이름으로 그 제품이 든 패키지를 찾는다.
+let coreFeatures = ["LoggedOut", "Terminal", "Archive", "Settings", "LoggedIn"]
+func corePackage(of product: String) -> String {
+    if product == "GrepAppRoot" { return "App" }
+    if let feature = coreFeatures.first(where: { product.hasPrefix("Feature\($0)") || product.hasPrefix($0) }) {
+        return feature
+    }
+    return "Core"
+}
+func core(_ name: String) -> Target.Dependency { .product(name: name, package: corePackage(of: name)) }
 
 let featureTargets: [Target] = features.map { name in
     .target(
@@ -28,9 +37,10 @@ let package = Package(
     platforms: [.macOS(.v14)],
     dependencies: [
         .package(url: "https://github.com/carti1108/carti-RIBs-Swift.git", exact: "0.1.0"),
-        .package(name: "GrepCore", path: "../core"),
+        .package(path: "../core/Core"),
+        .package(path: "../core/App"),
         .package(url: "https://github.com/swiftwasm/JavaScriptKit.git", exact: "0.63.0"),
-    ],
+    ] + coreFeatures.map { .package(path: "../core/Features/\($0)") },
     targets: [
         .target(name: "GrepWebSupport", dependencies: [ribs, ribsWeb, javaScriptKit]),
         .executableTarget(

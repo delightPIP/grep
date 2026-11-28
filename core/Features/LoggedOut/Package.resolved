@@ -1,0 +1,15 @@
+{
+  "originHash" : "dd4528a1800691d297ee3a929db6cc4e7ebb0bc2179dac4ffc1f8a8293d1d4a7",
+  "pins" : [
+    {
+      "identity" : "carti-ribs-swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/carti1108/carti-RIBs-Swift.git",
+      "state" : {
+        "revision" : "a71389511ed3f41a01997adc2b6f2a20d0b562b0",
+        "version" : "0.1.0"
+      }
+    }
+  ],
+  "version" : 3
+}
