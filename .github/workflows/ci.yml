@@ -157,7 +157,17 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-          cache: gradle
+      # setup-java의 gradle 캐시는 키가 정확히 맞을 때만 복원돼, Gradle 파일이 바뀐 PR은 의존성을 처음부터 받다가
+      # Maven Central 429(요청 제한)로 실패했다. 앞부분이 같은 이전 캐시라도 복원한다.
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: android-gradle-${{ hashFiles('android/**/*.gradle.kts', 'android/gradle/**', 'android/gradle.properties') }}-${{ github.sha }}
+          restore-keys: |
+            android-gradle-${{ hashFiles('android/**/*.gradle.kts', 'android/gradle/**', 'android/gradle.properties') }}-
+            android-gradle-
       - uses: actions/cache@v6
         with:
           path: android/swift/.build
