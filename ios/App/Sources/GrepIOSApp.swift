@@ -86,7 +86,10 @@ private struct LoggedInTabWrapper: View {
             initialValue: LoggedInTabsModel(
                 archiveLoader: loader,
                 onSignOut: { sendCommand("로그아웃") },
-                onPickItem: { number in sendCommand("고르기 \(number)") }
+                onPickItem: { number in sendCommand("고르기 \(number)") },
+                // 보관함의 빼기·해제도 터미널 선택을 바꾸는 명령으로 기록한다(commands 3절 고르기).
+                onUnpickItem: { number in sendCommand("고르기 빼기 \(number)") },
+                onClearPicked: { sendCommand("고르기 비우기") }
             )
         )
         self._trashModel = State(
