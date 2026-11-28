@@ -14,17 +14,11 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
@@ -52,30 +46,29 @@ object LoggedInTabTags {
     fun tab(tab: LoggedInTab): String = "loggedInTab_${tab.name.lowercase()}"
 }
 
-private val SurfaceColor = Color(0xFF14171C)
-private val SurfaceRaisedColor = Color(0xFF1C2027)
-private val LineColor = Color(0xFF2E343D)
-private val InkColor = Color(0xFFE7E9EC)
-private val InkMutedColor = Color(0xFF99A2AD)
-private val PromptColor = Color(0xFF7FE0A3)
+private val SurfaceColor = LoggedInPalette.Surface
+private val SurfaceRaisedColor = LoggedInPalette.SurfaceRaised
+private val LineColor = LoggedInPalette.Line
+private val InkMutedColor = LoggedInPalette.InkMuted
+private val PromptColor = LoggedInPalette.Prompt
 
 /**
  * 로그인 후 하단 탭 컨테이너(MOB-001).
- * - #79 2단계에서는 터미널 탭을 실제 화면으로 연결하고, 보관함·설정 탭은 #92에서 채울 자리표시를 둔다.
  * - 탭을 옮겨도 터미널 컴포지션을 유지해 출력 기록과 입력 내용을 보존한다(MOB-001 규칙 6).
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun LoggedInTabContainer(
+    selectedTab: LoggedInTab,
+    onSelectTab: (LoggedInTab) -> Unit,
     isSelecting: Boolean,
-    isModalPresented: Boolean = false,
-    onReselectTerminal: () -> Unit = {},
     terminalContent: @Composable () -> Unit,
-    archiveContent: @Composable () -> Unit = { TabPlaceholderView(title = "보관함", detail = "#92에서 구현 예정") },
-    settingsContent: @Composable () -> Unit = { TabPlaceholderView(title = "설정", detail = "#92에서 구현 예정") },
+    archiveContent: @Composable () -> Unit,
+    settingsContent: @Composable () -> Unit,
     modifier: Modifier = Modifier,
+    isModalPresented: Boolean = false,
+    onReselect: (LoggedInTab) -> Unit = {},
 ) {
-    var selectedTab by rememberSaveable { mutableStateOf(LoggedInTab.TERMINAL) }
     val isKeyboardVisible = WindowInsets.isImeVisible
     val showTabBar = shouldShowBottomTabBar(
         isKeyboardVisible = isKeyboardVisible,
@@ -128,11 +121,7 @@ fun LoggedInTabContainer(
             BottomTabBar(
                 selectedTab = selectedTab,
                 onSelect = { tab ->
-                    if (tab == selectedTab) {
-                        if (tab == LoggedInTab.TERMINAL) onReselectTerminal()
-                    } else {
-                        selectedTab = tab
-                    }
+                    if (tab == selectedTab) onReselect(tab) else onSelectTab(tab)
                 },
             )
         }
@@ -188,34 +177,5 @@ private fun BottomTabBar(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun TabPlaceholderView(
-    title: String,
-    detail: String,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(SurfaceColor)
-            .statusBarsPadding()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Text(
-            text = title,
-            color = InkColor,
-            fontFamily = FontFamily.Monospace,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-        )
-        Text(
-            text = "· $detail",
-            color = InkMutedColor,
-            fontFamily = FontFamily.Monospace,
-            fontSize = 13.sp,
-        )
     }
 }
