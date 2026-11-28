@@ -90,6 +90,37 @@ function item(overrides: Partial<ItemSummary> = {}): ItemSummary {
 const KEEP = { kind: "prompt", text: "담기 https://example.com/a" } as const;
 
 describe("LoggedInView", () => {
+  describe("출력과 입력줄 자리(땅굴이 출력을 가리지 않게)", () => {
+    it("화면을그렸을때_입력줄과땅굴과선택줄을보면_출력스크롤칸밖에있는지", () => {
+      // given
+      // when
+      const { container } = renderView({ selection: [{ number: 7, title: "자료 7", kind: "text", source: null }] });
+
+      // then
+      const log = screen.getByRole("log");
+      expect(log.contains(screen.getByRole("textbox", { name: "명령 입력" }))).toBe(false);
+      expect(log.contains(container.querySelector(".gt-selection"))).toBe(false);
+      expect(log.contains(container.querySelector(".gt-burrow"))).toBe(false);
+    });
+
+    it("출력이늘었을때_출력칸을보면_맨아래로내려가는지", () => {
+      // given
+      const props = {
+        itemCount: null, input: "", selection: [], processingCount: 0, isOffline: false,
+        onInputChange: vi.fn(), onSubmit: vi.fn(), onPaste: vi.fn(), onFilesDrop: vi.fn(), onMoreRequested: vi.fn(),
+      };
+      const { rerender } = render(<LoggedInView {...props} lines={[{ kind: "prompt", text: "최근" }]} />);
+      const log = screen.getByRole("log");
+      Object.defineProperty(log, "scrollHeight", { configurable: true, value: 900 });
+
+      // when
+      rerender(<LoggedInView {...props} lines={[{ kind: "prompt", text: "최근" }, { kind: "prompt", text: "도움말" }]} />);
+
+      // then
+      expect(log.scrollTop).toBe(900);
+    });
+  });
+
   it("자료수를받았을때_화면을그리면_상태줄에자료N과도움말키를보여주는지", () => {
     // given
     // when

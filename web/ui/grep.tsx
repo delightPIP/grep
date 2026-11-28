@@ -1,7 +1,7 @@
 // 그렙 디자인 시스템 컴포넌트 중 #31 화면에 쓰는 것. 시안 아티팩트 project/ds/grep/components/bundle.js
 // (https://claude.ai/artifact/J6XT7UcSDvuPC2quoSsaRm)의 마크업과 클래스 이름을 그대로 옮겼다.
 // 순수 뷰 부품이다. 상태를 갖지 않고 Swift를 모른다.
-import type { ChangeEvent, KeyboardEvent, ReactNode, Ref } from "react";
+import { useLayoutEffect, useRef, type ChangeEvent, type KeyboardEvent, type ReactNode, type Ref } from "react";
 import "../styles/grep.css";
 import { pixelRects } from "./burrow";
 
@@ -45,7 +45,23 @@ export function StatusBar({ items, hint }: { items: StatusItem[]; hint?: { key: 
   );
 }
 
-export function Window({ title, status, children }: { title: string; status: ReactNode; children: ReactNode }) {
+export type WindowProps = {
+  title: string;
+  status: ReactNode;
+  children: ReactNode;
+  /** 출력 아래에 붙는 자리(선택 줄·땅굴·입력줄). 출력 스크롤 칸 밖이라 출력을 가리지 않는다. */
+  dock?: ReactNode;
+  /** 바뀌면 출력 칸을 맨 아래로 내린다(새 출력이 보이게). 입력만 바뀔 때는 그대로 둔다. */
+  scrollKey?: number;
+};
+
+export function Window({ title, status, children, dock, scrollKey }: WindowProps) {
+  const bodyRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const body = bodyRef.current;
+    if (scrollKey === undefined || !body) return;
+    body.scrollTop = body.scrollHeight;
+  }, [scrollKey]);
   return (
     <section className="gt-window gt-screen-window" aria-label="그렙 터미널">
       <div className="gt-titlebar">
@@ -53,9 +69,10 @@ export function Window({ title, status, children }: { title: string; status: Rea
           <b>그렙</b> — {title}
         </span>
       </div>
-      <div className="gt-body" role="log" aria-live="polite">
+      <div ref={bodyRef} className="gt-body" role="log" aria-live="polite">
         {children}
       </div>
+      {dock && <div className="gt-dock-area">{dock}</div>}
       {status}
     </section>
   );

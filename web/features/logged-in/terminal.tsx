@@ -1635,6 +1635,20 @@ export function TerminalScreen({
       <Window
         title={windowTitle(lines)}
         status={<StatusBar items={statusItems(itemCount, selection.length, processingCount, isOffline)} hint={HELP_HINT} />}
+        scrollKey={lines.length}
+        dock={
+          <>
+            <SelectionLine selection={selection} />
+            <DockInput
+              inputRef={inputRef}
+              value={input}
+              placeholder="링크 붙여 넣기 또는 명령"
+              onChange={onInputChange}
+              onSubmit={onSubmit}
+              above={<Burrow action={moleCue.action} actionKey={moleCue.key} label="그렙 두더지. 누르면 땅속으로 들어갔다 나온다" />}
+            />
+          </>
+        }
       >
         <ChipContext.Provider value={chips}>
           {/* 첫 화면 줄은 머리를 스스로 그린다. 그 줄이 없으면(자료가 있는 계정) 출력 맨 위에 머리와 자료 건수를 둔다. 출력과 함께 말려 올라간다. */}
@@ -1646,15 +1660,6 @@ export function TerminalScreen({
             <ReviseForm key={revising.number} revising={revising} onSubmit={onReviseSubmit} onCancel={onReviseCancel} />
           )}
         </ChipContext.Provider>
-        <SelectionLine selection={selection} />
-        <DockInput
-          inputRef={inputRef}
-          value={input}
-          placeholder="링크 붙여 넣기 또는 명령"
-          onChange={onInputChange}
-          onSubmit={onSubmit}
-          above={<Burrow action={moleCue.action} actionKey={moleCue.key} label="그렙 두더지. 누르면 땅속으로 들어갔다 나온다" />}
-        />
       </Window>
       {isDragging && <DropGuide />}
     </div>
