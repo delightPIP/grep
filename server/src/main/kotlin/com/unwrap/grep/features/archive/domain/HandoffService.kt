@@ -2,7 +2,6 @@ package com.unwrap.grep.features.archive.domain
 
 import com.unwrap.grep.shared.kernel.ApiErrorCode
 import com.unwrap.grep.shared.kernel.ApiProblem
-import org.springframework.stereotype.Service
 import java.time.Clock
 import java.util.UUID
 
@@ -11,7 +10,6 @@ import java.util.UUID
  * 가져온 자료를 넘기면 기다리는 처리 작업을 보통 우선순위로 올린다(ADR-BCK-017). 요약은 기다리지 않는다.
  * 번호 하나라도 없거나 휴지통에 있거나 남의 것이면 아무것도 만들지 않고 `not_found`로 답한다(ARC-001 규칙 10, COM-006 규칙 6).
  */
-@Service
 class HandoffService(
 	private val sources: HandoffSourceRepository,
 	private val bundles: BundleRepository,

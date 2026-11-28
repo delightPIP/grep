@@ -5,7 +5,6 @@ import com.unwrap.grep.features.archive.api.ItemBody
 import com.unwrap.grep.features.archive.domain.ItemKind
 import com.unwrap.grep.features.archive.domain.ObjectStorage
 import com.unwrap.grep.features.archive.domain.StoredFile
-import org.springframework.stereotype.Service
 import org.springframework.transaction.support.TransactionTemplate
 import java.nio.file.Files
 import java.nio.file.Path
@@ -60,7 +59,6 @@ sealed interface SeedResult {
  * 데모 시드(#69, demo-seed 2절). seed.json의 요약·태그·본문을 그대로 넣고 LLM은 부르지 않는다.
  * 처리 작업을 만들지 않으므로 워커가 다시 집지 않고 하루 AI 처리 한도도 쓰지 않는다(COM-005).
  */
-@Service
 class DemoSeedService(
 	private val repository: DemoSeedRepository,
 	private val storage: ObjectStorage,

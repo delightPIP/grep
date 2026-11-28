@@ -1,6 +1,5 @@
 package com.unwrap.grep.features.archive.domain
 
-import org.springframework.stereotype.Service
 import java.time.Clock
 import java.time.DayOfWeek
 import java.time.Instant
@@ -58,7 +57,6 @@ interface AutoGroupRepository {
 }
 
 /** 보관함 자동 묶음(ARC-007). 휴지통 자료는 세지 않는다(규칙 8). 한 자료는 맞는 묶음 모두에 든다(규칙 6). */
-@Service
 class AutoGroupService(private val groups: AutoGroupRepository, private val clock: Clock) {
 
 	fun groups(userId: UUID, zone: ZoneId): AutoGroups {

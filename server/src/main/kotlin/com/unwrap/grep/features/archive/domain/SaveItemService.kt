@@ -3,7 +3,6 @@ package com.unwrap.grep.features.archive.domain
 import com.unwrap.grep.features.metrics.api.MetricEvents
 import com.unwrap.grep.shared.kernel.ApiErrorCode
 import com.unwrap.grep.shared.kernel.ApiProblem
-import org.springframework.stereotype.Service
 import org.springframework.transaction.support.TransactionTemplate
 import java.security.MessageDigest
 import java.time.Clock
@@ -15,7 +14,6 @@ import java.util.UUID
  * 같은 사용자의 저장은 사용자 행 잠금으로 차례를 세운 뒤, 그 안에서 멱등성 키 → 같은 자료 → 번호 발급 순으로 본다.
  * 그래서 동시에 같은 링크를 보내도 하나만 저장된다.
  */
-@Service
 class SaveItemService(
 	private val items: ItemRepository,
 	private val uploads: UploadRepository,

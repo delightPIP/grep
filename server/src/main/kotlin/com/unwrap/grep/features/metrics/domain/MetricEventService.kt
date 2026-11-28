@@ -3,7 +3,6 @@ package com.unwrap.grep.features.metrics.domain
 import com.unwrap.grep.features.archive.api.ItemSavedTimes
 import com.unwrap.grep.features.metrics.api.MetricEvents
 import org.slf4j.LoggerFactory
-import org.springframework.stereotype.Service
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -28,7 +27,6 @@ fun interface MetricEventRepository {
 	fun insert(event: MetricEvent)
 }
 
-@Service
 class MetricEventService(
 	private val events: MetricEventRepository,
 	private val savedTimes: ItemSavedTimes,

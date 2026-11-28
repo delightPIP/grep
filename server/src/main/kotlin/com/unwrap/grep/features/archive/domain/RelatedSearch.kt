@@ -3,8 +3,6 @@ package com.unwrap.grep.features.archive.domain
 import com.unwrap.grep.features.archive.api.Embedder
 import com.unwrap.grep.features.archive.api.EmbeddingPurpose
 import com.unwrap.grep.features.archive.api.EmbeddingResult
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.stereotype.Service
 import java.util.UUID
 
 /** 임베딩 거리로 찾는 쿼리 포트(V6 pgvector). */
@@ -18,11 +16,10 @@ interface NearestItems {
  * 검색어 임베딩을 못 받으면 뜻 결과 없이 답한다(찾기 자체는 실패하지 않는다).
  * shortcut: 검색어 임베딩 호출은 자료 임베딩 하루 한도에 넣지 않는다. 0건 찾기가 잦아 무료 한도에 닿으면 사용자별로 센다.
  */
-@Service
 class RelatedSearch(
 	private val embedder: Embedder,
 	private val nearest: NearestItems,
-	@Value("\${grep.semantic.max-distance}") private val maxDistance: Double,
+	private val maxDistance: Double,
 ) {
 	fun related(userId: UUID, query: SearchQuery): List<StoredItem> {
 		val text = (query.words + query.tags).joinToString(" ")

@@ -2,7 +2,6 @@ package com.unwrap.grep.features.archive.domain
 
 import com.unwrap.grep.shared.kernel.ApiErrorCode
 import com.unwrap.grep.shared.kernel.ApiProblem
-import org.springframework.stereotype.Service
 import java.net.URI
 import java.time.Clock
 import java.time.Duration
@@ -15,7 +14,6 @@ data class CreatedUpload(val uploadId: UUID, val uploadUrl: URI, val expiresAt: 
  * 업로드 자리와 서명 PUT URL(ADR-BCK-002 결정 2). 여기서는 크기만 거른다.
  * 형식은 내용으로 정하므로(COM-004 규칙 2) 저장 때 [SaveItemService]가 판정한다.
  */
-@Service
 class UploadService(
 	private val uploads: UploadRepository,
 	private val storage: ObjectStorage,

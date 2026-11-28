@@ -3,7 +3,6 @@ package com.unwrap.grep.features.archive.domain
 import com.unwrap.grep.shared.kernel.ApiErrorCode
 import com.unwrap.grep.shared.kernel.ApiProblem
 import org.slf4j.LoggerFactory
-import org.springframework.stereotype.Service
 import org.springframework.transaction.support.TransactionTemplate
 import java.time.Clock
 import java.time.Instant
@@ -47,7 +46,6 @@ interface TrashRepository {
  * 휴지통(ARC-008). 같은 번호는 처음 것만 쓴다(ARC-001 값).
  * 번호 하나라도 맞지 않으면 아무것도 바꾸지 않고 `not_found`(ARC-001 규칙 10). 남의 자료는 없는 번호와 같다(COM-006).
  */
-@Service
 class TrashService(
 	private val trash: TrashRepository,
 	private val storage: ObjectStorage,

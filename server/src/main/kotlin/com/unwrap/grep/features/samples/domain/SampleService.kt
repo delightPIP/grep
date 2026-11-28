@@ -5,7 +5,6 @@ import com.unwrap.grep.features.demoseed.domain.DemoSeedRepository
 import com.unwrap.grep.features.demoseed.domain.PremadeItems
 import com.unwrap.grep.features.demoseed.domain.SeedEntry
 import com.unwrap.grep.features.demoseed.domain.SeedRow
-import org.springframework.stereotype.Service
 import org.springframework.transaction.support.TransactionTemplate
 import java.time.Clock
 import java.util.UUID
@@ -38,7 +37,6 @@ sealed interface SampleOutcome {
  * 샘플 8건(ARC-010). 다음 번호부터 8개를 한 트랜잭션에 넣고, 하나라도 실패하면 아무것도 남기지 않는다(규칙 2·3).
  * 요약·태그는 미리 만든 값이라 처리 작업을 만들지 않고 하루 AI 처리 한도도 쓰지 않는다(데모 시드 #69와 같은 방식).
  */
-@Service
 class SampleService(
 	private val catalog: SampleCatalog,
 	private val ranges: SampleRangeRepository,

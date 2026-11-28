@@ -4,7 +4,6 @@ import com.unwrap.grep.shared.kernel.ApiErrorCode
 import com.unwrap.grep.shared.kernel.ApiProblem
 import org.jsoup.Jsoup
 import org.slf4j.LoggerFactory
-import org.springframework.stereotype.Service
 import org.springframework.transaction.support.TransactionTemplate
 import java.util.UUID
 
@@ -57,7 +56,6 @@ fun interface ImportRunner {
  * 같은 링크(COM-001, 휴지통 포함)와 파일 안에서 겹친 링크는 건너뛴다. 처리 작업은 낮은 우선순위로 만든다(ADR-BCK-017).
  * shortcut: 진행은 서버 메모리의 작업이라 도는 중에 서버가 내려가면 그 가져오기는 `running`으로 남는다. 다시 시작이 필요해지면 작업 큐로 옮긴다.
  */
-@Service
 class BookmarkImportService(
 	private val imports: ImportRepository,
 	private val items: ItemRepository,

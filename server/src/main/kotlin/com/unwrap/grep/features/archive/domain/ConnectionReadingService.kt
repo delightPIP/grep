@@ -2,7 +2,6 @@ package com.unwrap.grep.features.archive.domain
 
 import com.unwrap.grep.features.archive.api.ConnectionRead
 import com.unwrap.grep.features.archive.api.ConnectionReading
-import org.springframework.stereotype.Service
 import java.time.Clock
 import java.util.UUID
 
@@ -10,7 +9,6 @@ import java.util.UUID
  * AI 도구 연결의 검색·읽기(ARC-009). 찾기와 같은 검색(ARC-002)을 쓰고, 응답 글은 [HandoffComposer]가 만든다.
  * 검색어에서 `#`으로 시작하는 낱말은 태그로 본다(앱의 `찾기 #태그`와 같다).
  */
-@Service
 class ConnectionReadingService(
 	private val itemSearch: ItemSearch,
 	private val sources: HandoffSourceRepository,

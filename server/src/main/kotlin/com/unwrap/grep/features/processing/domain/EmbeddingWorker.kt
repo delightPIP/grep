@@ -5,7 +5,6 @@ import com.unwrap.grep.features.archive.api.EmbeddingPurpose
 import com.unwrap.grep.features.archive.api.EmbeddingQueue
 import com.unwrap.grep.features.archive.api.EmbeddingResult
 import org.slf4j.LoggerFactory
-import org.springframework.stereotype.Service
 import java.time.Clock
 import java.time.LocalDate
 import java.time.ZoneId
@@ -14,7 +13,6 @@ import java.time.ZoneId
  * 요약이 끝난 자료의 임베딩(ADR-BCK-016). 요약 처리(ProcessingWorker)와 따로 돌아 요약 한도와 따로 센다(결정 4).
  * 한도에 닿으면 그날은 임베딩만 미루고, 실패한 자료는 큐가 한 시간 뒤에 다시 준다.
  */
-@Service
 class EmbeddingWorker(private val queue: EmbeddingQueue, private val embedder: Embedder, private val clock: Clock) {
 
 	/** 한 건을 불렀으면 true, 집을 자료가 없으면 false. */

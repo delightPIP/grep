@@ -2,8 +2,6 @@ package com.unwrap.grep.features.account.domain
 
 import com.unwrap.grep.features.account.api.ConnectionAccess
 import com.unwrap.grep.features.account.api.ConnectionPrincipal
-import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 import java.time.Instant
 import java.util.UUID
@@ -79,23 +77,20 @@ interface ConnectionRepository {
  * AI 도구 연결의 토큰과 목록(ADR-BCK-015 결정 3, ACC-002). 토큰은 해시로만 다룬다.
  * 만료는 따로 도는 작업 없이 목록·알림·갱신 때 판정한다.
  */
-@Service
-class ConnectionService(
+open class ConnectionService(
 	private val connections: ConnectionRepository,
 	private val clock: Clock,
 ) : ConnectionAccess {
 
 	/** 인가 코드를 바꿀 때(OAuth 토큰 엔드포인트) 연결을 새로 만든다. */
-	@Transactional
-	fun open(userId: UUID, clientId: String): IssuedTokens {
+	open fun open(userId: UUID, clientId: String): IssuedTokens {
 		val tokens = newTokens()
 		connections.create(userId, clientId, ConnectionTokens.hash(tokens.accessToken), ConnectionTokens.hash(tokens.refreshToken), accessExpiresAt())
 		return tokens
 	}
 
 	/** 갱신 토큰 회전. 끊겼거나 기간을 넘겼거나 다른 클라이언트의 토큰이면 null(`invalid_grant`). */
-	@Transactional
-	fun refresh(refreshToken: String, clientId: String?): IssuedTokens? {
+	open fun refresh(refreshToken: String, clientId: String?): IssuedTokens? {
 		val oldHash = ConnectionTokens.hash(refreshToken)
 		val target = connections.findByRefresh(oldHash) ?: return null
 		if (target.ended || (clientId != null && clientId != target.clientId)) return null
@@ -117,20 +112,18 @@ class ConnectionService(
 
 	override fun markRead(connectionId: UUID) = connections.markRead(connectionId, clock.instant())
 
-	@Transactional
-	fun list(userId: UUID): List<ConnectionSummary> {
+	open fun list(userId: UUID): List<ConnectionSummary> {
 		expireStale(userId, clock.instant())
 		return connections.listActive(userId)
 	}
 
 	/** 같은 연결을 두 기기에서 동시에 끊어도 오류가 아니다(ACC-002 규칙 9). */
-	fun end(userId: UUID, number: Int): EndConnectionResult =
+	open fun end(userId: UUID, number: Int): EndConnectionResult =
 		connections.end(userId, number, ConnectionEndReason.USER, clock.instant())
 
-	fun endAll(userId: UUID): Int = connections.endAll(userId, ConnectionEndReason.REVOKED, clock.instant())
+	open fun endAll(userId: UUID): Int = connections.endAll(userId, ConnectionEndReason.REVOKED, clock.instant())
 
-	@Transactional
-	fun takeNotices(userId: UUID): List<ConnectionNotice> {
+	open fun takeNotices(userId: UUID): List<ConnectionNotice> {
 		val now = clock.instant()
 		expireStale(userId, now)
 		return connections.takeNotices(userId, now)

@@ -1,6 +1,5 @@
 package com.unwrap.grep.features.archive.domain
 
-import org.springframework.stereotype.Service
 import java.util.UUID
 
 /** 자료 한 쪽. [nextBeforeNumber]가 null이면 다음 쪽이 없다. [total]은 기간이 있을 때만 그 기간 전체 건수. */
@@ -10,7 +9,6 @@ data class ItemPage(val items: List<StoredItem>, val nextBeforeNumber: Long?, va
 data class ItemLookup(val items: List<StoredItem>, val missing: List<Long>)
 
 /** 최근 목록, 번호 조회, 찾기. 휴지통 자료는 빼고(ARC-008), 내 자료만 본다(COM-006). */
-@Service
 class BrowseItemsService(
 	private val items: ItemRepository,
 	private val itemSearch: ItemSearch,

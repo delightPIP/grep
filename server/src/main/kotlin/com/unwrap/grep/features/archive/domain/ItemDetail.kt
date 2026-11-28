@@ -3,7 +3,6 @@ package com.unwrap.grep.features.archive.domain
 import com.unwrap.grep.features.archive.api.ItemBody
 import com.unwrap.grep.shared.kernel.ApiErrorCode
 import com.unwrap.grep.shared.kernel.ApiProblem
-import org.springframework.stereotype.Service
 import java.net.URI
 import java.time.Duration
 import java.util.UUID
@@ -45,7 +44,6 @@ interface ItemDetailRepository {
  * `열기 <번호>`(ARC-011). 자료 내용은 고치지 않는다(규칙 11). 휴지통·없는·남의 번호는 `not_found`(규칙 3, COM-006).
  * 가져온 자료를 열면 기다리는 처리 작업을 보통 우선순위로 올린다(ADR-BCK-017).
  */
-@Service
 class ItemDetailService(
 	private val details: ItemDetailRepository,
 	private val items: ItemRepository,

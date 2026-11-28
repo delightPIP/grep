@@ -2,7 +2,6 @@ package com.unwrap.grep.features.archive.domain
 
 import com.unwrap.grep.shared.kernel.ApiErrorCode
 import com.unwrap.grep.shared.kernel.ApiProblem
-import org.springframework.stereotype.Service
 import org.springframework.transaction.support.TransactionTemplate
 import java.util.UUID
 
@@ -10,7 +9,6 @@ import java.util.UUID
  * 묶음(ARC-003). 같은 번호는 처음 것만 쓴다(ARC-001 값). 남의 묶음·자료는 없는 것과 같다(COM-006).
  * 없는 묶음은 이름 규칙과 상관없이 `not_found`다. 이름 판정은 새로 만들 수 있는 넣기에서만 한다.
  */
-@Service
 class BundleService(
 	private val bundles: BundleRepository,
 	private val items: ItemRepository,

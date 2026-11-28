@@ -6,7 +6,6 @@ import com.unwrap.grep.features.archive.api.ProcessingJob
 import com.unwrap.grep.features.archive.api.ProcessingOutcome
 import com.unwrap.grep.features.archive.api.ProcessingQueue
 import org.slf4j.LoggerFactory
-import org.springframework.stereotype.Service
 import java.nio.charset.Charset
 import java.time.Clock
 import java.time.Duration
@@ -18,7 +17,6 @@ import java.time.ZoneId
  * 처리 작업 한 건: 본문 읽기 → 하루 한도 → 요약·태그(ARC-005, ARC-006, COM-004, COM-005, ARC-002, ARC-004).
  * 본문 읽기는 AI 처리가 아니므로 한도에 닿아도 하고, 찾기 본문(search_text)은 그대로 쌓는다(COM-005 규칙 3).
  */
-@Service
 class ProcessingWorker(
 	private val queue: ProcessingQueue,
 	private val originals: ItemOriginals,

@@ -2,7 +2,6 @@ package com.unwrap.grep.features.archive.domain
 
 import com.unwrap.grep.shared.kernel.ApiErrorCode
 import com.unwrap.grep.shared.kernel.ApiProblem
-import org.springframework.stereotype.Service
 import java.util.UUID
 
 /** openapi `SavedSearch`. [count]는 부를 때마다 다시 센 휴지통 밖 자료 수. */
@@ -42,7 +41,6 @@ object SearchTerms {
 }
 
 /** 찾아두기(ARC-012). 시점 낱말은 클라이언트가 먼저 거른다(규칙 4). 남의 찾아둔 것은 없는 것과 같다(COM-006). */
-@Service
 class SavedSearchService(private val searches: SavedSearchRepository, private val itemSearch: ItemSearch) {
 
 	fun save(userId: UUID, query: String): SavedSearchSave {

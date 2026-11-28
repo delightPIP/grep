@@ -1,7 +1,5 @@
 package com.unwrap.grep.features.account.domain
 
-import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 import java.net.URI
 import java.time.Clock
 import java.time.Instant
@@ -49,15 +47,14 @@ class UntrustedAuthorizationRequest(message: String) : RuntimeException(message)
  * OAuth 2.1 인가 서버의 동적 등록·인가 코드·토큰 교환(ADR-BCK-015 결정 1). 공개 클라이언트만 받고 PKCE S256을 요구한다.
  * shortcut: 등록·토큰 엔드포인트에 호출 횟수 제한이 없다. 실제 사용자를 받을 때 정한다(ARC-009 비고).
  */
-@Service
-class OAuthService(
+open class OAuthService(
 	private val clients: OAuthClientRepository,
 	private val codes: OAuthCodeRepository,
 	private val connections: ConnectionService,
 	private val clock: Clock,
 ) {
 
-	fun register(registration: ClientRegistration): OAuthClient {
+	open fun register(registration: ClientRegistration): OAuthClient {
 		val uris = registration.redirectUris.distinct()
 		if (uris.isEmpty() || uris.size > MAX_REDIRECT_URIS) throw OAuthError("invalid_redirect_uri", "redirect_uris must have 1 to $MAX_REDIRECT_URIS entries")
 		uris.forEach { if (!isAllowedRedirect(it)) throw OAuthError("invalid_redirect_uri", "redirect_uri must be https or loopback http") }
@@ -70,7 +67,7 @@ class OAuthService(
 	 * 클라이언트와 돌아갈 주소가 틀리면 [UntrustedAuthorizationRequest](돌려보내지 않고 화면에 알림),
 	 * 그 밖의 오류는 [AuthorizationRedirectError](클라이언트로 돌려보냄, RFC 6749 4.1.2.1).
 	 */
-	fun authorizationRequest(
+	open fun authorizationRequest(
 		clientId: String?,
 		redirectUri: String?,
 		responseType: String?,
@@ -87,15 +84,14 @@ class OAuthService(
 	}
 
 	/** 허용(ARC-009 `허용`). 돌려보낼 인가 코드 원문을 준다. */
-	fun approve(request: AuthorizationRequest, userId: UUID): String {
+	open fun approve(request: AuthorizationRequest, userId: UUID): String {
 		val code = ConnectionTokens.newSecret(CODE_PREFIX)
 		codes.insert(ConnectionTokens.hash(code), request.client.id, userId, request.redirectUri, request.codeChallenge, clock.instant().plus(ConnectionTokens.CODE_TTL))
 		return code
 	}
 
 	/** `grant_type=authorization_code`. 코드는 한 번만 쓰고, 클라이언트·돌아갈 주소·PKCE가 모두 맞아야 연결을 만든다. */
-	@Transactional(noRollbackFor = [OAuthError::class])
-	fun exchangeCode(code: String?, clientId: String?, redirectUri: String?, codeVerifier: String?): IssuedTokens {
+	open fun exchangeCode(code: String?, clientId: String?, redirectUri: String?, codeVerifier: String?): IssuedTokens {
 		if (code.isNullOrBlank() || clientId.isNullOrBlank() || codeVerifier.isNullOrBlank()) {
 			throw OAuthError("invalid_request", "code, client_id and code_verifier are required")
 		}
@@ -107,7 +103,7 @@ class OAuthService(
 		return connections.open(redeemed.userId, redeemed.clientId)
 	}
 
-	fun refresh(refreshToken: String?, clientId: String?): IssuedTokens {
+	open fun refresh(refreshToken: String?, clientId: String?): IssuedTokens {
 		if (refreshToken.isNullOrBlank()) throw OAuthError("invalid_request", "refresh_token is required")
 		return connections.refresh(refreshToken, clientId) ?: throw invalidGrant()
 	}
