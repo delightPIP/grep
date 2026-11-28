@@ -112,5 +112,6 @@
 | 108 | 2026-11-28 | [웹 피처 11~17 통합: 계약 2, 갈래 중 계약 승인, 가져오기 요약 방식 전환](108-web-features-11-17-integration.md) |
 | 109 | 2026-11-28 | [리허설 전 QA 검수](109-qa-demo-readiness.md) |
 | 110 | 2026-11-28 | [QA 확인 필요 Q-1·Q-2 반영](110-qa-decisions-help-18-lines.md) |
+| 111 | 2026-11-28 | [QA 확인 필요 Q-3·Q-4 정책 반영](111-qa-decisions-samples-search-query.md) |
 
 새 항목 파일을 만들 때 이 표에 한 줄을 추가한다. 파일명은 `NNN-<영문-슬러그>.md`이고 NNN은 다음 번호다.
