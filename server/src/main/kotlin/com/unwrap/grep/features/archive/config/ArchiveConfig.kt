@@ -1,6 +1,7 @@
 package com.unwrap.grep.features.archive.config
 
 import com.unwrap.grep.features.archive.api.Embedder
+import com.unwrap.grep.features.archive.api.ItemSaveListener
 import com.unwrap.grep.features.archive.domain.AutoGroupRepository
 import com.unwrap.grep.features.archive.domain.AutoGroupService
 import com.unwrap.grep.features.archive.domain.BookmarkImportService
@@ -28,7 +29,6 @@ import com.unwrap.grep.features.archive.domain.TrashRepository
 import com.unwrap.grep.features.archive.domain.TrashService
 import com.unwrap.grep.features.archive.domain.UploadRepository
 import com.unwrap.grep.features.archive.domain.UploadService
-import com.unwrap.grep.features.metrics.api.MetricEvents
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -46,8 +46,8 @@ class ArchiveConfig {
 		storage: ObjectStorage,
 		transaction: TransactionTemplate,
 		clock: Clock,
-		metrics: MetricEvents,
-	) = SaveItemService(items, uploads, storage, transaction, clock, metrics)
+		saveListener: ItemSaveListener,
+	) = SaveItemService(items, uploads, storage, transaction, clock, saveListener)
 
 	@Bean
 	fun uploadService(uploads: UploadRepository, storage: ObjectStorage, clock: Clock) = UploadService(uploads, storage, clock)

@@ -1,5 +1,6 @@
 package com.unwrap.grep.features.metrics.domain
 
+import com.unwrap.grep.features.archive.api.ItemSaveListener
 import com.unwrap.grep.features.archive.api.ItemSavedTimes
 import com.unwrap.grep.features.metrics.api.MetricEvents
 import org.slf4j.LoggerFactory
@@ -31,7 +32,7 @@ class MetricEventService(
 	private val events: MetricEventRepository,
 	private val savedTimes: ItemSavedTimes,
 	private val clock: Clock,
-) : MetricEvents {
+) : MetricEvents, ItemSaveListener {
 
 	override fun itemSaved(userId: UUID, method: String) = recordQuietly {
 		MetricEvent(userId, ITEM_SAVED, method, itemCount = 1, daysSinceSaved = emptyList(), dayKst = today())

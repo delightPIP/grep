@@ -1,6 +1,6 @@
 package com.unwrap.grep.features.archive.domain
 
-import com.unwrap.grep.features.metrics.api.MetricEvents
+import com.unwrap.grep.features.archive.api.ItemSaveListener
 import com.unwrap.grep.shared.kernel.ApiErrorCode
 import com.unwrap.grep.shared.kernel.ApiProblem
 import org.springframework.transaction.support.TransactionTemplate
@@ -20,7 +20,7 @@ class SaveItemService(
 	private val storage: ObjectStorage,
 	private val transaction: TransactionTemplate,
 	private val clock: Clock,
-	private val metrics: MetricEvents,
+	private val saveListener: ItemSaveListener,
 ) {
 	/** 새로 저장했을 때만 `item_saved`를 남긴다(D-08). 같은 자료·다시 온 요청은 남기지 않는다. */
 	fun save(userId: UUID, idempotencyKey: UUID, command: SaveItemCommand): SaveOutcome {
@@ -30,7 +30,7 @@ class SaveItemService(
 			is SaveItemCommand.Text -> saveText(userId, idempotencyKey, command)
 			is SaveItemCommand.File -> saveFile(userId, idempotencyKey, command)
 		}
-		if (outcome is SaveOutcome.Saved) metrics.itemSaved(userId, outcome.item.kind.value)
+		if (outcome is SaveOutcome.Saved) saveListener.itemSaved(userId, outcome.item.kind.value)
 		return outcome
 	}
 
