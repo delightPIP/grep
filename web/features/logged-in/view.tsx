@@ -7,7 +7,7 @@ import type { ArchiveFilter, LoggedInState } from "../../support/view-state";
 import { useLayout, type Tab } from "./layout";
 import { Nav } from "./nav";
 import { SettingsScreen, type ThemeChoice } from "./settings";
-import { TerminalScreen, type TerminalScreenProps } from "./terminal";
+import { TerminalScreen, type TerminalScreenProps } from "../terminal/terminal-screen";
 
 export type { ThemeChoice } from "./settings";
 

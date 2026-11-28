@@ -5,7 +5,9 @@ import type { ItemDetail, ItemRef, TerminalLine } from "../../support/view-state
 import { Line } from "../../ui/grep";
 import type { ArchiveFilter, ArchiveState, AutoGroup, AutoGroupEntry } from "../../support/view-state";
 import type { Layout } from "./layout";
-import { ChipContext, ItemDetailLines, ListRow, MoreChip, Plain, type TerminalChips } from "./terminal";
+import { ItemDetailLines } from "../terminal/lines/detail";
+import { ListRow } from "../terminal/lines/list";
+import { ChipContext, MoreChip, Plain, type TerminalChips } from "../terminal/parts";
 
 /** ARC-007 값의 낱말. 형식·날짜는 정책 값 그대로, 출처의 `direct`는 "직접 넣음". */
 const FORMAT_LABEL: Record<string, string> = { link: "링크", text: "글", image: "이미지", file: "파일" };

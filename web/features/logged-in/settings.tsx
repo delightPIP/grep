@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import type { ConnectionEntry } from "../../support/view-state";
 import { Line } from "../../ui/grep";
 import type { SettingsState } from "../../support/view-state";
-import { Plain } from "./terminal";
+import { Plain } from "../terminal/parts";
 
 /** COM-012 테마 세 가지. 저장은 `support/theme-store.ts`(M)가 한다. */
 export type ThemeChoice = "system" | "light" | "dark";
