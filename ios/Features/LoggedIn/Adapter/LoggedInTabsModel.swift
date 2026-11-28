@@ -174,8 +174,10 @@ public final class LoggedInTabsModel {
 
     private func rebuildArchivePresentation() {
         let rows = rawItems.map { ArchiveItemMapper.mapRow($0, isPicked: pickedNumbers.contains($0.number)) }
-        let pickedRows = rows.filter(\.isPicked)
-        let pickedSummary = pickedRows.map { "\($0.number) \($0.title)" }.joined(separator: " · ")
+        // ARC-003 규칙 14: `PDF 25 · 글 12 · example.com 3`.
+        let pickedSummary = rawItems.filter { pickedNumbers.contains($0.number) }
+            .map(ArchiveItemMapper.pickTag)
+            .joined(separator: " · ")
 
         let statusText: String
         if let itemCount {

@@ -42,7 +42,9 @@ public enum TerminalStateMapper {
                 isOffline: state.isOffline
             ),
             blocks: mapBlocks(lines: state.lines, pickedNumbers: pickedNumbers),
-            selection: state.selection.map { TerminalItemRef(number: $0.number, title: $0.title) },
+            selection: state.selection.map {
+                TerminalItemRef(number: $0.number, title: $0.title, tag: PickWord.tag(kind: $0.kind, source: $0.source, title: $0.title, number: $0.number))
+            },
             input: state.input,
             isOffline: state.isOffline,
             pendingConfirm: pendingConfirm(lines: state.lines),

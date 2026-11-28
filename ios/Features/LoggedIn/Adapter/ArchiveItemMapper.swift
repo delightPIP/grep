@@ -34,6 +34,22 @@ public enum ArchiveItemMapper {
         item.status == .received || item.status == .processing
     }
 
+    /// 고른 것 줄의 `<종류 낱말> <번호>`(ARC-003 규칙 14). 터미널 `PickWord`와 같은 규칙이다(모듈이 달라 따로 둔다).
+    static func pickTag(_ item: ItemSummary) -> String {
+        let word: String
+        switch item.kind {
+        case .link:
+            word = item.source.flatMap { $0.isEmpty ? nil : $0 } ?? "링크"
+        case .text:
+            word = "글"
+        case .file:
+            let fromTitle = item.title.range(of: #"\.([A-Za-z0-9]+)$"#, options: .regularExpression)
+                .map { String(item.title[$0].dropFirst()) }
+            word = (item.source.flatMap { $0.isEmpty ? nil : $0 } ?? fromTitle)?.uppercased() ?? "파일"
+        }
+        return "\(word) \(item.number)"
+    }
+
     static func textTitle(_ title: String) -> String {
         let firstLine = title.split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: false).first.map(String.init) ?? ""
         return String(firstLine.prefix(textTitleLimit))

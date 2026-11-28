@@ -13,10 +13,13 @@ public struct TerminalItemRef: Equatable, Sendable, Identifiable {
     public var id: Int { number }
     public let number: Int
     public let title: String
+    /// 선택 칩의 `<종류 낱말> <번호>`(ARC-003 규칙 14). 예: `PDF 25`, `글 12`, `example.com 3`.
+    public let tag: String
 
-    public init(number: Int, title: String) {
+    public init(number: Int, title: String, tag: String? = nil) {
         self.number = number
         self.title = title
+        self.tag = tag ?? "\(number)"
     }
 }
 

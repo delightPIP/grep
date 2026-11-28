@@ -489,7 +489,8 @@ public struct TerminalView: View {
             onSubmit("고르기 빼기 \(item.number)")
         } label: {
             HStack(spacing: 6) {
-                Text("\(item.number)")
+                // 시안 MPickBar: 굵은 `<종류 낱말> <번호>`(ARC-003 규칙 14) 뒤에 제목.
+                Text(item.tag)
                     .font(.system(size: 13, weight: .bold, design: .monospaced))
                     .foregroundStyle(palette.command)
                 Text(item.title)
@@ -508,7 +509,7 @@ public struct TerminalView: View {
             .clipShape(RoundedRectangle(cornerRadius: 3))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("빼기: \(item.title)")
+        .accessibilityLabel("빼기: \(item.tag) \(item.title)")
         .accessibilityIdentifier("pickChip_\(item.number)")
     }
 
