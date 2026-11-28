@@ -264,7 +264,15 @@ export type LoggedInState = {
   isOffline: boolean;
   /** #93 `고치기` 편집 중이면 그 자료. 없으면 null(또는 아직 Swift가 보내지 않으면 없음). */
   revising?: Revising | null;
+  /**
+   * #175 땅굴 두더지가 지금 할 동작(디자인 시스템 9절, 시안 08). `seq`가 바뀌면 같은 동작도 다시 한다.
+   * 끌어 오기(만세)·누르기·기본(눈 깜빡임)은 뷰 혼자 한다. 없거나 null이면 기본 모습.
+   */
+  mole?: MoleCue | null;
 };
+
+/** 코어가 넘기는 두더지 동작. 찾기·저장·넘기기·틀림. */
+export type MoleCue = { action: "seek" | "save" | "handoff" | "error"; seq: number };
 
 /** 끌어다 놓은 파일. 바이트는 FilePort가 id로 올린다. */
 export type DroppedFile = { id: string; name: string; size: number };
