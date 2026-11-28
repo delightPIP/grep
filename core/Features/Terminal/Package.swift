@@ -1,7 +1,9 @@
 // swift-tools-version: 6.0
 import PackageDescription
 
-// 터미널 화면 피처(commands 2절, ADR-0015). Interface(화면 계약)·Sources(RIB)·Testing(가짜)·Tests.
+// 터미널 화면 피처(commands 2절, ADR-0015, ADR-0017). MusicSearch `Features/<피처>`와 같은 배치.
+//   Shared/Domain  TerminalDomain   줄·상태 값, 명령 해석기, 명령 처리기 계약
+//   TerminalMain   FeatureTerminalInterface(화면 계약) · FeatureTerminal(RIB) · FeatureTerminalTesting(가짜) · 테스트
 
 let ribs: Target.Dependency = .product(name: "RIBs", package: "carti-RIBs-Swift")
 func core(_ name: String) -> Target.Dependency { .product(name: name, package: "Core") }
@@ -9,7 +11,7 @@ func core(_ name: String) -> Target.Dependency { .product(name: name, package: "
 let package = Package(
     name: "FeatureTerminal",
     platforms: [.macOS(.v14), .iOS(.v17)],
-    products: ["FeatureTerminalInterface", "FeatureTerminal", "FeatureTerminalTesting"].map {
+    products: ["TerminalDomain", "FeatureTerminalInterface", "FeatureTerminal", "FeatureTerminalTesting"].map {
         .library(name: $0, targets: [$0])
     },
     dependencies: [
@@ -17,24 +19,29 @@ let package = Package(
         .package(path: "../../Core"),
     ],
     targets: [
-        .target(name: "FeatureTerminalInterface", dependencies: [ribs, core("GrepCore")], path: "Interface"),
+        .target(name: "TerminalDomain", dependencies: [core("GrepDomain")], path: "Shared/Domain/Sources"),
+        .target(
+            name: "FeatureTerminalInterface",
+            dependencies: [ribs, core("GrepCore"), "TerminalDomain"],
+            path: "TerminalMain/Interface"
+        ),
         .target(
             name: "FeatureTerminal",
-            dependencies: [ribs, core("GrepCore"), core("GrepData"), "FeatureTerminalInterface"],
-            path: "Sources"
+            dependencies: [ribs, core("GrepCore"), core("GrepData"), "TerminalDomain", "FeatureTerminalInterface"],
+            path: "TerminalMain/Sources"
         ),
         .target(
             name: "FeatureTerminalTesting",
             dependencies: [ribs, core("GrepCore"), core("GrepCoreTesting"), "FeatureTerminalInterface"],
-            path: "Testing"
+            path: "TerminalMain/Testing"
         ),
         .testTarget(
             name: "FeatureTerminalTests",
             dependencies: [
                 ribs, core("GrepCore"), core("GrepCoreTesting"), core("GrepData"),
-                "FeatureTerminalInterface", "FeatureTerminal", "FeatureTerminalTesting",
+                "TerminalDomain", "FeatureTerminalInterface", "FeatureTerminal", "FeatureTerminalTesting",
             ],
-            path: "Tests"
+            path: "TerminalMain/Tests"
         ),
     ],
     swiftLanguageModes: [.v6]
