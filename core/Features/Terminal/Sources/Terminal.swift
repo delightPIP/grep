@@ -176,8 +176,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
         case .archiveOpen: openArchive()
         case .archiveSelect(let filter): selectArchive(filter)
         case .archiveMore: loadMoreArchive()
-        case .settingsOpen:
-            break
+        case .settingsOpen: openSettings()
         }
     }
 
