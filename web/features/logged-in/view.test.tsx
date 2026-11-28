@@ -103,6 +103,18 @@ describe("LoggedInView", () => {
       expect(log.contains(container.querySelector(".gt-burrow"))).toBe(false);
     });
 
+    it("화면을그렸을때_땅굴을보면_터미널창밖아래에있는지", () => {
+      // given
+      // when
+      const { container } = renderView();
+
+      // then
+      const window = screen.getByRole("region", { name: "그렙 터미널" });
+      const burrow = container.querySelector(".gt-burrow")!;
+      expect(window.contains(burrow)).toBe(false);
+      expect(window.compareDocumentPosition(burrow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
     it("출력이늘었을때_출력칸을보면_맨아래로내려가는지", () => {
       // given
       const props = {
@@ -2902,18 +2914,6 @@ describe("LoggedInView", () => {
     }
 
     const moleButton = () => screen.getByRole("button", { name: "두더지 누르기" });
-
-    it("화면을_그렸을때_땅굴이_입력줄_바로_위에_붙는지", () => {
-      // given
-      const { container } = renderWithMole(null);
-
-      // when
-      const dock = container.querySelector(".gt-dock");
-
-      // then
-      expect(dock?.firstElementChild?.classList.contains("gt-burrow")).toBe(true);
-      expect(dock?.lastElementChild?.classList.contains("gt-dock-line")).toBe(true);
-    });
 
     it("코어가_저장을_넘겼을때_잠시_뒤면_떨어지는_문서를_받는지", () => {
       // given
