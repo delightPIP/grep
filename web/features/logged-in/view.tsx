@@ -1199,6 +1199,14 @@ function OutputLine({ line, failed, savedInBlock, onMoreRequested }: OutputLineP
       return <Line tone="warn">{`휴지통에 있음 → ${line.number}번. 되살리기 ${line.number}`}</Line>;
     case "saveFailed":
       return <SaveFailedLines reason={line.reason} recovery={line.recovery} />;
+    case "importSuggest":
+      // 제안만 한다. 실수로 수백 건이 들어가지 않게 가져오기는 사용자가 친다(#172).
+      return (
+        <Plain>
+          {"→ 북마크 파일이면: "}
+          <CommandChip command="가져오기" />
+        </Plain>
+      );
     case "recentList":
       // 시점이 없는 `최근`은 머리 줄 없이 목록만(commands 6절). 시점이 있으면 찾기와 같은 머리 줄.
       if (line.period == null) return <ListLines items={line.items} hasMore={line.hasMore} onMoreRequested={onMoreRequested} />;

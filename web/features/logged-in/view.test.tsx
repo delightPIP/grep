@@ -2497,6 +2497,36 @@ describe("LoggedInView", () => {
       return { kind: "importFinished", saved: 150, skipped: 25, failed: 0, overLimit: 0, failedUrls: [], ...overrides };
     }
 
+    it("북마크파일을명령없이놓았을때_화면을그리면_받지않는형식다음에가져오기를제안하는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [
+        { kind: "prompt", text: "담기 bookmarks.html" },
+        {
+          kind: "saveFailed",
+          reason: { kind: "unsupportedFormat", fileExtension: "html" },
+          recovery: { kind: "file", name: "bookmarks.html" },
+        },
+        { kind: "importSuggest", fileName: "bookmarks.html" },
+      ];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown.slice(1)).toEqual(["✗ 저장 안 됨: 받지 않는 형식 (.html)", "→ 북마크 파일이면: 가져오기"]);
+    });
+
+    it("가져오기제안이있을때_가져오기칩을누르면_입력줄에가져오기를찍는지", () => {
+      // given
+      const { onInputChange } = renderView({ lines: [{ kind: "importSuggest", fileName: "bookmarks.html" }] });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "가져오기" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("가져오기");
+    });
+
     it("가져오기를쳤을때_화면을그리면_북마크파일끌어다놓기안내를보이는지", () => {
       // given
       // when

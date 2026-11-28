@@ -247,7 +247,9 @@ export type TerminalLine =
   // 계약 2 북마크 가져오기(commands 6절)
   | { kind: "importPrompt" }
   | { kind: "importProgress"; done: number; total: number }
-  | { kind: "importFinished"; saved: number; skipped: number; failed: number; overLimit: number; failedUrls: string[] };
+  | { kind: "importFinished"; saved: number; skipped: number; failed: number; overLimit: number; failedUrls: string[] }
+  /** #172 명령 없이 놓은 북마크 HTML. 받지 않는 형식 줄 다음 `→ 북마크 파일이면: 가져오기`(제안만, 가져오기는 시작하지 않음) */
+  | { kind: "importSuggest"; fileName: string };
 
 /** 터미널 화면. */
 export type LoggedInState = {
