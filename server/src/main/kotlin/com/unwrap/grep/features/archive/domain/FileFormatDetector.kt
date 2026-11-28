@@ -23,6 +23,8 @@ sealed interface FileDetection {
 /**
  * 형식은 확장자가 아니라 내용으로 정한다(COM-004 규칙 2). md와 txt는 내용으로 구분되지 않아
  * UTF-8 글자 파일이면 파일 이름이 `.md`·`.markdown`일 때 md, 그 밖은 txt로 둔다.
+ * HTML(북마크 내보내기 포함)은 받지 않는다. 이름이 `.html`·`.htm`이거나, 앞부분(BOM·공백 뒤)이 `<!doctype`·`<html`이면
+ * `html`로 거절한다(#172 실측: 버킷 형식 제한을 비운 뒤 HTML이 txt로 저장됨).
  */
 object FileFormatDetector {
 	private val PNG = byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A)
@@ -33,6 +35,13 @@ object FileFormatDetector {
 	private val AVIF_BRANDS = setOf("avif", "avis")
 	private val MARKDOWN_EXTENSIONS = setOf("md", "markdown")
 	private const val UNKNOWN_EXTENSION = "bin"
+	private const val HTML_EXTENSION = "html"
+	private val HTML_EXTENSIONS = setOf("html", "htm")
+	private val HTML_STARTS = listOf("<!doctype", "<html")
+
+	/** 앞부분만 본다. BOM·공백 뒤 첫 글자들만 필요하다. */
+	private const val HTML_SNIFF_BYTES = 1024
+	private const val BOM = '\uFEFF'
 
 	fun detect(bytes: ByteArray, fileName: String): FileDetection = when {
 		bytes.startsWith(PDF) -> FileDetection.Accepted(FileFormat.PDF)
@@ -42,6 +51,7 @@ object FileFormatDetector {
 		bytes.ascii(0, 4).let { it == "GIF8" } -> FileDetection.Rejected("gif")
 		bytes.ascii(4, 4) == "ftyp" -> detectIsoMedia(bytes)
 		bytes.startsWith(ZIP) -> detectZip(bytes)
+		isUtf8Text(bytes) && isHtml(bytes, fileName) -> FileDetection.Rejected(HTML_EXTENSION)
 		isUtf8Text(bytes) -> FileDetection.Accepted(
 			if (extensionOf(fileName) in MARKDOWN_EXTENSIONS) FileFormat.MD else FileFormat.TXT,
 		)
@@ -84,6 +94,14 @@ object FileFormatDetector {
 			names.any { it.startsWith("ppt/") } -> FileDetection.Rejected("pptx")
 			else -> FileDetection.Rejected("zip")
 		}
+	}
+
+	private fun isHtml(bytes: ByteArray, fileName: String): Boolean {
+		if (extensionOf(fileName) in HTML_EXTENSIONS) return true
+		val head = String(bytes, 0, minOf(bytes.size, HTML_SNIFF_BYTES), Charsets.UTF_8)
+			.trimStart { it == BOM || it.isWhitespace() }
+			.lowercase()
+		return HTML_STARTS.any { head.startsWith(it) }
 	}
 
 	/** 올바른 UTF-8이고 탭·줄바꿈·폼피드 밖의 제어 문자가 없으면 글자 파일이다. */
