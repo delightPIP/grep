@@ -433,17 +433,27 @@ public struct TerminalView: View {
     // MARK: - Selection Bar (MPickBar.dc.html / commands 6절 고르기)
 
     private var selectionBar: some View {
-        let summary = presentation.selection.map { "\($0.number) \($0.title)" }.joined(separator: " · ")
-        return VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                Text("선택 \(presentation.selection.count)")
-                    .font(.system(size: 13, weight: .bold, design: .monospaced))
-                    .foregroundStyle(palette.command)
-                Text(summary)
-                    .font(.system(size: 13, design: .monospaced))
-                    .foregroundStyle(palette.inkMuted)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
+        VStack(alignment: .leading, spacing: 8) {
+            // 시안 MPickBar: 고른 자료마다 `×` 칩, 끝에 `모두 해제`. 눌러도 친 명령과 같게 기록한다(commands 3절 고르기, MOB-002 규칙 3).
+            HStack(spacing: 8) {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(presentation.selection) { item in
+                            selectionChip(item)
+                        }
+                    }
+                }
+                Button {
+                    onSubmit("고르기 비우기")
+                } label: {
+                    Text("모두 해제")
+                        .font(.system(size: 13, weight: .bold, design: .monospaced))
+                        .foregroundStyle(palette.inkMuted)
+                        .padding(.horizontal, 10)
+                        .frame(minHeight: 44)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("terminalPickBarClearButton")
             }
 
             HStack(spacing: 8) {
@@ -472,6 +482,34 @@ public struct TerminalView: View {
             Rectangle().fill(palette.line).frame(height: 1)
         }
         .accessibilityIdentifier("terminalSelectionBar")
+    }
+
+    private func selectionChip(_ item: TerminalItemRef) -> some View {
+        Button {
+            onSubmit("고르기 빼기 \(item.number)")
+        } label: {
+            HStack(spacing: 6) {
+                Text("\(item.number)")
+                    .font(.system(size: 13, weight: .bold, design: .monospaced))
+                    .foregroundStyle(palette.command)
+                Text(item.title)
+                    .font(.system(size: 13, design: .monospaced))
+                    .foregroundStyle(palette.ink)
+                    .lineLimit(1)
+                    .frame(maxWidth: 160, alignment: .leading)
+                Text("×")
+                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+                    .foregroundStyle(palette.inkMuted)
+                    .accessibilityHidden(true)
+            }
+            .padding(.horizontal, 10)
+            .frame(minHeight: 44)
+            .background(palette.select)
+            .clipShape(RoundedRectangle(cornerRadius: 3))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("빼기: \(item.title)")
+        .accessibilityIdentifier("pickChip_\(item.number)")
     }
 
     // MARK: - Welcome (MobileHome.dc.html)
