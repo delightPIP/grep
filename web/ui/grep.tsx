@@ -52,7 +52,7 @@ export type WindowProps = {
   title: string;
   status: ReactNode;
   children: ReactNode;
-  /** 출력 아래에 붙는 자리(선택 줄·땅굴·입력줄). 출력 스크롤 칸 밖이라 출력을 가리지 않는다. */
+  /** 출력 끝에 붙는 자리(선택 줄·땅굴·입력줄). 실제 터미널처럼 출력과 함께 스크롤되어, 위로 올리면 함께 사라진다. */
   dock?: ReactNode;
   /** 바뀌면 출력 칸을 맨 아래로 내린다(새 출력이 보이게). 입력만 바뀔 때는 그대로 둔다. */
   scrollKey?: number;
@@ -98,8 +98,8 @@ export function Window({ title, status, children, dock, scrollKey }: WindowProps
       </div>
       <div ref={bodyRef} className="gt-body" role="log" aria-live="polite">
         {children}
+        {dock}
       </div>
-      {dock && <div className="gt-dock-area">{dock}</div>}
       {status}
     </section>
   );

@@ -87,10 +87,12 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
   .gt-input-field { font-size: 16px; }
 }
 
-/* Dock: 출력 스크롤 칸 아래에 따로 둔다(gt-dock-area). 출력과 겹치지 않아 땅굴 배경이 출력을 가리지 않는다. */
-.gt-dock-area { flex: none; padding: 0 var(--space-4) var(--space-4); background: var(--surface); }
-.gt-dock-area > * + * { margin-top: var(--space-1); }
-.gt-dock { padding-top: var(--space-2); }
+/* Dock: 입력줄은 출력 끝에 붙어 함께 스크롤된다(실제 터미널처럼). 출력이 짧으면 창 아래에 둔다. */
+.gt-body:has(> .gt-dock) { display: flex; flex-direction: column; }
+.gt-dock { margin-top: auto !important; padding-top: var(--space-3); }
+/* 선택 줄은 입력줄과 함께 아래에 붙는다. */
+.gt-body > .gt-selection:has(+ .gt-dock) { margin-top: auto !important; }
+.gt-body > .gt-selection + .gt-dock { margin-top: 0 !important; }
 .gt-dock-line { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); background: var(--bg); }
 .gt-dock-line:focus-within { border-color: var(--command); }
 
