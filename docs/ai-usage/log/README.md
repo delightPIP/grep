@@ -120,6 +120,6 @@
 | 116 | 2026-11-28 | [#92 Android 보관함·설정 탭과 `:feature:loggedin` 어댑터·데모](116-issue-92-android-archive-settings-tabs.md) |
 | 117 | 2026-11-28 | [#168·#169·#179 웹 폭별 배치와 보관함·설정 화면, 테마 줄, 선택 줄 낱말](117-issue-168-web-layout-archive-settings.md) |
 | 118 | 2026-11-28 | [웹 라운드 4 통합: 보관함·설정 화면과 폭별 배치, 선택 칩 종류, 테마 고르기](118-web-round4-archive-settings-integration.md) |
-| 119 | 2026-11-28 | [Android 터미널이 버리던 피처 줄 40가지를 그리기](119-android-terminal-feature-lines.md) |
+| 120 | 2026-11-28 | [Android 터미널이 버리던 피처 줄 40가지를 그리기](120-android-terminal-feature-lines.md) |
 
 새 항목 파일을 만들 때 이 표에 한 줄을 추가한다. 파일명은 `NNN-<영문-슬러그>.md`이고 NNN은 다음 번호다.
