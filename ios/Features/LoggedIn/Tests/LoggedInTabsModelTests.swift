@@ -139,9 +139,27 @@ struct LoggedInTabsModelTests {
 
         // then
         #expect(pickingBeforeClear)
-        #expect(summaryBeforeClear == "28 파란컵 캡처.png")
+        // ARC-003 규칙 14: 링크는 호스트 낱말과 번호.
+        #expect(summaryBeforeClear == "example.com 28")
         #expect(!model.isPickingInArchive)
         #expect(model.archivePresentation.pickedCount == 0)
+    }
+
+    @Test func 종류가다른자료를골랐을때_보관함고른것줄을그리면_종류낱말과번호로쓰는지() async {
+        // given
+        let items = [
+            ItemSummary(number: 25, kind: .file, title: "겨울 음료 트렌드 보고서.pdf", source: "pdf", status: .ready, tags: [], savedAt: "2026-11-26T05:03:00Z"),
+            ItemSummary(number: 12, kind: .text, title: "캠페인 카피 초안", source: nil, status: .ready, tags: [], savedAt: "2026-11-26T05:03:00Z"),
+        ]
+        let loader = StubArchiveLoader(outcomes: [.page(items: items, nextCursor: nil)])
+        let model = LoggedInTabsModel(archiveLoader: loader, initialTab: .archive, onSignOut: {})
+        await model.loadArchiveIfNeeded()
+
+        // when
+        model.updateTerminalContext(itemCount: 2, pickedNumbers: [25, 12])
+
+        // then
+        #expect(model.archivePresentation.pickedSummary == "PDF 25 · 글 12")
     }
 
     @Test func 터미널과이어졌을때_보관함에서해제를누르면_터미널선택비우기만부르는지() {
