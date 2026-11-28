@@ -108,6 +108,7 @@ const LINE_KINDS: Record<TerminalLine["kind"], true> = {
   importPrompt: true,
   importProgress: true,
   importFinished: true,
+  importSuggest: true,
 };
 
 /** 줄 안의 값은 Swift 브리지가 계약 모양으로 만든다. 여기서는 종류만 확인한다. */

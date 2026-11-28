@@ -23,6 +23,7 @@ import type {
   ItemRef,
   ItemSummary,
   LoggedInState,
+  MoleCue,
   Period,
   Revising,
   SaveFailure,
@@ -32,6 +33,7 @@ import type {
   TerminalLine,
   TrashEntry,
 } from "../../support/view-state";
+import { Burrow, type MoleAction } from "../../ui/burrow";
 import { Banner, DockInput, Line, Prompt, StatusBar, Window, type StatusItem } from "../../ui/grep";
 
 export type LoggedInViewProps = LoggedInState & {
@@ -1197,6 +1199,14 @@ function OutputLine({ line, failed, savedInBlock, onMoreRequested }: OutputLineP
       return <Line tone="warn">{`휴지통에 있음 → ${line.number}번. 되살리기 ${line.number}`}</Line>;
     case "saveFailed":
       return <SaveFailedLines reason={line.reason} recovery={line.recovery} />;
+    case "importSuggest":
+      // 제안만 한다. 실수로 수백 건이 들어가지 않게 가져오기는 사용자가 친다(#172).
+      return (
+        <Plain>
+          {"→ 북마크 파일이면: "}
+          <CommandChip command="가져오기" />
+        </Plain>
+      );
     case "recentList":
       // 시점이 없는 `최근`은 머리 줄 없이 목록만(commands 6절). 시점이 있으면 찾기와 같은 머리 줄.
       if (line.period == null) return <ListLines items={line.items} hasMore={line.hasMore} onMoreRequested={onMoreRequested} />;
@@ -1522,6 +1532,20 @@ function statusItems(itemCount: number | null, selectionCount: number, processin
   ];
 }
 
+/**
+ * 땅굴 두더지에 틀 동작. 코어의 `mole`은 `seq`가 바뀔 때만 다시 틀고(같은 화면을 다시 그려도 반복하지 않게),
+ * 끌어 오기 만세와 그침은 뷰가 직접 튼다. 누르기·눈 깜빡임은 `Burrow`가 혼자 한다.
+ */
+function useMoleCue(action: MoleCue["action"] | undefined, seq: number | undefined) {
+  const [cue, setCue] = useState<{ action: MoleAction; key: number }>({ action: "idle", key: 0 });
+  const play = (next: MoleAction) => setCue((prev) => ({ action: next, key: prev.key + 1 }));
+  useEffect(() => {
+    if (action !== undefined) play(action);
+    // seq가 바뀔 때만 다시 튼다.
+  }, [seq]);
+  return { ...cue, play };
+}
+
 const carriesFiles =(event: DragEvent) => Array.from(event.dataTransfer?.types ?? []).includes("Files");
 
 export function LoggedInView({
@@ -1540,8 +1564,10 @@ export function LoggedInView({
   onReviseSubmit,
   onReviseCancel,
   onSamplesRequest,
+  mole,
 }: LoggedInViewProps) {
   const [isDragging, setDragging] = useState(false);
+  const moleCue = useMoleCue(mole?.action, mole?.seq);
   const inputRef = useRef<HTMLInputElement>(null);
   const isRevising = Boolean(revising);
   const wasRevising = useRef(isRevising);
@@ -1573,18 +1599,22 @@ export function LoggedInView({
     if (!carriesFiles(event)) return;
     // 기본 동작(브라우저가 파일을 여는 것)을 막아야 drop이 온다.
     event.preventDefault();
+    if (!isDragging) moleCue.play("dragover");
     setDragging(true);
   }
 
   function handleDragLeave(event: DragEvent) {
     // 화면 안의 자식으로 옮겨 가는 것은 떠난 것이 아니다.
     if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) return;
+    moleCue.play("idle");
     setDragging(false);
   }
 
   function handleDrop(event: DragEvent) {
     if (!carriesFiles(event)) return;
     event.preventDefault();
+    // 저장은 코어가 `mole`로 넘긴다. 그 전까지 만세를 그친다.
+    moleCue.play("idle");
     setDragging(false);
     const files = Array.from(event.dataTransfer.files);
     if (files.length > 0) onFilesDrop(files);
@@ -1620,6 +1650,7 @@ export function LoggedInView({
           placeholder="링크 붙여 넣기 또는 명령"
           onChange={onInputChange}
           onSubmit={onSubmit}
+          above={<Burrow action={moleCue.action} actionKey={moleCue.key} label="그렙 두더지. 누르면 땅속으로 들어갔다 나온다" />}
         />
       </Window>
       {isDragging && <DropGuide />}
