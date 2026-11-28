@@ -5,6 +5,7 @@ import com.unwrap.grep.features.archive.domain.TrashCursor
 import com.unwrap.grep.features.archive.domain.TrashService
 import com.unwrap.grep.shared.kernel.ApiProblem
 import com.unwrap.grep.shared.kernel.CURRENT_USER_ID
+import com.unwrap.grep.shared.kernel.CountResponse
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
@@ -27,9 +28,6 @@ data class TrashItemResponse(val item: ItemSummaryResponse, val trashedAt: Insta
 
 /** openapi `TrashPage`. */
 data class TrashPageResponse(val items: List<TrashItemResponse>, val total: Long, val nextCursor: String?)
-
-/** openapi `CountResult`. */
-data class CountResponse(val count: Int)
 
 /**
  * 휴지통(ARC-008): POST /items/trash(trashItems), POST /items/restore(restoreItems),

@@ -7,76 +7,12 @@ import com.unwrap.grep.features.account.domain.ConnectionRepository
 import com.unwrap.grep.features.account.domain.ConnectionSummary
 import com.unwrap.grep.features.account.domain.ConnectionTokens
 import com.unwrap.grep.features.account.domain.EndConnectionResult
-import com.unwrap.grep.features.account.domain.OAuthClient
-import com.unwrap.grep.features.account.domain.OAuthClientRepository
-import com.unwrap.grep.features.account.domain.OAuthCodeRepository
-import com.unwrap.grep.features.account.domain.RedeemedCode
 import com.unwrap.grep.features.account.domain.RefreshTarget
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Repository
 import java.sql.Timestamp
 import java.time.Instant
 import java.util.UUID
-
-/** oauth_clients(V4). */
-@Repository
-class JdbcOAuthClientRepository(private val jdbc: JdbcClient) : OAuthClientRepository {
-
-	override fun insert(client: OAuthClient) {
-		jdbc.sql("INSERT INTO oauth_clients (id, name, redirect_uris) VALUES (:id, :name, :uris)")
-			.param("id", client.id)
-			.param("name", client.name)
-			.param("uris", client.redirectUris.toTypedArray())
-			.update()
-	}
-
-	override fun find(id: String): OAuthClient? =
-		jdbc.sql("SELECT id, name, redirect_uris FROM oauth_clients WHERE id = :id")
-			.param("id", id)
-			.query { rs, _ ->
-				@Suppress("UNCHECKED_CAST")
-				OAuthClient(rs.getString("id"), rs.getString("name"), (rs.getArray("redirect_uris").array as Array<String>).toList())
-			}
-			.optional()
-			.orElse(null)
-}
-
-/** oauth_codes(V4). 코드 원문은 두지 않는다. */
-@Repository
-class JdbcOAuthCodeRepository(private val jdbc: JdbcClient) : OAuthCodeRepository {
-
-	override fun insert(codeHash: String, clientId: String, userId: UUID, redirectUri: String, codeChallenge: String, expiresAt: Instant) {
-		jdbc.sql(
-			"""
-			INSERT INTO oauth_codes (code_hash, client_id, user_id, redirect_uri, code_challenge, expires_at)
-			VALUES (:hash, :clientId, :userId, :redirectUri, :challenge, :expiresAt)
-			""".trimIndent(),
-		)
-			.param("hash", codeHash)
-			.param("clientId", clientId)
-			.param("userId", userId)
-			.param("redirectUri", redirectUri)
-			.param("challenge", codeChallenge)
-			.param("expiresAt", Timestamp.from(expiresAt))
-			.update()
-	}
-
-	override fun redeem(codeHash: String, now: Instant): RedeemedCode? =
-		jdbc.sql(
-			"""
-			UPDATE oauth_codes SET used_at = :now
-			WHERE code_hash = :hash AND used_at IS NULL AND expires_at > :now
-			RETURNING client_id, user_id, redirect_uri, code_challenge
-			""".trimIndent(),
-		)
-			.param("hash", codeHash)
-			.param("now", Timestamp.from(now))
-			.query { rs, _ ->
-				RedeemedCode(rs.getString("client_id"), rs.getObject("user_id", UUID::class.java), rs.getString("redirect_uri"), rs.getString("code_challenge"))
-			}
-			.optional()
-			.orElse(null)
-}
 
 /**
  * connections(V4). 마지막으로 토큰을 준 시각은 `access_expires_at - 접근 토큰 수명`으로 셈한다.
