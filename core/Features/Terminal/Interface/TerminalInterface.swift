@@ -137,6 +137,10 @@ public struct TerminalViewState: Equatable, Sendable {
     public var revising: Revising?
     /// #175 땅굴 두더지가 지금 할 동작. 아직 없으면 nil.
     public var mole: Mole?
+    /// #168 보관함 탭. 처음 열기 전이면 nil.
+    public var archive: ArchiveState?
+    /// #168 설정 탭. 처음 열기 전이면 nil.
+    public var settings: SettingsState?
 
     public init(
         itemCount: Int? = nil,
@@ -146,7 +150,9 @@ public struct TerminalViewState: Equatable, Sendable {
         processingCount: Int = 0,
         isOffline: Bool = false,
         revising: Revising? = nil,
-        mole: Mole? = nil
+        mole: Mole? = nil,
+        archive: ArchiveState? = nil,
+        settings: SettingsState? = nil
     ) {
         self.itemCount = itemCount
         self.lines = lines
@@ -156,6 +162,8 @@ public struct TerminalViewState: Equatable, Sendable {
         self.isOffline = isOffline
         self.revising = revising
         self.mole = mole
+        self.archive = archive
+        self.settings = settings
     }
 }
 
@@ -221,13 +229,23 @@ public struct Revising: Equatable, Sendable, Codable {
 }
 
 /// 자료를 가리키는 최소 값. 선택 줄·넘긴 자료 줄에 쓴다.
+/// `kind`·`source`는 선택 칩의 종류 낱말(ARC-003 규칙 14)에 쓴다. 고를 때 받은 `ItemSummary`에서 채운다.
 public struct ItemRef: Equatable, Sendable {
     public let number: Int
     public let title: String
+    public let kind: ItemKind
+    /// 링크는 호스트, 파일은 형식. 없을 수 있다.
+    public let source: String?
 
-    public init(number: Int, title: String) {
+    public init(number: Int, title: String, kind: ItemKind = .text, source: String? = nil) {
         self.number = number
         self.title = title
+        self.kind = kind
+        self.source = source
+    }
+
+    public init(_ item: ItemSummary) {
+        self.init(number: item.number, title: item.title, kind: item.kind, source: item.source)
     }
 }
 
@@ -315,6 +333,14 @@ public enum TerminalViewAction: Equatable, Sendable {
     case reviseSubmitted(number: Int, title: String, summary: String)
     /// `고치기` 편집 칸에서 Esc로 취소했다.
     case reviseCancelled
+    /// #168 보관함 탭을 열었다. 자동 묶음·묶음·찾아둔 검색·자료 첫 쪽을 받는다.
+    case archiveOpen
+    /// #168 보관함에서 거를 것을 골랐다.
+    case archiveSelect(ArchiveFilter)
+    /// #168 보관함 목록 맨 아래 `더 보기`.
+    case archiveMore
+    /// #168 설정 탭을 열었다. 계정과 AI 도구 연결을 받는다.
+    case settingsOpen
 }
 
 @MainActor

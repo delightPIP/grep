@@ -165,6 +165,8 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             submitRevise(number: number, title: title, summary: summary)
         case .reviseCancelled:
             cancelRevise()
+        case .archiveOpen, .archiveSelect, .archiveMore, .settingsOpen:
+            break
         }
     }
 
