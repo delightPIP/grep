@@ -44,6 +44,9 @@ val swiftRuntimeLibs = listOf(
 )
 val requestedAbis: List<String> =
     (findProperty("swiftAbis") as String?)?.split(",")?.map(String::trim) ?: listOf("arm64-v8a")
+// CI의 PR 검사는 -PswiftConfiguration=debug로 최적화를 건너뛰어 교차 빌드 시간을 줄인다. 기본은 release.
+val swiftConfiguration: String =
+    (findProperty("swiftConfiguration") as String?)?.trim()?.takeIf { it == "debug" || it == "release" } ?: "release"
 
 android {
     namespace = "com.unwrap.grep.core"
@@ -87,7 +90,7 @@ val swiftLibTasks = requestedAbis.map { abi ->
     val (swiftArch, ndkTriple) = swiftAbis[abi] ?: throw GradleException("Unsupported ABI: $abi")
     val triple = "$swiftArch-unknown-linux-android$swiftAndroidApi"
     val variantName = abi.replace("-", "").replaceFirstChar(Char::uppercaseChar)
-    val buildArgs = listOf("build", "--disable-sandbox", "--swift-sdk", triple, "-c", "release")
+    val buildArgs = listOf("build", "--disable-sandbox", "--swift-sdk", triple, "-c", swiftConfiguration)
 
     val build = tasks.register<Exec>("swiftBuild$variantName") {
         swiftEnvironment()

@@ -1,17 +1,30 @@
 rootProject.name = "grep-android"
 
+// AGP·AndroidX는 Google 저장소에서만 찾는다(CI에서 AGP 플러그인을 못 찾는 일이 반복돼 순서를 앞으로 옮김).
 pluginManagement {
     repositories {
+        google {
+            content {
+                includeGroupByRegex("com\\.android.*")
+                includeGroupByRegex("com\\.google.*")
+                includeGroupByRegex("androidx.*")
+            }
+        }
         gradlePluginPortal()
         mavenCentral()
-        google()
     }
 }
 
 dependencyResolutionManagement {
     repositories {
+        google {
+            content {
+                includeGroupByRegex("com\\.android.*")
+                includeGroupByRegex("com\\.google.*")
+                includeGroupByRegex("androidx.*")
+            }
+        }
         mavenCentral()
-        google()
     }
 }
 
