@@ -31,10 +31,11 @@ WORKDIR /src
 # 의존성 층을 먼저 받아 두면 소스만 바뀐 빌드가 빨라진다
 COPY server/gradlew server/settings.gradle.kts server/build.gradle.kts server/
 COPY server/gradle server/gradle
-RUN chmod +x server/gradlew && cd server && ./gradlew --no-daemon -q dependencies > /dev/null
+# 미리 받기는 캐시용이라 실패해도 멈추지 않고 로그 끝만 남긴다. 실제 실패는 아래 bootJar가 원인과 함께 낸다.
+RUN chmod +x server/gradlew && cd server     && (./gradlew --no-daemon --console=plain dependencies > /tmp/deps.log 2>&1         || (echo "의존성 미리 받기 실패. bootJar에서 다시 받는다" && tail -n 40 /tmp/deps.log))
 COPY db db
 COPY server/src server/src
-RUN cd server && ./gradlew --no-daemon -q bootJar -x test
+RUN cd server && ./gradlew --no-daemon --console=plain --warning-mode=none bootJar -x test
 
 FROM eclipse-temurin:21-jre
 WORKDIR /app
