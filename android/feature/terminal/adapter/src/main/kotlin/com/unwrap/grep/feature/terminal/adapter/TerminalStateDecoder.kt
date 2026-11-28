@@ -80,7 +80,11 @@ private fun decodeLineEntries(line: JSONObject, pickedNumbers: Set<Int>): List<T
             val message = when (line.optString("command")) {
                 "keep" -> "저장할 것 없음  예: 담기 https://…"
                 "seek" -> "검색어 없음  예: 찾기 결제"
-                "pick" -> "번호 없음  예: 고르기 131"
+                // #154 `고르기 빼기`를 번호 없이 치면 빼기 예시.
+                "pick" -> if (line.optString("sub") == "unpick") "번호 없음  예: 고르기 빼기 131" else "번호 없음  예: 고르기 131"
+                // ARC-011·ARC-012 사용자 문구.
+                "peek" -> "번호 없음  예: 열기 131"
+                "gather" -> "검색어 없음  예: 찾아두기 텀블러 캠페인"
                 else -> return emptyList()
             }
             listOf(TerminalEntryUi.TextLine(TerminalTone.ERROR, "✗", message))
@@ -281,7 +285,7 @@ private fun decodeLineEntries(line: JSONObject, pickedNumbers: Set<Int>): List<T
             )
         }
         "reconnected" -> listOf(TerminalEntryUi.TextLine(TerminalTone.OK, "✓", "연결됨"))
-        else -> emptyList()
+        else -> decodeFeatureLine(line, pickedNumbers) ?: emptyList()
     }
 }
 
@@ -293,7 +297,7 @@ private fun decodeItemRefs(array: JSONArray?): List<TerminalItemRefUi> {
     }
 }
 
-private fun decodeItemRows(array: JSONArray?, pickedNumbers: Set<Int>): List<TerminalItemRowUi> {
+internal fun decodeItemRows(array: JSONArray?, pickedNumbers: Set<Int>): List<TerminalItemRowUi> {
     if (array == null) return emptyList()
     return (0 until array.length()).mapNotNull { i ->
         val obj = array.optJSONObject(i) ?: return@mapNotNull null
@@ -301,7 +305,7 @@ private fun decodeItemRows(array: JSONArray?, pickedNumbers: Set<Int>): List<Ter
     }
 }
 
-private fun decodeItemRow(obj: JSONObject, pickedNumbers: Set<Int>): TerminalItemRowUi {
+internal fun decodeItemRow(obj: JSONObject, pickedNumbers: Set<Int>): TerminalItemRowUi {
     val number = obj.optInt("number")
     val kind = obj.optString("kind")
     val rawTitle = obj.optString("title", "")
@@ -344,7 +348,7 @@ private fun decodeItemRow(obj: JSONObject, pickedNumbers: Set<Int>): TerminalIte
     )
 }
 
-private fun commandLabel(command: String): String = when (command) {
+internal fun commandLabel(command: String): String = when (command) {
     "keep" -> "담기"
     "recent" -> "최근"
     "seek" -> "찾기"
@@ -357,6 +361,11 @@ private fun commandLabel(command: String): String = when (command) {
     "drop" -> "버리기"
     "revive" -> "되살리기"
     "bin" -> "휴지통"
+    "pack" -> "묶음"
+    "peek" -> "열기"
+    "gather" -> "찾아두기"
+    "bring" -> "가져오기"
+    "plug" -> "연결"
     else -> command
 }
 

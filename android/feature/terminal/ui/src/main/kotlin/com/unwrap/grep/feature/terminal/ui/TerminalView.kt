@@ -78,16 +78,16 @@ object TerminalTags {
 }
 
 // grep-design/mockups/project/ds/grep/tokens.json (dark)
-private val SurfaceColor = Color(0xFF14171C)
-private val SurfaceRaisedColor = Color(0xFF1C2027)
-private val LineColor = Color(0xFF2E343D)
-private val InkColor = Color(0xFFE7E9EC)
-private val InkMutedColor = Color(0xFF99A2AD)
-private val PromptColor = Color(0xFF7FE0A3)
-private val CommandColor = Color(0xFF86C8FF)
-private val NoticeColor = Color(0xFFF2C86B)
-private val DangerColor = Color(0xFFFF8F86)
-private val SelectColor = Color(0xFF1F3A52)
+internal val SurfaceColor = Color(0xFF14171C)
+internal val SurfaceRaisedColor = Color(0xFF1C2027)
+internal val LineColor = Color(0xFF2E343D)
+internal val InkColor = Color(0xFFE7E9EC)
+internal val InkMutedColor = Color(0xFF99A2AD)
+internal val PromptColor = Color(0xFF7FE0A3)
+internal val CommandColor = Color(0xFF86C8FF)
+internal val NoticeColor = Color(0xFFF2C86B)
+internal val DangerColor = Color(0xFFFF8F86)
+internal val SelectColor = Color(0xFF1F3A52)
 
 private val MolePalette = mapOf(
     'M' to Color(0xFF4A4460),
@@ -335,12 +335,12 @@ private fun TerminalBlockItem(
                 is TerminalEntryUi.TextLine -> TerminalTextLine(entry)
                 is TerminalEntryUi.ItemList -> ItemListBlock(
                     entry = entry,
-                    onPick = { number -> onSubmit("고르기 $number") },
+                    onPick = { number -> onSubmit(pickCommand(number, entry.items.any { it.number == number && it.isPicked })) },
                     onMoreRequested = onMoreRequested,
                 )
                 is TerminalEntryUi.ItemRow -> MobileItemRow(
                     item = entry.item,
-                    onClick = { onSubmit("고르기 ${entry.item.number}") },
+                    onClick = { onSubmit(pickCommand(entry.item.number, entry.item.isPicked)) },
                 )
                 is TerminalEntryUi.CommandHint -> CommandHintLine(
                     hint = entry,
@@ -370,6 +370,15 @@ private fun TerminalBlockItem(
                     onSubmit = onSubmit,
                     onPrefill = onPrefill,
                 )
+                is TerminalEntryUi.PlainLine -> TerminalPlainLine(entry)
+                is TerminalEntryUi.ChipLine -> TerminalChipLine(
+                    line = entry,
+                    onChip = { chip -> if (chip.submitsImmediately) onSubmit(chip.command) else onPrefill(chip.command) },
+                )
+                is TerminalEntryUi.ItemDetail -> ItemDetailBlock(
+                    entry = entry,
+                    onChip = { chip -> if (chip.submitsImmediately) onSubmit(chip.command) else onPrefill(chip.command) },
+                )
                 is TerminalEntryUi.Guide -> GuideBlock(
                     entry = entry,
                     onExampleClick = { onPrefill(entry.exampleCommand) },
@@ -380,7 +389,7 @@ private fun TerminalBlockItem(
 }
 
 @Composable
-private fun TerminalTextLine(line: TerminalEntryUi.TextLine) {
+internal fun TerminalTextLine(line: TerminalEntryUi.TextLine) {
     val toneColor = when (line.tone) {
         TerminalTone.OK -> PromptColor
         TerminalTone.WARN -> NoticeColor

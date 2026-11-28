@@ -40,6 +40,12 @@ public enum DemoTerminalScenario: String, CaseIterable, Sendable {
     case handoffDenied
     case guide
     case expired
+    /// #93~#111 정리·고치기·샘플·고르기 빼기·모든 기기 로그아웃 줄.
+    case cleanupLines
+    /// 계약 2 묶음·찾아두기 줄.
+    case bundleLines
+    /// 계약 2 자세히 보기·연결·가져오기 줄.
+    case detailLines
 }
 
 /// 피처 하나만 띄운다. 부모는 `TestParentRouter`가 맡고,
@@ -507,6 +513,64 @@ private final class DemoTerminalInteractor: PresentableInteractor<any TerminalPr
                 lines: [.prompt("찾기 결제")],
                 input: "찾기 결제"
             )
+        case .cleanupLines:
+            return TerminalViewState(itemCount: 23, lines: cleanupLines(refs: refs))
+        case .bundleLines:
+            return TerminalViewState(itemCount: 23, lines: bundleLines)
+        case .detailLines:
+            return TerminalViewState(itemCount: 23, lines: detailLines)
         }
+    }
+
+    private static func cleanupLines(refs: [ItemRef]) -> [TerminalViewState.Line] {
+        let trash = [TrashEntry(item: sampleItems[1], trashedAt: "2026-11-27T00:00:00Z", daysLeft: 29)]
+        return [
+            .prompt("버리기 131 130"), .dropConfirm(total: 2),
+            .prompt("버리기"), .dropped(refs),
+            .prompt("휴지통"), .binList(total: 1, items: trash, hasMore: false),
+            .prompt("되살리기 131"), .revived([refs[0]]),
+            .prompt("휴지통 비우기"), .binEmptyConfirm(total: 1),
+            .prompt("비우기"), .binEmptied(count: 1),
+            .prompt("고치기 131"), .revised(sampleItems[0]),
+            .tagsRemoved(item: sampleItems[0], tags: ["웹훅"]),
+            .prompt("고르기 빼기 131"), .unpicked(items: [refs[0]], remaining: 1),
+            .prompt("고르기 비우기"), .pickCleared(count: 1),
+            .prompt("로그아웃 모든기기"), .signOutEverywhereConfirm(connectionCount: 2),
+        ]
+    }
+
+    private static let bundleLines: [TerminalViewState.Line] = [
+        .prompt("묶음"), .bundleList([BundleEntry(name: "결제", count: 3), BundleEntry(name: "발표", count: 5)]),
+        .prompt("묶음 결제"), .bundleAdded(name: "결제", count: 3, alreadyCount: 1),
+        .prompt("묶음 결제 보기"), .bundleView(name: "결제", total: 3, items: Array(sampleItems.prefix(2)), hasMore: true),
+        .prompt("묶음 없는것"), .bundleNotFound(name: "없는것"),
+        .prompt("묶음 결제 빼기 131"), .bundleUnpicked(name: "결제", remaining: 2), .notInBundle(name: "결제", numbers: [99]),
+        .prompt("묶음 결제 지우기"), .bundleDeleteConfirm(name: "결제", itemCount: 3), .bundleDeleted(name: "결제"),
+        .prompt("묶음 123"), .bundleNameInvalid(.reserved),
+        .prompt("폴더"), .folderHint,
+        .prompt("찾아두기 결제"), .searchSaved(query: "결제", total: 4, already: false),
+        .prompt("찾아두기"), .savedSearchList([SavedSearchEntry(query: "결제", count: 4)]),
+        .prompt("찾아두기 결제 지난달"), .savedSearchPeriod(period: "지난달", suggestion: "찾아두기 결제"),
+        .prompt("찾아두기 결제 지우기"), .savedSearchDeleteConfirm(query: "결제"), .savedSearchDeleted(query: "결제"),
+    ]
+
+    private static var detailLines: [TerminalViewState.Line] {
+        let detail = ItemDetail(
+            item: sampleItems[0], url: "https://docs.tosspayments.com/webhooks", handoffSummary: "웹훅 재시도 간격과 횟수 정리",
+            allTags: ["결제", "웹훅"], bundles: ["결제"], bodyLength: 4210, body: "웹훅은 실패하면 최대 7회 재시도한다…",
+            bodyFromImage: false, originalUrl: nil, previewUrl: nil
+        )
+        return [
+            .prompt("열기 131"), .itemDetail(detail),
+            .prompt("열기 131 130"), .oneNumberOnly(.peek),
+            .prompt("연결"), .connectionList(
+                mcpUrl: "https://grep.example/mcp",
+                connections: [ConnectionEntry(number: 1, client: "Claude", connectedAt: "2026-11-20T00:00:00Z", lastReadAt: nil)]
+            ),
+            .prompt("연결 끊기 1"), .disconnectConfirm(number: 1, client: "Claude"), .disconnected(client: "Claude", already: false),
+            .connectionEnded(client: "ChatGPT", reason: .expired),
+            .prompt("가져오기"), .importPrompt, .importProgress(done: 40, total: 120),
+            .importFinished(saved: 110, skipped: 8, failed: 2, overLimit: 0, failedUrls: ["https://old.example/a"]),
+        ]
     }
 }

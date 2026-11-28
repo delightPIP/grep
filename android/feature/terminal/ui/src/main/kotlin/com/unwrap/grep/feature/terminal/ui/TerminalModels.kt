@@ -41,7 +41,57 @@ data class TerminalGuideRowUi(
     val description: String,
 )
 
+/** 누르는 명령 칩. 명령이 빈칸으로 끝나면(`고르기 `) 입력줄에 채우고, 아니면 바로 실행한다(MOB-002). */
+data class TerminalChipUi(
+    val label: String,
+    val command: String,
+) {
+    val submitsImmediately: Boolean get() = !command.endsWith(" ")
+}
+
+/** 자세히 보기 한 줄: 이름표 칸과 값 칸(ARC-011 규칙 6). 값 대신 칩이나 링크를 둘 수 있다. */
+data class TerminalDetailRowUi(
+    val label: String,
+    val value: String,
+    val isWarning: Boolean = false,
+    val isMuted: Boolean = false,
+    val chips: List<TerminalChipUi> = emptyList(),
+    val linkUrl: String? = null,
+)
+
 sealed interface TerminalEntryUi {
+    /** 기호 없는 줄(웹 `Plain`). `dim`이면 흐리게. */
+    data class PlainLine(
+        val text: String,
+        val dim: Boolean = false,
+    ) : TerminalEntryUi
+
+    /** `prefix [칩] separator [칩] suffix` 한 줄. `tone`이 있으면 앞에 그 기호를 단다. */
+    data class ChipLine(
+        val prefix: String,
+        val chips: List<TerminalChipUi>,
+        val separator: String = " 또는 ",
+        val suffix: String = "",
+        val tone: TerminalTone? = null,
+    ) : TerminalEntryUi
+
+    /** `열기 <번호>` 자세히 보기(ARC-011). */
+    data class ItemDetail(
+        val number: Int,
+        val title: String,
+        val isPicked: Boolean,
+        val rows: List<TerminalDetailRowUi>,
+        /** 본문 머리(`(이미지에서 읽음) 1,234자 (앞 5쪽만)`). 본문이 없으면 null. */
+        val bodyHead: String?,
+        val body: String?,
+        /** 글 자료는 본문이 곧 원본이라 펼쳐 둔다. */
+        val bodyExpandedInitially: Boolean,
+        /** `· 본문 없음: <이유>`. 본문이 있거나 이유가 없으면 null. */
+        val noBodyReason: String?,
+        val originalUrl: String?,
+        val actions: List<TerminalChipUi>,
+    ) : TerminalEntryUi
+
     data class TextLine(
         val tone: TerminalTone,
         val symbol: String,
