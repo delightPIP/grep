@@ -9,3 +9,11 @@
 !db/migrations/
 !db/seed/samples/
 !db/seed/demo/
+# 웹 빌드 단계(ADR-0016)
+!core/
+!web/
+core/.build/
+web/.build/
+web/node_modules/
+web/dist/
+web/.env*

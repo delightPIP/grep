@@ -6,6 +6,7 @@ import com.unwrap.grep.features.account.domain.AccountService
 import com.unwrap.grep.features.mcp.adapters.http.McpTokenFilter
 import com.unwrap.grep.shared.kernel.ApiError
 import com.unwrap.grep.shared.kernel.ApiErrorCode
+import org.springframework.http.HttpMethod
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -67,6 +68,8 @@ class SecurityConfig {
 			.sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
 			.authorizeHttpRequests {
 				it.requestMatchers("/health", "/error").permitAll()
+				// 서버가 함께 내보내는 웹 정적 파일(ADR-0016). API 경로와 겹치지 않는다.
+				it.requestMatchers(HttpMethod.GET, *WEB_STATIC_PATHS).permitAll()
 				it.anyRequest().authenticated()
 			}
 			.oauth2ResourceServer {
@@ -104,6 +107,9 @@ class SecurityConfig {
 		)
 	}
 }
+
+/** 웹 빌드(`web/dist`)가 만드는 파일 경로. */
+private val WEB_STATIC_PATHS = arrayOf("/", "/index.html", "/auth-callback.html", "/assets/**", "/favicon.ico")
 
 data class HealthResponse(val status: String)
 

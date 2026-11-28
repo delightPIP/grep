@@ -1,5 +1,6 @@
 package com.unwrap.grep.features.account.adapters.http
 
+import org.assertj.core.api.Assertions.assertThat
 import com.unwrap.grep.TestcontainersConfiguration
 import com.unwrap.grep.support.FakeSupabaseAuth
 import org.springframework.beans.factory.annotation.Autowired
@@ -76,6 +77,18 @@ class AuthApiTest {
 			status { isOk() }
 			jsonPath("$.status") { value("ok") }
 		}
+	}
+
+	@Test
+	fun `토큰이없을때_웹정적파일을부르면_로그인을요구하지않는지`() {
+		// given: 토큰 없음. 서버가 웹을 함께 내보낸다(ADR-0016). 테스트에는 정적 파일이 없어 404면 통과다
+
+		// when
+		val statuses = listOf("/", "/index.html", "/auth-callback.html", "/assets/app.js")
+			.associateWith { mockMvc.get(it).andReturn().response.status }
+
+		// then
+		assertThat(statuses.values).doesNotContain(401)
 	}
 
 	@Test
