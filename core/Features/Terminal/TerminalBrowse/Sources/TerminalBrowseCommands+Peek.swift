@@ -1,14 +1,15 @@
-import FeatureTerminalInterface
 import TerminalDomain
 import GrepCore
 import GrepData
+import TerminalCommandKit
+import TerminalDomain
 
 // MARK: 열기(#131, ARC-011)
 
-extension TerminalInteractor {
+extension TerminalBrowseCommands {
     /// `열기 <번호>`. 번호는 하나만 받는다(규칙 2). 선택은 바꾸지 않는다(규칙 12).
     /// 터미널 출력 블록은 연 때 모습 그대로 두므로 폴링으로 고치지 않는다(규칙 9).
-    func peek(_ argument: String, typed: String) {
+    public func peek(_ argument: String, typed: String) {
         switch PickCommand.parse(argument) {
         case .numbers(let numbers) where numbers.count == 1:
             openDetail(numbers[0], typed: typed)

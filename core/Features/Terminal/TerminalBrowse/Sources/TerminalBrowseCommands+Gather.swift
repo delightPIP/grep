@@ -1,7 +1,8 @@
-import FeatureTerminalInterface
 import TerminalDomain
 import GrepCore
 import GrepData
+import TerminalCommandKit
+import TerminalDomain
 
 // MARK: 찾아두기(#134, ARC-012)
 
@@ -14,9 +15,9 @@ struct PendingSavedSearchDelete: Equatable {
     }
 }
 
-extension TerminalInteractor {
+extension TerminalBrowseCommands {
     /// `찾아두기 <검색어> | 넘기기`는 찾아둔 뒤 `찾기 … | 넘기기`와 같이 넘긴다(규칙 8).
-    func handleGather(_ argument: String, typed: String) {
+    public func handleGather(_ argument: String, typed: String) {
         var head = argument
         var pipesToHandoff = false
         if let (left, tail) = PipeCommand.split(argument) {

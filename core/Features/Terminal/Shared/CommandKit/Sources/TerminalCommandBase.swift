@@ -44,4 +44,10 @@ open class TerminalCommandBase {
     ) async {
         await context.showNoResults(for: query, period: period, related: related, typed: typed, accessToken: accessToken)
     }
+
+    public func searchThenHandOff(
+        _ query: SearchQuery, period: Period?, typed: String, sequence: Int, accessToken: String
+    ) async {
+        await context.searchThenHandOff(query, period: period, typed: typed, sequence: sequence, accessToken: accessToken)
+    }
 }

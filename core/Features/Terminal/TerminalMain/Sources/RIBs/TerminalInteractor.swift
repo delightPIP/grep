@@ -4,6 +4,7 @@ import FoundationEssentials
 import Foundation
 #endif
 import FeatureTerminalInterface
+import TerminalBrowse
 import TerminalCollections
 import TerminalCommandKit
 import TerminalConnections
@@ -63,8 +64,6 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     private var loadingPage: ListPage?
     /// 답을 기다리는 `찾기 … | 넘기기` 확인. 다음 입력 한 번이 답이다(COM-007 규칙 1).
     var pendingHandoff: PendingHandoff?
-    /// 답을 기다리는 `찾아두기 <검색어> 지우기` 확인(ARC-012 규칙 7, COM-007).
-    var pendingSavedSearchDelete: PendingSavedSearchDelete?
     /// `가져오기`를 치고 북마크 파일을 기다린다. 다른 입력을 치면 놓는다.
     var isAwaitingImport = false
     /// `가져오기`를 제안한 북마크 파일(#172). 다음 입력이 `가져오기`면 이 파일을 보내고, 다른 입력이면 놓는다.
@@ -72,8 +71,9 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     /// 명령 모듈. 이 RIB이 쥐고, 모듈은 `TerminalContext`로 이 RIB을 쓴다.
     private(set) lazy var connections = TerminalConnectionCommands(context: self)
     private(set) lazy var collections = TerminalCollectionCommands(context: self)
+    private(set) lazy var browse = TerminalBrowseCommands(context: self)
     /// 확인 대기를 가진 명령 모듈. 입력이 오면 차례로 답인지 묻는다.
-    private var commands: [any TerminalCommand] { [collections, connections] }
+    private var commands: [any TerminalCommand] { [browse, collections, connections] }
     /// 오타 제안(#118, commands.md 207줄). 빈 입력 엔터면 이 문자열을 실행하고, 다른 입력이면 지운다.
     var pendingSuggestion: String?
     /// `POST /samples` 중복 실행 방지.
@@ -217,11 +217,6 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             confirmHandoff(pending, choice: choice, typed: text)
             return
         }
-        if let pending = pendingSavedSearchDelete, pending.matches(text) {
-            pendingSavedSearchDelete = nil
-            confirmSavedSearchDelete(pending, typed: text)
-            return
-        }
         if commands.contains(where: { $0.answer(text) }) {
             return
         }
@@ -243,11 +238,11 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             keep(KeepCommand.request(for: command.argument), typed: text)
         case .recent:
             let parsed = RecentCommand.parse(command.argument)
-            showRecent(limit: parsed.limit, period: parsed.period, typed: text)
+            browse.showRecent(limit: parsed.limit, period: parsed.period, typed: text)
         case .seek where pipe(seekArgument: command.argument, typed: text):
             break
         case .seek:
-            seek(SeekCommand.parse(command.argument), typed: text)
+            browse.seek(SeekCommand.parse(command.argument), typed: text)
         case .pick:
             pick(PickCommand.parse(command.argument), typed: text)
         case .drop:
@@ -259,9 +254,9 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
         case .pack:
             collections.handleBundle(command.argument, typed: text)
         case .peek:
-            peek(command.argument, typed: text)
+            browse.peek(command.argument, typed: text)
         case .gather:
-            handleGather(command.argument, typed: text)
+            browse.handleGather(command.argument, typed: text)
         case .plug:
             connections.handleConnections(command.argument, typed: text)
         case .bring where command.argument.isEmpty && importSuggested(typed: text):
@@ -442,44 +437,10 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
 
     // MARK: 최근과 더 보기
 
-    /// `GET /items`. 친 줄은 바로 찍는다. 실패하면 `✗ 최근 안 됨`과 다시 칠 명령을 보인다(COM-010 규칙 1).
-    private func showRecent(limit: Int, period: Period?, typed: String) {
-        update(viewState.appending(lines: [.prompt(typed)]).with(input: ""))
-        startTask { [weak self] in
-            guard let self else { return }
-            let token = await authService.accessToken()
-            guard !Task.isCancelled else { return }
-            guard let token else {
-                restoreInput(typed)
-                expire()
-                return
-            }
-            let outcome = await BrowseAPI.recent(
-                limit: limit, cursor: nil, period: period, transport: httpTransport, accessToken: token
-            )
-            guard !Task.isCancelled else { return }
-            switch outcome {
-            case .page(let items, let total, let nextCursor):
-                showList(
-                    .recentList(items: items, hasMore: nextCursor != nil, total: total, period: period),
-                    nextCursor: nextCursor, source: .recent(limit: limit, period: period), typed: typed
-                )
-            case .failed(let reason):
-                update(viewState.appending(lines: [.commandFailed(command: .recent, reason: reason, retry: typed)]))
-            case .sessionExpired:
-                restoreInput(typed)
-                expire()
-            case .cancelled:
-                break
-            }
-        }
-    }
-
     func cancelPendingConfirmations() {
-        let hadPending = pendingHandoff != nil || pendingSavedSearchDelete != nil
+        let hadPending = pendingHandoff != nil
             || commands.contains(where: \.hasPendingAnswer)
         pendingHandoff = nil
-        pendingSavedSearchDelete = nil
         commands.forEach { $0.cancelPendingAnswer() }
         if hadPending {
             update(viewState.appending(lines: [.cancelled]).with(input: ""))
@@ -586,55 +547,6 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     }
 
     // MARK: 찾기
-
-    private func seek(_ parsed: SeekCommand.Parsed, typed: String) {
-        switch parsed {
-        case .missingArgument:
-            update(viewState.appending(lines: [.prompt(typed), .missingArgument(.seek)]).with(input: ""))
-        case .missingTag:
-            update(viewState.appending(lines: [.prompt(typed), .missingTag]).with(input: ""))
-        case .query(let query, let period):
-            search(query, period: period, typed: typed)
-        }
-    }
-
-    /// `GET /items/search`. 0건이면 최근 저장 자료를 함께 보인다(commands 6절). 실패는 `✗ 찾기 안 됨`(COM-010 규칙 1).
-    private func search(_ query: SearchQuery, period: Period?, typed: String) {
-        update(viewState.appending(lines: [.prompt(typed)]).with(input: ""))
-        startTask { [weak self] in
-            guard let self else { return }
-            let token = await authService.accessToken()
-            guard !Task.isCancelled else { return }
-            guard let token else {
-                restoreInput(typed)
-                expire()
-                return
-            }
-            let outcome = await BrowseAPI.search(
-                query, limit: SeekCommand.pageSize, cursor: nil, period: period, transport: httpTransport, accessToken: token
-            )
-            guard !Task.isCancelled else { return }
-            switch outcome {
-            case .page(let items, _, _, _, let related) where items.isEmpty:
-                await showNoResults(for: query, period: period, related: related, typed: typed, accessToken: token)
-            case .page(let items, let total, let nextCursor, let isSavedSearch, _):
-                showList(
-                    .searchResult(
-                        query: query, total: total, items: items, hasMore: nextCursor != nil, period: period,
-                        isSavedSearch: isSavedSearch
-                    ),
-                    nextCursor: nextCursor, source: .search(query, period: period), typed: typed
-                )
-            case .failed(let reason):
-                update(viewState.appending(lines: [.commandFailed(command: .seek, reason: reason, retry: typed)]))
-            case .sessionExpired:
-                restoreInput(typed)
-                expire()
-            case .cancelled:
-                break
-            }
-        }
-    }
 
     /// `· 0건` 뒤에 붙일 최근 저장 자료를 받는다. 받지 못해도 찾기는 끝난 것이라 0건 줄은 찍는다.
     func showNoResults(
