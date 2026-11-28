@@ -3,6 +3,17 @@
 @import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Nanum+Gothic+Coding:wght@400;700&family=Noto+Sans+KR:wght@400;500;700&display=swap");
 @import "./tokens.css";
 
+/* 시스템 따름(#169): 고른 테마(`data-theme`)가 없으면 운영체제 설정을 따른다. 값은 tokens.css의 light와 같아야 한다(ui/theme.test.ts가 확인).
+   shortcut: tokens.css가 생성 파일이라 light 값을 한 번 더 적었다. 생성기가 미디어 쿼리를 내면 이 블록을 지운다. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #e9ebe6; --surface: #fbfbf8; --surface-raised: #f0f1ec; --line: #d6d9d1;
+    --ink: #1b1e23; --ink-muted: #5b636c; --prompt: #13723f; --command: #0a5c9e;
+    --notice: #835600; --danger: #b0281f; --select: #d4e5f4; --chip: #e1ebf3;
+    --cursor: var(--prompt); --focus: var(--command);
+  }
+}
+
 body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-mono); font-size: 14px; line-height: 22px; }
 
 /* Window */
