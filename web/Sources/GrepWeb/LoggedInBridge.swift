@@ -57,4 +57,35 @@ import JavaScriptKit
     @JS func reviseCancelled() {
         MainActor.assumeIsolated { send(.reviseCancelled) }
     }
+
+    @JS func archiveOpen() {
+        MainActor.assumeIsolated { send(.archiveOpen) }
+    }
+
+    /// `kind`는 `ArchiveFilter`의 kind. `group`은 auto일 때만, `value`는 auto의 값·묶음 이름·찾아둔 검색어.
+    /// 계약에 없는 값이면 무시한다.
+    @JS func archiveSelect(kind: String, group: String?, value: String?) {
+        guard let filter = ArchiveFilter(bridgeKind: kind, group: group, value: value) else { return }
+        MainActor.assumeIsolated { send(.archiveSelect(filter)) }
+    }
+
+    @JS func archiveMore() {
+        MainActor.assumeIsolated { send(.archiveMore) }
+    }
+
+    @JS func settingsOpen() {
+        MainActor.assumeIsolated { send(.settingsOpen) }
+    }
+}
+
+extension ArchiveFilter {
+    init?(bridgeKind kind: String, group: String?, value: String?) {
+        switch (kind, group.flatMap(AutoGroup.init(rawValue:)), value) {
+        case ("all", _, _): self = .all
+        case ("auto", let group?, let value?): self = .auto(group: group, value: value)
+        case ("bundle", _, let name?): self = .bundle(name: name)
+        case ("savedSearch", _, let query?): self = .savedSearch(query: query)
+        default: return nil
+        }
+    }
 }

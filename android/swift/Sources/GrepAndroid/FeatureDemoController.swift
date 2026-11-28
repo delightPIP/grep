@@ -222,7 +222,8 @@ private final class DemoTerminalInteractor: PresentableInteractor<any TerminalPr
             runDemoCommand(text)
         case .moreRequested:
             state.lines.append(.recentList(items: [Self.sampleItems[2]], hasMore: false))
-        case .samplesRequested, .reviseSubmitted, .reviseCancelled, .filesDropped:
+        case .samplesRequested, .reviseSubmitted, .reviseCancelled, .filesDropped,
+             .archiveOpen, .archiveSelect, .archiveMore, .settingsOpen:
             break
         }
         presenter.render(state)

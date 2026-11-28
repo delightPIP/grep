@@ -77,7 +77,8 @@ export type ItemSummary = {
   savedAt: string;
 };
 
-export type ItemRef = { number: number; title: string };
+/** `kind`·`source`는 선택 칩의 종류 낱말(ARC-003 규칙 14). 고를 때 받은 ItemSummary에서 채운다. */
+export type ItemRef = { number: number; title: string; kind: ItemSummary["kind"]; source: string | null };
 
 /** 휴지통 한 줄(api `TrashItem`). daysLeft는 `30일 남음`(ARC-008 규칙 10). */
 export type TrashEntry = { item: ItemSummary; trashedAt: string; daysLeft: number };
@@ -271,7 +272,46 @@ export type LoggedInState = {
    * 끌어 오기(만세)·누르기·기본(눈 깜빡임)은 뷰 혼자 한다. 없거나 null이면 기본 모습.
    */
   mole?: MoleCue | null;
+  /** #168 보관함 탭. 처음 열기 전이면 null */
+  archive?: ArchiveState | null;
+  /** #168 설정 탭. 처음 열기 전이면 null */
+  settings?: SettingsState | null;
 };
+
+/** 자동 묶음 갈래(ARC-007). */
+export type AutoGroup = "format" | "source" | "date" | "tag";
+
+/**
+ * 자동 묶음 한 줄. value는 갈래마다 다르다.
+ * format: link·text·image·file / source: 호스트 또는 `direct` / date: today·week·month·earlier / tag: 태그 낱말.
+ * 0건은 서버가 뺀다.
+ */
+export type AutoGroupEntry = { group: AutoGroup; value: string; count: number };
+
+export type ArchiveFilter =
+  | { kind: "all" }
+  | { kind: "auto"; group: AutoGroup; value: string }
+  | { kind: "bundle"; name: string }
+  | { kind: "savedSearch"; query: string };
+
+/** #168 보관함 탭. */
+export type ArchiveState = {
+  groups: AutoGroupEntry[];
+  /** 0건 묶음도 보인다(ARC-003 규칙 18) */
+  bundles: BundleEntry[];
+  /** 0건은 숨긴다(ARC-012) */
+  savedSearches: SavedSearchEntry[];
+  filter: ArchiveFilter;
+  items: ItemSummary[];
+  hasMore: boolean;
+  status: "idle" | "loading" | "error";
+};
+
+/** 계정 칸. `GET /me`에 있는 값만. */
+export type SettingsAccount = { authProvider: AuthProvider; itemCount: number };
+
+/** #168 설정 탭. account는 `/me`를 받기 전이거나 못 받으면 null. */
+export type SettingsState = { account: SettingsAccount | null; connections: ConnectionEntry[] };
 
 /** 코어가 넘기는 두더지 동작. 찾기·저장·넘기기·틀림. */
 export type MoleCue = { action: "seek" | "save" | "handoff" | "error"; seq: number };
@@ -291,4 +331,9 @@ export type LoggedInAction =
   /** 0건 첫 화면의 `→ 샘플 8건으로 해 보기`. 누르면 바로 저장한다(ARC-010 규칙 2) */
   | { kind: "samplesRequested" }
   | { kind: "reviseSubmitted"; number: number; title: string; summary: string }
-  | { kind: "reviseCancelled" };
+  | { kind: "reviseCancelled" }
+  // #168
+  | { kind: "archiveOpen" }
+  | { kind: "archiveSelect"; filter: ArchiveFilter }
+  | { kind: "archiveMore" }
+  | { kind: "settingsOpen" };

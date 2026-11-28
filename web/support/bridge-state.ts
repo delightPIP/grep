@@ -1,6 +1,7 @@
 // BridgeJS가 넘긴 값(문자열·평평한 인자)을 계약 타입(view-state.ts)으로 바꾼다.
 // Swift 쪽 짝: Sources/GrepWeb/BridgeValues.swift. 계약에 없는 값이 오면 두 쪽이 어긋난 것이라 던진다.
 import type {
+  ArchiveFilter,
   LoggedInState,
   LoggedOutNotice,
   LoggedOutState,
@@ -119,4 +120,21 @@ function toLine(line: BridgedLine): TerminalLine {
 
 export function toLoggedInState(bridged: BridgedLoggedInState): LoggedInState {
   return { ...bridged, lines: bridged.lines.map(toLine) };
+}
+
+/**
+ * `ArchiveFilter`를 브리지 `archiveSelect(kind, group, value)`의 평평한 인자로 편다.
+ * Swift 짝: `ArchiveFilter(bridgeKind:group:value:)`(Sources/GrepWeb/LoggedInBridge.swift).
+ */
+export function flattenArchiveFilter(filter: ArchiveFilter): [kind: string, group: string | null, value: string | null] {
+  switch (filter.kind) {
+    case "all":
+      return ["all", null, null];
+    case "auto":
+      return ["auto", filter.group, filter.value];
+    case "bundle":
+      return ["bundle", null, filter.name];
+    case "savedSearch":
+      return ["savedSearch", null, filter.query];
+  }
 }

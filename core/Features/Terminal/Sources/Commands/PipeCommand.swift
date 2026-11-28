@@ -37,8 +37,8 @@ struct PendingHandoff: Equatable {
 
     let query: SearchQuery
     let total: Int
-    /// 찾기 첫 쪽(앞 10건)의 자료 번호, 결과 순서.
-    let firstPage: [Int]
+    /// 찾기 첫 쪽(앞 10건)의 자료, 결과 순서. 넘긴 자료 줄의 종류·출처도 여기서 채운다(ARC-003 규칙 14).
+    let firstPage: [ItemRef]
     /// 첫 쪽 뒤가 남았으면 그 쪽을 받는 값.
     let nextCursor: String?
 

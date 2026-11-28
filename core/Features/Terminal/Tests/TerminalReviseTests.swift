@@ -61,4 +61,29 @@ struct TerminalReviseTests {
         #expect(fixture.transport.requests.last?.path == "/items/5")
         #expect(fixture.state.lines.contains(.tagsRemoved(item: updated, tags: ["광고", "스팸"])))
     }
+
+    @Test func 고른파일자료를고칠때_제목을바꾸면_선택에종류와출처를그대로두는지() async {
+        // given
+        let fixture = TerminalFixture()
+        await fixture.attach(itemCount: 5)
+        let file = ItemSummary(
+            number: 5, kind: .file, title: "명세.pdf", source: "pdf", status: .ready, tags: [],
+            savedAt: "2026-11-27T10:00:00+09:00"
+        )
+        let updated = ItemSummary(
+            number: 5, kind: .file, title: "새 명세.pdf", source: "pdf", status: .ready, tags: [],
+            savedAt: "2026-11-27T10:00:00+09:00"
+        )
+        await fixture.submit("고르기 5")
+        await fixture.respond(json: TerminalFixture.lookupJSON([file]))
+        await fixture.submit("고치기 5")
+        await fixture.respond(json: TerminalFixture.lookupJSON([file]))
+
+        // when
+        await fixture.send(.reviseSubmitted(number: 5, title: "새 명세.pdf", summary: ""))
+        await fixture.respond(json: TerminalFixture.json(updated))
+
+        // then
+        #expect(fixture.state.selection == [ItemRef(number: 5, title: "새 명세.pdf", kind: .file, source: "pdf")])
+    }
 }

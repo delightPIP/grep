@@ -73,7 +73,7 @@ extension TerminalInteractor {
             switch outcome {
             case .revised(let item):
                 let nextSelection = viewState.selection.map {
-                    $0.number == item.number ? ItemRef(number: item.number, title: item.title) : $0
+                    $0.number == item.number ? ItemRef(item) : $0
                 }
                 update(
                     viewState

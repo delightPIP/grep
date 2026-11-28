@@ -185,4 +185,24 @@ struct TerminalHandoffTests {
         #expect(fixture.fakeClipboard.copied.isEmpty)
         #expect(fixture.state.selection == [Fixture.ref(30), Fixture.ref(25)])
     }
+
+    @Test func 파일자료를골라넘길때_글이오면_넘긴자료에고를때받은종류와출처를담는지() async {
+        // given
+        await fixture.attach()
+        let file = ItemSummary(
+            number: 25, kind: .file, title: "명세.pdf", source: "pdf", status: .ready, tags: [],
+            savedAt: "2026-11-27T10:00:00+09:00"
+        )
+        await fixture.submit("고르기 25")
+        await fixture.respond(json: Fixture.lookupJSON([file]))
+        await fixture.submit("넘기기")
+        let picked = ItemRef(number: 25, title: "명세.pdf", kind: .file, source: "pdf")
+        let result = HandoffResult(items: [picked], charCount: 10, missingSummaryCount: 0, text: "글")
+
+        // when
+        await fixture.respond(json: Fixture.handoffJSON(result))
+
+        // then
+        #expect(fixture.state.lines.last == .handedOff(result))
+    }
 }

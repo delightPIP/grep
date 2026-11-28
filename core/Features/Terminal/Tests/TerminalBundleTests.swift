@@ -229,7 +229,7 @@ struct TerminalBundleTests {
         #expect(fixture.transport.requests.last?.body == #"{"bundle":"pay"}"#)
         #expect(fixture.fakeClipboard.copied.last == "글")
         #expect(fixture.state.lines.last == .handedOff(HandoffResult(
-            items: [TerminalFixture.ref(140)], bundle: "pay", removedCount: 1,
+            items: [ItemRef(number: 140, title: "자료 140")], bundle: "pay", removedCount: 1,
             charCount: 1, missingSummaryCount: 0, text: "글"
         )))
         #expect(fixture.state.selection == [TerminalFixture.ref(7)])
@@ -262,7 +262,7 @@ struct TerminalBundleTests {
             .bundleDeleted(name: "pay"),
             .bundleNameInvalid(.reserved),
             .handedOff(HandoffResult(
-                items: [TerminalFixture.ref(140)], bundle: "pay", removedCount: 1,
+                items: [ItemRef(number: 140, title: "자료 140")], bundle: "pay", removedCount: 1,
                 charCount: 1, missingSummaryCount: 0, text: "글"
             )),
         ]
