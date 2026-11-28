@@ -3,11 +3,14 @@ package com.unwrap.grep.features.account.config
 import com.unwrap.grep.features.account.domain.AccountService
 import com.unwrap.grep.features.account.domain.ConnectionRepository
 import com.unwrap.grep.features.account.domain.ConnectionService
+import com.unwrap.grep.features.account.domain.ConsentLoginService
 import com.unwrap.grep.features.account.domain.OAuthClientRepository
 import com.unwrap.grep.features.account.domain.OAuthCodeRepository
 import com.unwrap.grep.features.account.domain.OAuthService
 import com.unwrap.grep.features.account.domain.PendingAuthorizations
 import com.unwrap.grep.features.account.domain.SessionRepository
+import com.unwrap.grep.features.account.domain.SupabaseLogin
+import com.unwrap.grep.features.account.domain.SupabaseTokenVerifier
 import com.unwrap.grep.features.account.domain.UserRepository
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -35,4 +38,12 @@ class AccountConfig {
 
 	@Bean
 	fun pendingAuthorizations(clock: Clock) = PendingAuthorizations(clock)
+
+	@Bean
+	fun consentLoginService(
+		pending: PendingAuthorizations,
+		supabase: SupabaseLogin,
+		tokens: SupabaseTokenVerifier,
+		accounts: AccountService,
+	) = ConsentLoginService(pending, supabase, tokens, accounts)
 }
