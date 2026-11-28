@@ -4,8 +4,6 @@ import com.unwrap.grep.feature.terminal.ui.TerminalBlockUi
 import com.unwrap.grep.feature.terminal.ui.TerminalChoiceUi
 import com.unwrap.grep.feature.terminal.ui.TerminalEntryUi
 import com.unwrap.grep.feature.terminal.ui.TerminalFormat
-import com.unwrap.grep.feature.terminal.ui.TerminalItemRefUi
-import com.unwrap.grep.feature.terminal.ui.TerminalItemRowUi
 import com.unwrap.grep.feature.terminal.ui.TerminalTone
 import com.unwrap.grep.feature.terminal.ui.TerminalUiState
 import org.json.JSONArray
@@ -287,108 +285,4 @@ private fun decodeLineEntries(line: JSONObject, pickedNumbers: Set<Int>): List<T
         "reconnected" -> listOf(TerminalEntryUi.TextLine(TerminalTone.OK, "✓", "연결됨"))
         else -> decodeFeatureLine(line, pickedNumbers) ?: emptyList()
     }
-}
-
-private fun decodeItemRefs(array: JSONArray?): List<TerminalItemRefUi> {
-    if (array == null) return emptyList()
-    return (0 until array.length()).mapNotNull { i ->
-        val obj = array.optJSONObject(i) ?: return@mapNotNull null
-        TerminalItemRefUi(number = obj.optInt("number"), title = obj.optString("title", ""))
-    }
-}
-
-internal fun decodeItemRows(array: JSONArray?, pickedNumbers: Set<Int>): List<TerminalItemRowUi> {
-    if (array == null) return emptyList()
-    return (0 until array.length()).mapNotNull { i ->
-        val obj = array.optJSONObject(i) ?: return@mapNotNull null
-        decodeItemRow(obj, pickedNumbers)
-    }
-}
-
-internal fun decodeItemRow(obj: JSONObject, pickedNumbers: Set<Int>): TerminalItemRowUi {
-    val number = obj.optInt("number")
-    val kind = obj.optString("kind")
-    val rawTitle = obj.optString("title", "")
-    val title = if (kind == "text") TerminalFormat.formatTextTitle(rawTitle) else rawTitle
-    val source = obj.optString("source").takeIf { obj.has("source") && !obj.isNull("source") && it.isNotEmpty() }
-    val savedAt = TerminalFormat.formatSavedAt(obj.optString("savedAt", ""))
-    val meta = listOfNotNull(source, savedAt.takeIf { it.isNotEmpty() }).joinToString(" · ")
-    val status = obj.optString("status")
-    val listSummary = obj.optString("listSummary").takeIf { obj.has("listSummary") && !obj.isNull("listSummary") && it.isNotEmpty() }
-    val partialNote = obj.optString("partialNote").takeIf { obj.has("partialNote") && !obj.isNull("partialNote") && it.isNotEmpty() }
-
-    val (summary, summaryIsWarning) = when (status) {
-        "received", "processing" -> "· 요약 생성 중" to false
-        "blocked" -> "! 본문 못 가져옴 → 고치기 $number" to true
-        "failed" -> "! 요약 못 만듦  제목·출처만 넘김" to true
-        else -> {
-            val combined = when {
-                listSummary != null && partialNote != null -> "$listSummary ($partialNote)"
-                listSummary != null -> listSummary
-                else -> null
-            }
-            combined to false
-        }
-    }
-
-    val matchedIn = obj.optString("matchedIn").takeIf { obj.has("matchedIn") && !obj.isNull("matchedIn") }
-    val matchLabel = if (matchedIn == "imageText") "이미지 속 글자" else null
-    val tagsArray = obj.optJSONArray("tags") ?: JSONArray()
-    val tags = (0 until minOf(tagsArray.length(), 3)).map { tagsArray.optString(it) }.filter { it.isNotEmpty() }
-
-    return TerminalItemRowUi(
-        number = number,
-        title = title,
-        meta = meta,
-        summary = summary,
-        summaryIsWarning = summaryIsWarning,
-        matchLabel = matchLabel,
-        tags = tags,
-        isPicked = number in pickedNumbers,
-    )
-}
-
-internal fun commandLabel(command: String): String = when (command) {
-    "keep" -> "담기"
-    "recent" -> "최근"
-    "seek" -> "찾기"
-    "pick" -> "고르기"
-    "handoff" -> "넘기기"
-    "guide" -> "도움말"
-    "about" -> "설명"
-    "signOut" -> "로그아웃"
-    "revise" -> "고치기"
-    "drop" -> "버리기"
-    "revive" -> "되살리기"
-    "bin" -> "휴지통"
-    "pack" -> "묶음"
-    "peek" -> "열기"
-    "gather" -> "찾아두기"
-    "bring" -> "가져오기"
-    "plug" -> "연결"
-    else -> command
-}
-
-private fun commandFailureLabel(failure: String): String = when (failure) {
-    "disconnected" -> "연결 끊김"
-    "timedOut" -> "응답 없음"
-    "serverError" -> "서버 오류"
-    "clipboardDenied" -> "클립보드 거부"
-    else -> "오류"
-}
-
-private fun aboutDescription(command: String): String = when (command) {
-    "keep" -> "링크나 글, 파일을 저장한다. 예: 담기 https://…"
-    "recent" -> "최근 저장한 자료 목록을 본다."
-    "seek" -> "검색어와 #태그로 자료를 찾는다. 예: 찾기 결제 #웹훅"
-    "pick" -> "번호로 넘길 자료를 고른다. 예: 고르기 131 140"
-    "handoff" -> "고른 자료를 AI 도구에 붙여 넣을 글로 복사한다."
-    "guide" -> "명령 목록을 본다."
-    "about" -> "명령 하나를 설명한다. 예: 설명 찾기"
-    "signOut" -> "이 기기에서 로그아웃한다."
-    "revise" -> "자료의 제목·요약을 고친다. 예: 고치기 131"
-    "drop" -> "자료를 휴지통으로 보낸다. 예: 버리기 131"
-    "revive" -> "휴지통 자료를 되살린다. 예: 되살리기 131"
-    "bin" -> "휴지통 목록을 본다."
-    else -> ""
 }
