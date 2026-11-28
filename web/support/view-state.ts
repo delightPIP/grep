@@ -247,7 +247,12 @@ export type TerminalLine =
   // 계약 2 북마크 가져오기(commands 6절)
   | { kind: "importPrompt" }
   | { kind: "importProgress"; done: number; total: number }
-  | { kind: "importFinished"; saved: number; skipped: number; failed: number; overLimit: number; failedUrls: string[] };
+  | { kind: "importFinished"; saved: number; skipped: number; failed: number; overLimit: number; failedUrls: string[] }
+  /** #172 `✗ 받지 않는 형식: html` 다음 줄 `→ 북마크 파일이면: 가져오기`. 끌어다 놓은 `html`·`htm` 파일의 이름 */
+  | { kind: "importSuggest"; fileName: string };
+
+/** #175 땅굴 두더지의 동작. `seq`가 바뀌면 같은 동작도 다시 튼다. */
+export type Mole = { action: "seek" | "save" | "handoff" | "error"; seq: number };
 
 /** 터미널 화면. */
 export type LoggedInState = {
@@ -264,6 +269,8 @@ export type LoggedInState = {
   isOffline: boolean;
   /** #93 `고치기` 편집 중이면 그 자료. 없으면 null(또는 아직 Swift가 보내지 않으면 없음). */
   revising?: Revising | null;
+  /** #175 두더지가 지금 할 동작. 없으면 null(또는 아직 Swift가 보내지 않으면 없음). */
+  mole?: Mole | null;
 };
 
 /** 끌어다 놓은 파일. 바이트는 FilePort가 id로 올린다. */

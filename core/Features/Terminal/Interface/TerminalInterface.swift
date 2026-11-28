@@ -118,6 +118,8 @@ public struct TerminalViewState: Equatable, Sendable {
         case importPrompt
         case importProgress(done: Int, total: Int)
         case importFinished(saved: Int, skipped: Int, failed: Int, overLimit: Int, failedUrls: [String])
+        /// #172 받지 않는 형식 줄 다음 `→ 북마크 파일이면: 가져오기`. 끌어다 놓은 `html`·`htm` 파일의 이름.
+        case importSuggest(fileName: String)
     }
 
     /// 상태줄 `자료 N`. 서버 `GET /me`의 itemCount. 받기 전이면 nil.
@@ -133,6 +135,8 @@ public struct TerminalViewState: Equatable, Sendable {
     public var isOffline: Bool
     /// #93 `고치기` 편집 중이면 그 자료. 없으면 nil.
     public var revising: Revising?
+    /// #175 땅굴 두더지가 지금 할 동작. 아직 없으면 nil.
+    public var mole: Mole?
 
     public init(
         itemCount: Int? = nil,
@@ -141,7 +145,8 @@ public struct TerminalViewState: Equatable, Sendable {
         selection: [ItemRef] = [],
         processingCount: Int = 0,
         isOffline: Bool = false,
-        revising: Revising? = nil
+        revising: Revising? = nil,
+        mole: Mole? = nil
     ) {
         self.itemCount = itemCount
         self.lines = lines
@@ -150,6 +155,29 @@ public struct TerminalViewState: Equatable, Sendable {
         self.processingCount = processingCount
         self.isOffline = isOffline
         self.revising = revising
+        self.mole = mole
+    }
+}
+
+/// #175 땅굴 두더지의 동작. `seq`가 바뀌면 뷰가 같은 동작도 다시 튼다.
+public struct Mole: Equatable, Sendable {
+    public enum Action: String, Equatable, Sendable {
+        /// 찾기 결과가 찍혔다.
+        case seek
+        /// 저장 결과가 찍혔다.
+        case save
+        /// 복사에 성공했다.
+        case handoff
+        /// `✗` 줄이 찍혔다.
+        case error
+    }
+
+    public let action: Action
+    public let seq: Int
+
+    public init(action: Action, seq: Int) {
+        self.action = action
+        self.seq = seq
     }
 }
 
