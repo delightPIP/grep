@@ -857,6 +857,22 @@ describe("LoggedInView", () => {
       expect(numbers).toEqual(["▸131", "130"]);
     });
 
+    it("고른자료가목록에있을때_그번호를다시누르면_입력줄에고르기빼기번호를찍기만하는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [
+        { kind: "prompt", text: "최근" },
+        { kind: "recentList", items: [item({ number: 131 }), item({ number: 130 })], hasMore: false },
+      ];
+      const { onInputChange, onSubmit } = renderView({ lines, selection: [{ number: 131, title: "t", kind: "text" as const, source: null }] });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "131" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("고르기 빼기 131");
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+
     it("목록이있을때_행번호를누르면_입력줄에고르기번호를찍기만하는지", () => {
       // given
       const lines: LoggedInState["lines"] = [

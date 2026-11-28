@@ -131,13 +131,13 @@ export function CommandChip({ command, children }: { command: string; children?:
   );
 }
 
-/** 자료 번호 칸. 누르면 `고르기 <번호>`가 입력줄에 찍히고, 고른 자료면 앞에 `▸`(commands 6절). */
+/** 자료 번호 칸. 누르면 `고르기 <번호>`, 이미 고른 자료면 `고르기 빼기 <번호>`(ARC-011 규칙 13). 고른 자료면 앞에 `▸`(commands 6절). */
 export function NumberCell({ number }: { number: number }) {
   const { insert, selected } = useContext(ChipContext);
   return (
     <span className="gt-row-num">
       {selected.has(number) && <span aria-label="선택됨">▸</span>}
-      <button type="button" className="gt-num-chip" onClick={() => insert(`고르기 ${number}`)}>
+      <button type="button" className="gt-num-chip" onClick={() => insert(selected.has(number) ? `고르기 빼기 ${number}` : `고르기 ${number}`)}>
         {number}
       </button>
     </span>

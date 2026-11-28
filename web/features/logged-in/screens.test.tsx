@@ -287,6 +287,43 @@ describe("보관함 화면(#168, ARC-007·ARC-011)", () => {
     expect(onInputChange).toHaveBeenLastCalledWith("찾기 결");
   });
 
+  it("고른_번호를_다시_눌렀을때_명령을_보면_고르기_빼기_N을_바로_실행하는지", () => {
+    // given
+    const { onSubmit } = openArchive({ selection: [{ number: 7, title: "자료 7", kind: "text" as const, source: null }] });
+
+    // when
+    fireEvent.click(screen.getByRole("button", { name: "7" }));
+
+    // then
+    expect(onSubmit).toHaveBeenCalledWith("고르기 빼기 7");
+  });
+
+  it("넓은_폭에서_자세히_보기_칸을_닫기나_Esc로_닫았을때_화면을_보면_칸이_사라지고_명령은_남지_않는지", () => {
+    // given
+    const { onSubmit, rerender } = openArchive({}, 1200);
+    const opened: Partial<LoggedInViewProps> = {
+      archive: ARCHIVE,
+      lines: [{ kind: "prompt", text: "열기 7" }, { kind: "itemDetail", detail: detail(7) }],
+    };
+    fireEvent.click(screen.getByRole("button", { name: "자료 7" }));
+    rerender(opened);
+
+    // when
+    fireEvent.click(within(screen.getByRole("region", { name: "자세히 보기 칸" })).getByRole("button", { name: "닫기" }));
+
+    // then
+    expect(screen.queryByRole("region", { name: "자세히 보기 칸" })).toBeNull();
+
+    // when
+    fireEvent.click(screen.getByRole("button", { name: "자료 7" }));
+    rerender(opened);
+    fireEvent.keyDown(document, { key: "Escape" });
+
+    // then
+    expect(screen.queryByRole("region", { name: "자세히 보기 칸" })).toBeNull();
+    expect(onSubmit.mock.calls.map(([command]) => command)).toEqual(["열기 7", "열기 7"]);
+  });
+
   it("넓은_폭에서_제목을_눌렀을때_화면을_보면_열기_N을_실행하고_오른쪽_칸에_자세히_보기를_여는지", () => {
     // given
     const { onSubmit, rerender } = openArchive({}, 1200);

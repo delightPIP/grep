@@ -1,6 +1,6 @@
 // 보관함 화면(#168, ARC-007·ARC-011, 시안 10·28). 순수 뷰: archive 상태만 그리고 동작은 콜백·명령으로만 알린다.
 // 자료 열기(`열기 N`)·고르기(`고르기 N`)는 있던 명령을 그대로 쓴다(계약).
-import { useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import type { ItemDetail, ItemRef, TerminalLine } from "../../support/view-state";
 import { Line } from "../../ui/grep";
 import type { ArchiveFilter, ArchiveState, AutoGroup, AutoGroupEntry } from "../../support/view-state";
@@ -160,10 +160,24 @@ function ListStatus({ archive, onRetry }: { archive: ArchiveState; onRetry: () =
   return null;
 }
 
-function DetailPane({ detail, backButton }: { detail: ItemDetail | null; backButton?: ReactNode }) {
+function DetailPane({ detail, backButton, onClose }: { detail: ItemDetail | null; backButton?: ReactNode; onClose?: () => void }) {
+  // ARC-011 규칙 14: 칸은 `닫기`나 Esc로 닫는다. 화면에서만 닫고 명령은 남기지 않는다.
+  useEffect(() => {
+    if (!onClose) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [onClose]);
   return (
     <section className="gt-detail-pane" aria-label="자세히 보기 칸">
       {backButton}
+      {onClose && (
+        <button type="button" className="gt-chip gt-detail-close" onClick={onClose}>
+          닫기
+        </button>
+      )}
       {detail === null ? <Plain dim>· 여는 중</Plain> : <ItemDetailLines key={detail.item.number} detail={detail} />}
     </section>
   );
@@ -196,6 +210,7 @@ export function ArchiveScreen({ layout, archive, lines, selection, onRun, onInse
   };
   const detailChips: TerminalChips = { insert: onInsert, selected };
   const isWide = layout === "sidebar";
+  const closeDetail = useCallback(() => setOpened(null), []);
   const detail = opened === null ? null : latestDetail(lines, opened);
 
   if (!isWide && opened !== null) {
@@ -232,7 +247,7 @@ export function ArchiveScreen({ layout, archive, lines, selection, onRun, onInse
       </section>
       {isWide && opened !== null && (
         <ChipContext.Provider value={detailChips}>
-          <DetailPane detail={detail} />
+          <DetailPane detail={detail} onClose={closeDetail} />
         </ChipContext.Provider>
       )}
     </div>

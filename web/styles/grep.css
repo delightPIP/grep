@@ -170,7 +170,8 @@ html, body, #root, #app { height: 100%; }
 .gt-name-row { display: flex; flex-wrap: wrap; column-gap: 2ch; padding-left: 2ch; }
 
 /* 배치(COM-011): 1008px 이상 사이드바, 600~1007px 아이콘 레일, 600px 미만 하단 탭(MOB-001). 폭 판단은 뷰(layout.ts)가 한다. */
-.gt-shell { flex-direction: row; gap: var(--space-4); }
+/* 화면 높이를 창 높이로 묶어 사이드바와 본문이 따로 스크롤한다(사이드바가 길어도 본문이 늘지 않게). */
+.gt-shell { flex-direction: row; gap: var(--space-4); height: 100dvh; }
 .gt-shell-tabs { flex-direction: column; gap: 0; padding-bottom: 0; }
 .gt-shell-content { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
 .gt-pane { flex: 1; min-height: 0; display: flex; flex-direction: column; }
@@ -183,7 +184,7 @@ html, body, #root, #app { height: 100%; }
 .gt-nav-item[aria-current="page"] { color: var(--ink); background: var(--select); font-weight: 700; }
 .gt-nav-item:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .gt-nav-icon { flex: none; width: 2ch; text-align: center; color: var(--command); }
-.gt-sidebar { flex: none; width: 240px; overflow: auto; }
+.gt-sidebar { flex: none; width: 240px; min-height: 0; overflow: auto; }
 .gt-rail { flex: none; width: 72px; }
 .gt-rail .gt-nav-item { flex-direction: column; justify-content: center; gap: 0; padding: var(--space-2) 0; font-size: 12px; line-height: 18px; text-align: center; }
 .gt-tabbar { flex: none; border-top: 1px solid var(--line); background: var(--surface-raised); margin: var(--space-4) calc(var(--space-4) * -1) 0; padding-bottom: env(safe-area-inset-bottom); }
@@ -209,6 +210,7 @@ html, body, #root, #app { height: 100%; }
 .gt-archive { flex: 1; min-height: 0; display: flex; gap: var(--space-4); }
 .gt-archive-list, .gt-detail-pane { flex: 1; min-width: 0; overflow: auto; padding: var(--space-4); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); }
 .gt-archive-list > * + *, .gt-detail-pane > * + * { margin-top: var(--space-1); }
+.gt-detail-close { float: right; }
 .gt-archive-title { font-weight: 700; margin-bottom: var(--space-2); }
 .gt-back { margin-bottom: var(--space-3); }
 
