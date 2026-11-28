@@ -111,6 +111,65 @@ struct LoggedInTabsModelTests {
         #expect(model.archivePresentation.pickedCount == 0)
     }
 
+    @Test func 터미널과이어졌을때_보관함에서해제를누르면_터미널선택비우기만부르는지() {
+        // given
+        var clearCount = 0
+        let model = LoggedInTabsModel(
+            archiveLoader: StubArchiveLoader(outcomes: []),
+            initialTab: .archive,
+            onSignOut: {},
+            onClearPicked: { clearCount += 1 }
+        )
+        model.updateTerminalContext(itemCount: 2, pickedNumbers: [28, 30])
+
+        // when
+        model.clearPicked()
+
+        // then
+        #expect(clearCount == 1)
+        // 표시는 터미널 선택이 실제로 바뀐 뒤(updateTerminalContext) 따라 바뀐다.
+        #expect(model.archivePresentation.pickedCount == 2)
+    }
+
+    @Test func 이미고른자료를보관함에서다시누르면_빼기를부르고고르기는부르지않는지() {
+        // given
+        var picked: [Int] = []
+        var unpicked: [Int] = []
+        let model = LoggedInTabsModel(
+            archiveLoader: StubArchiveLoader(outcomes: []),
+            initialTab: .archive,
+            onSignOut: {},
+            onPickItem: { picked.append($0) },
+            onUnpickItem: { unpicked.append($0) }
+        )
+        model.updateTerminalContext(itemCount: 2, pickedNumbers: [28])
+
+        // when
+        model.togglePick(number: 28)
+        model.togglePick(number: 30)
+
+        // then
+        #expect(unpicked == [28])
+        #expect(picked == [30])
+    }
+
+    @Test func 빼기콜백이없을때_고른자료를다시누르면_고르기콜백으로넘기는지() {
+        // given
+        var picked: [Int] = []
+        let model = LoggedInTabsModel(
+            archiveLoader: StubArchiveLoader(outcomes: []),
+            onSignOut: {},
+            onPickItem: { picked.append($0) }
+        )
+        model.updateTerminalContext(itemCount: 1, pickedNumbers: [28])
+
+        // when
+        model.togglePick(number: 28)
+
+        // then
+        #expect(picked == [28])
+    }
+
     @Test func HTTPArchiveItemLoader가401세션만료를받았을때_loadPage를부르면_sessionExpired를돌려주는지() async {
         // given
         let auth = StubAuthService(token: "valid-token")

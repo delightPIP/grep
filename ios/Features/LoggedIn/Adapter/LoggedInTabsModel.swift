@@ -25,6 +25,7 @@ public final class LoggedInTabsModel {
     @ObservationIgnored private let pageLimit: Int
     @ObservationIgnored private let onSignOut: @MainActor () -> Void
     @ObservationIgnored private let onPickItem: (@MainActor (Int) -> Void)?
+    @ObservationIgnored private let onUnpickItem: (@MainActor (Int) -> Void)?
     @ObservationIgnored private let onClearPicked: (@MainActor () -> Void)?
     @ObservationIgnored private let onSessionExpired: (@MainActor () -> Void)?
 
@@ -40,6 +41,7 @@ public final class LoggedInTabsModel {
         pageLimit: Int = LoggedInTabsModel.defaultPageLimit,
         onSignOut: @escaping @MainActor () -> Void,
         onPickItem: (@MainActor (Int) -> Void)? = nil,
+        onUnpickItem: (@MainActor (Int) -> Void)? = nil,
         onClearPicked: (@MainActor () -> Void)? = nil,
         onSessionExpired: (@MainActor () -> Void)? = nil
     ) {
@@ -48,6 +50,7 @@ public final class LoggedInTabsModel {
         self.pageLimit = pageLimit
         self.onSignOut = onSignOut
         self.onPickItem = onPickItem
+        self.onUnpickItem = onUnpickItem
         self.onClearPicked = onClearPicked
         self.onSessionExpired = onSessionExpired
         self.archivePresentation = ArchivePresentation()
@@ -125,8 +128,13 @@ public final class LoggedInTabsModel {
         onSignOut()
     }
 
+    /// 고른 자료를 다시 누르면 뺀다(시안 M6 `빼기`). 빼기 콜백이 없으면 고르기 콜백이 스스로 넣고 뺀다(Example).
     public func togglePick(number: Int) {
-        onPickItem?(number)
+        if pickedNumbers.contains(number), let onUnpickItem {
+            onUnpickItem(number)
+        } else {
+            onPickItem?(number)
+        }
     }
 
     public func clearPicked() {
