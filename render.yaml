@@ -1,0 +1,57 @@
+# Render Blueprint(ADR-0011). 서버만 올린다. 웹은 Cloudflare Pages, DB·인증·파일은 Supabase다.
+# 절차와 값 출처: docs/planning/deploy-runbook.md
+# 필드 근거: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: grep-server
+    runtime: docker
+    plan: free
+    # 만든 뒤에는 바꿀 수 없다. Supabase 프로젝트 지역과 가까운 곳을 고른다(deploy-runbook.md 2절).
+    region: singapore
+    # 빌드 문맥은 저장소 루트다(server/Dockerfile 머리 주석).
+    dockerfilePath: ./server/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    buildFilter:
+      paths:
+        - server/**
+        - db/migrations/**
+        - db/seed/**
+        - render.yaml
+    envVars:
+      # 고정값. PORT는 Render가 넣는다(서버는 PORT를 읽는다).
+      # Supabase 세션 풀은 15개다. 로컬 서버(기본 10개)와 함께 떠도 넘지 않게 줄인다(demo-runbook.md 1절).
+      - key: SPRING_DATASOURCE_HIKARI_MAXIMUMPOOLSIZE
+        value: "4"
+      # 값은 대시보드에서 넣는다. sync: false는 Blueprint를 처음 만들 때만 값을 묻는다.
+      # 이름은 server/.env.example과 같다.
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_USER
+        sync: false
+      - key: DATABASE_PASSWORD
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      # 이 서버의 바깥 주소(https://<서비스 이름>.onrender.com). AI 도구 연결 주소는 <PUBLIC_URL>/mcp
+      - key: PUBLIC_URL
+        sync: false
+      # 웹 출처. 여럿이면 쉼표로 잇는다(예: https://grep.pages.dev,http://localhost:5173)
+      - key: WEB_ORIGIN
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      # GEMINI_MODEL은 넣지 않으면 application.properties 기본값을 쓴다. 빈 값으로 넣으면 기본값이 아니라 빈 값이 된다.
+      - key: STORAGE_S3_ENDPOINT
+        sync: false
+      - key: STORAGE_S3_REGION
+        sync: false
+      - key: STORAGE_S3_ACCESS_KEY_ID
+        sync: false
+      - key: STORAGE_S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: STORAGE_BUCKET
+        value: items
