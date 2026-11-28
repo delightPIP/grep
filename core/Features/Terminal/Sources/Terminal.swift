@@ -94,6 +94,8 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     var pendingSavedSearchDelete: PendingSavedSearchDelete?
     /// `가져오기`를 치고 북마크 파일을 기다린다. 다른 입력을 치면 놓는다.
     var isAwaitingImport = false
+    /// `가져오기`를 제안한 북마크 파일(#172). 다음 입력이 `가져오기`면 이 파일을 보내고, 다른 입력이면 놓는다.
+    var suggestedImport: DroppedFile?
     /// 답을 기다리는 `연결 끊기 <번호>` 확인(ACC-002 규칙 8, COM-007).
     var pendingDisconnect: PendingDisconnect?
     /// 답을 기다리는 `로그아웃 모든기기` 확인(ACC-002 규칙 4, COM-007).
@@ -148,6 +150,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     override func willResignActive() {
         presenter.listener = nil
         httpTransport.onReachabilityObserved = nil
+        forgetSuggestedImport()
     }
 
     func handle(_ action: TerminalViewAction) {
@@ -204,6 +207,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     private func submit(_ text: String) {
         inputSequence += 1
         isAwaitingImport = false
+        if !Self.isBareImport(text) { forgetSuggestedImport() }
         if text.trimmingWhitespace().isEmpty, let suggested = pendingSuggestion {
             pendingSuggestion = nil
             submit(suggested)
@@ -288,6 +292,8 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             handleGather(command.argument, typed: text)
         case .plug:
             handleConnections(command.argument, typed: text)
+        case .bring where command.argument.isEmpty && importSuggested(typed: text):
+            break
         case .bring where command.argument.isEmpty:
             isAwaitingImport = true
             update(viewState.appending(lines: [.prompt(text), .importPrompt]).with(input: ""))
@@ -355,6 +361,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
         let content = text.trimmingWhitespace()
         guard !content.isEmpty else { return }
         inputSequence += 1
+        forgetSuggestedImport()
         cancelPendingConfirmations()
         keep(KeepCommand.request(for: content), typed: "담기 \(content)")
     }
@@ -364,6 +371,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     /// shortcut: `GET /uploads/limits`로 보내기 전에 거르지 않고 서버 판정(413·415)만 쓴다. 큰 파일을 올리기 전에 막아야 할 때 더한다.
     private func drop(_ dropped: [DroppedFile]) {
         guard !dropped.isEmpty else { return }
+        forgetSuggestedImport()
         if isAwaitingImport {
             isAwaitingImport = false
             importBookmarks(dropped)
@@ -384,9 +392,13 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             }
             while let file = remaining.popFirst() {
                 let outcome = await saveFile(file, accessToken: token)
-                files.release(file.id)
+                // 북마크 파일이면 `가져오기`에 쓰려고 놓지 않는다(#172).
+                let suggestsImport = !Task.isCancelled && Self.suggestsImport(outcome)
+                if !suggestsImport { files.release(file.id) }
                 guard !Task.isCancelled else { return }
                 switch outcome {
+                case .failed(let reason) where suggestsImport:
+                    suggestImport(of: file, reason: reason)
                 case .saved, .duplicate, .inTrash:
                     showStored(outcome)
                 case .failed(let reason):
@@ -802,8 +814,9 @@ extension TerminalViewState {
         return next
     }
 
+    /// 줄을 찍는다. 찍는 줄에 두더지 동작이 있으면 함께 넣는다(#175).
     func appending(lines added: [Line]) -> TerminalViewState {
-        var next = self
+        var next = movingMole(for: added)
         next.lines += added
         return next
     }

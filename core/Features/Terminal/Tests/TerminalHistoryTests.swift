@@ -95,6 +95,7 @@ struct TerminalHistoryTests {
             .commandFailed(command: .pick, reason: .timedOut, retry: "고르기 25"),
             .commandFailed(command: .recent, reason: .disconnected, retry: "최근"),
             .handoffConfirm(total: 8), .cancelled, .welcome, .guide, .reconnected,
+            .importSuggest(fileName: "bookmarks.html"),
         ] + CommandName.allCases.map { .about($0) }
         let snapshot = Snapshot(lines: lines, input: "치던 글", selection: [Fixture.ref(25), Fixture.ref(30)])
 

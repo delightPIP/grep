@@ -275,6 +275,8 @@ export type LoggedInState = {
 
 /** 코어가 넘기는 두더지 동작. 찾기·저장·넘기기·틀림. */
 export type MoleCue = { action: "seek" | "save" | "handoff" | "error"; seq: number };
+/** M 갈래(브리지)가 쓰는 이름. `MoleCue`와 같다. */
+export type Mole = MoleCue;
 
 /** 끌어다 놓은 파일. 바이트는 FilePort가 id로 올린다. */
 export type DroppedFile = { id: string; name: string; size: number };

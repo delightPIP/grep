@@ -334,7 +334,8 @@ public enum TerminalStateMapper {
              .bundleDeleteConfirm, .bundleDeleted, .bundleNameInvalid, .folderHint, .itemDetail, .oneNumberOnly,
              .searchSaved, .savedSearchList, .savedSearchPeriod, .savedSearchTooLong, .savedSearchDeleteConfirm,
              .savedSearchDeleted, .savedSearchNotFound, .connectionList, .disconnectConfirm, .disconnected,
-             .connectionNotFound, .connectionEnded, .importPrompt, .importProgress, .importFinished:
+             .connectionNotFound, .connectionEnded, .importPrompt, .importProgress, .importFinished,
+             .importSuggest:
             // 후속 iOS 이슈(#109~)에서 정책 원문으로 추가한다.
             return []
         }

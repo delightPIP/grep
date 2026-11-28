@@ -40,7 +40,8 @@ extension TerminalInteractor {
                 lines: lines,
                 input: viewState.input.isEmpty ? saved.input : viewState.input,
                 selection: viewState.selection.isEmpty ? saved.selection : viewState.selection,
-                isOffline: viewState.isOffline
+                isOffline: viewState.isOffline,
+                mole: viewState.mole
             )
         )
     }
