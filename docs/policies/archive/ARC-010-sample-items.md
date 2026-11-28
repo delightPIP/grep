@@ -39,7 +39,7 @@
 - PO 결정(2026-11-26): 샘플은 실제 아카이브에 넣는다, `버리기 1-8`로 치운다, 내용은 마케터 이야기 7건 + 그렙 사용법 1건
 - PO 결정(2026-11-26, AI 제안 수용): 실제로 받은 번호 범위를 알린다. 위 "`버리기 1-8`"을 대체한다. AI 추천 이유: 자료를 모두 버린 계정(리허설 뒤 데모 계정 A)에서도 안내 문구가 맞는다
 - 명령어 설명서 6절 첫 화면 문구, 자료 영역 열린 질문(이 정책으로 닫음)
-- 구현: 서버 `server/src/main/kotlin/com/unwrap/grep/features/samples/`(`POST /samples`, 목록 `db/seed/samples/samples.json`), 코어 `core/Features/Terminal/Sources/Terminal+Samples.swift`(#102, PR #155)
+- 구현: 서버 `server/src/main/kotlin/com/unwrap/grep/features/samples/`(`POST /samples`, 목록 `db/seed/samples/samples.json`), 코어 `core/Features/Terminal/Sources/RIBs/Interactor/TerminalInteractor+Samples.swift`(#102, PR #155)
 
 ## 검증 방법
 

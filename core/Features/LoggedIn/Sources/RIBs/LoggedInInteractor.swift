@@ -3,27 +3,6 @@ import FeatureTerminalInterface
 import GrepCore
 import RIBs
 
-public final class LoggedInBuilder: Builder<any LoggedInDependency>, LoggedInBuildable {
-    private let terminalBuilder: any TerminalBuildable
-
-    public init(dependency: any LoggedInDependency, terminalBuilder: any TerminalBuildable) {
-        self.terminalBuilder = terminalBuilder
-        super.init(dependency: dependency)
-    }
-
-    public func build(listener: any LoggedInListener, pendingInput: PendingInput?) -> any ViewableRouting {
-        let interactor = LoggedInInteractor(
-            authService: dependency.authService,
-            httpTransport: dependency.httpTransport,
-            listener: listener,
-            pendingInput: pendingInput
-        )
-        let terminal = terminalBuilder.build(listener: interactor)
-        interactor.terminal = terminal.handle
-        return LoggedInRouter(interactor: interactor, terminal: terminal.router)
-    }
-}
-
 /// 로그인한 동안의 컨테이너(ADR-0015 결정 1). 계정에 딸린 일만 한다: `GET /me`, 만료 전에 치던 줄 되살리기, 만료, 로그아웃.
 /// 화면에 그리는 것은 자식 `Terminal`이 한다.
 final class LoggedInInteractor: Interactor, TerminalListener {
@@ -144,19 +123,5 @@ final class LoggedInInteractor: Interactor, TerminalListener {
             return
         }
         listener?.didExpire(pendingInput: input.isEmpty ? nil : PendingInput(text: input, subject: subject))
-    }
-}
-
-/// 컨테이너의 화면은 자식 터미널의 화면이다. 탭처럼 컨테이너가 자기 화면을 가지는 플랫폼은 그 이슈에서 뷰 계약을 더한다.
-final class LoggedInRouter: ViewableRouter<LoggedInInteractor, any ViewControllable> {
-    private let terminal: any ViewableRouting
-
-    init(interactor: LoggedInInteractor, terminal: any ViewableRouting) {
-        self.terminal = terminal
-        super.init(interactor: interactor, viewController: terminal.viewControllable)
-    }
-
-    override func didLoad() {
-        attachChild(terminal)
     }
 }

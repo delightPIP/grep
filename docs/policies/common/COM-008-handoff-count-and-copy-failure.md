@@ -51,7 +51,7 @@
 - PO 결정(2026-11-26, AI 제안 수용): 6~10건은 `전부`만(STATE 결정 로그, PR #24), 넘기기 실패 문구와 이유·선택 유지(STATE 결정 로그, PR #24), 클립보드 거부면 미리보기 전체 선택과 직접 복사 안내를 더함([흐름 점검표](../../planning/flow-inventory.md) 8절 P2·P3)
 - PO 결정(2026-11-27): 규칙 8·9. 넘기기에 성공하면 선택을 풀고 새 줄은 찍지 않는다. 이어 쓰기는 선택을 건드리지 않는다. 선택 빼기·비우기(`고르기 빼기`·`고르기 비우기`)가 발표 뒤라서(흐름 점검표 P8), 데모에서 넘기기를 두 번 하면 앞 자료까지 넘어가는 것을 막는다(PR #84 리뷰)
 - US-5, 명령어 설명서 4절·6절
-- 구현: `core/Features/Terminal/Sources/Terminal+Handoff.swift`, `core/Features/Terminal/Sources/Terminal+Pipe.swift`(#64·#65·#66·#84)
+- 구현: `core/Features/Terminal/Sources/RIBs/Interactor/TerminalInteractor+Handoff.swift`, `core/Features/Terminal/Sources/RIBs/Interactor/TerminalInteractor+Pipe.swift`(#64·#65·#66·#84)
 
 ## 검증 방법
 

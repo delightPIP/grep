@@ -52,7 +52,7 @@
 - PO 결정(2026-11-27, 개발 제안 수용): 규칙 5를 바꿈. 자료가 있어도 로그인 직후 터미널 머리와 `· 자료 N건`, `· 명령 전체: 도움말`을 보인다(시안 web-07, PR #84). 위 줄의 "로그인 직후 빈 화면"을 대체한다
 - MOB-001 규칙 6(탭 이동에 상태 유지), DSK-003 규칙 3(빠른 창 치던 글 유지), ACC-001 규칙 7(만료 뒤 치던 줄 되살림)
 - 규칙 6은 AI 제안이고 PO가 따로 확인하지 않았다
-- 구현: `core/Features/Terminal/Sources/Terminal+History.swift`, `TerminalHistory.swift`, 웹 `web/support/local-history-store.ts`(#68)
+- 구현: `core/Features/Terminal/Sources/RIBs/Interactor/TerminalInteractor+History.swift`, `TerminalHistory.swift`, 웹 `web/support/local-history-store.ts`(#68)
 
 ## 검증 방법
 

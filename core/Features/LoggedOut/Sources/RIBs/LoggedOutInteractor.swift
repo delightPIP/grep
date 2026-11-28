@@ -2,26 +2,6 @@ import FeatureLoggedOutInterface
 import GrepCore
 import RIBs
 
-public final class LoggedOutBuilder: Builder<any LoggedOutDependency>, LoggedOutBuildable {
-    private let viewFactory: any LoggedOutViewFactory
-
-    public init(dependency: any LoggedOutDependency, viewFactory: any LoggedOutViewFactory) {
-        self.viewFactory = viewFactory
-        super.init(dependency: dependency)
-    }
-
-    public func build(listener: any LoggedOutListener, notice: LoggedOutViewState.Notice?) -> any ViewableRouting {
-        let view = viewFactory.makeLoggedOutView()
-        let interactor = LoggedOutInteractor(
-            presenter: view,
-            authService: dependency.authService,
-            listener: listener,
-            notice: notice
-        )
-        return LoggedOutRouter(interactor: interactor, viewController: view)
-    }
-}
-
 /// 로그인 버튼 입력을 받아 외부 로그인 창을 하나만 열고(ACC-001 규칙 9), 결과를 알림으로 그린다(규칙 8).
 /// 로그인 화면은 버튼 말고 다른 입력을 받지 않는다(규칙 1). `LoggedOutViewAction`에 다른 입력이 없다.
 final class LoggedOutInteractor: PresentableInteractor<any LoggedOutPresentable>, LoggedOutPresentableListener {
@@ -83,5 +63,3 @@ final class LoggedOutInteractor: PresentableInteractor<any LoggedOutPresentable>
         presenter.render(next)
     }
 }
-
-typealias LoggedOutRouter = ViewableRouter<LoggedOutInteractor, any LoggedOutViewControllable>

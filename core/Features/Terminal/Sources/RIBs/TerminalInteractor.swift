@@ -7,31 +7,6 @@ import FeatureTerminalInterface
 import GrepCore
 import RIBs
 
-public final class TerminalBuilder: Builder<any TerminalDependency>, TerminalBuildable {
-    private let viewFactory: any TerminalViewFactory
-
-    public init(dependency: any TerminalDependency, viewFactory: any TerminalViewFactory) {
-        self.viewFactory = viewFactory
-        super.init(dependency: dependency)
-    }
-
-    public func build(listener: any TerminalListener) -> TerminalBuild {
-        let view = viewFactory.makeTerminalView()
-        let interactor = TerminalInteractor(
-            presenter: view,
-            authService: dependency.authService,
-            httpTransport: dependency.httpTransport,
-            clipboard: dependency.clipboard,
-            files: dependency.files,
-            historyStore: dependency.historyStore,
-            sleeper: dependency.sleeper,
-            deviceTime: dependency.deviceTime,
-            listener: listener
-        )
-        return TerminalBuild(router: TerminalRouter(interactor: interactor, viewController: view), handle: interactor)
-    }
-}
-
 /// 터미널 화면. 입력줄의 명령을 해석한다. 자료 수와 되살릴 줄은 부모가 `TerminalHandle`로 넘긴다.
 /// 아는 명령은 `담기`·`최근`·`찾기`·`고르기`·`넘기기`·`도움말`·`설명`·`로그아웃`이다. 붙여 넣기와 끌어다 놓기도 저장한다(#57). 나머지는 없는 명령으로 그린다.
 /// 처리 중 자료가 화면에 있으면 2초마다 상태를 묻고(ARC-005 규칙 10), 서버에 닿지 못하면 5초마다 다시 확인한다(COM-010).
@@ -789,50 +764,3 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
         startPollingIfNeeded()
     }
 }
-
-extension TerminalViewState {
-    func with(input: String) -> TerminalViewState {
-        var next = self
-        next.input = input
-        return next
-    }
-
-    func with(itemCount: Int?) -> TerminalViewState {
-        var next = self
-        next.itemCount = itemCount
-        return next
-    }
-
-    func with(processingCount: Int) -> TerminalViewState {
-        var next = self
-        next.processingCount = processingCount
-        return next
-    }
-
-    func with(isOffline: Bool) -> TerminalViewState {
-        var next = self
-        next.isOffline = isOffline
-        return next
-    }
-
-    func with(selection: [ItemRef]) -> TerminalViewState {
-        var next = self
-        next.selection = selection
-        return next
-    }
-
-    func with(revising: Revising?) -> TerminalViewState {
-        var next = self
-        next.revising = revising
-        return next
-    }
-
-    /// 줄을 찍는다. 찍는 줄에 두더지 동작이 있으면 함께 넣는다(#175).
-    func appending(lines added: [Line]) -> TerminalViewState {
-        var next = movingMole(for: added)
-        next.lines += added
-        return next
-    }
-}
-
-typealias TerminalRouter = ViewableRouter<TerminalInteractor, any TerminalViewControllable>
