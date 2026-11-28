@@ -37,7 +37,8 @@ class AuthApiTest {
 		fun supabase(registry: DynamicPropertyRegistry) {
 			registry.add("spring.security.oauth2.resourceserver.jwt.jwk-set-uri") { FakeSupabaseAuth.jwkSetUri }
 			registry.add("spring.security.oauth2.resourceserver.jwt.issuer-uri") { FakeSupabaseAuth.issuer }
-			registry.add("grep.web-origin") { "http://web.test" }
+			// 배포에서는 로컬 웹과 Cloudflare Pages 주소처럼 여러 출처를 쉼표로 넣는다
+			registry.add("grep.web-origin") { "http://web.test, https://pages.test" }
 		}
 	}
 
@@ -242,7 +243,7 @@ class AuthApiTest {
 
 	@Test
 	fun `웹주소에서사전요청을보냈을때_me를부르면_CORS를허용하는지`() {
-		// given: grep.web-origin = http://web.test
+		// given: grep.web-origin = http://web.test, https://pages.test
 
 		// when
 		val result = mockMvc.options("/me") {
@@ -255,6 +256,41 @@ class AuthApiTest {
 		result.andExpect {
 			status { isOk() }
 			header { string("Access-Control-Allow-Origin", "http://web.test") }
+		}
+	}
+
+	@Test
+	fun `웹주소를여럿넣었을때_두번째주소에서사전요청을보내면_CORS를허용하는지`() {
+		// given: grep.web-origin = http://web.test, https://pages.test
+
+		// when
+		val result = mockMvc.options("/me") {
+			header("Origin", "https://pages.test")
+			header("Access-Control-Request-Method", "GET")
+			header("Access-Control-Request-Headers", "authorization")
+		}
+
+		// then
+		result.andExpect {
+			status { isOk() }
+			header { string("Access-Control-Allow-Origin", "https://pages.test") }
+		}
+	}
+
+	@Test
+	fun `넣지않은주소에서사전요청을보냈을때_me를부르면_CORS를막는지`() {
+		// given: grep.web-origin = http://web.test, https://pages.test
+
+		// when
+		val result = mockMvc.options("/me") {
+			header("Origin", "https://other.test")
+			header("Access-Control-Request-Method", "GET")
+		}
+
+		// then
+		result.andExpect {
+			status { isForbidden() }
+			header { doesNotExist("Access-Control-Allow-Origin") }
 		}
 	}
 }
