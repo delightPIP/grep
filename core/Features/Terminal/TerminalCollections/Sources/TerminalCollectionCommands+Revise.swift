@@ -1,7 +1,8 @@
-import FeatureTerminalInterface
 import TerminalDomain
 import GrepCore
 import GrepData
+import TerminalCommandKit
+import TerminalDomain
 
 // MARK: 고치기(#99, ARC-002·004)
 
@@ -33,8 +34,8 @@ enum ReviseCommand {
     }
 }
 
-extension TerminalInteractor {
-    func reviseItem(_ argument: String, typed: String) {
+extension TerminalCollectionCommands {
+    public func reviseItem(_ argument: String, typed: String) {
         switch ReviseCommand.parse(argument) {
         case .missingArgument:
             update(viewState.appending(lines: [.prompt(typed), .missingArgument(.revise)]).with(input: ""))
@@ -47,7 +48,7 @@ extension TerminalInteractor {
         }
     }
 
-    func submitRevise(number: Int, title: String, summary: String) {
+    public func submitRevise(number: Int, title: String, summary: String) {
         let trimmedTitle = title.trimmingWhitespace()
         let trimmedSummary = summary.trimmingWhitespace()
         guard !trimmedTitle.isEmpty || !trimmedSummary.isEmpty else {
@@ -95,7 +96,7 @@ extension TerminalInteractor {
         }
     }
 
-    func cancelRevise() {
+    public func cancelRevise() {
         guard viewState.revising != nil else { return }
         update(viewState.with(revising: nil).appending(lines: [.cancelled]))
     }

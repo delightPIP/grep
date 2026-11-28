@@ -4,6 +4,7 @@ import FoundationEssentials
 import Foundation
 #endif
 import FeatureTerminalInterface
+import TerminalCollections
 import TerminalCommandKit
 import TerminalConnections
 import TerminalDomain
@@ -62,12 +63,6 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     private var loadingPage: ListPage?
     /// 답을 기다리는 `찾기 … | 넘기기` 확인. 다음 입력 한 번이 답이다(COM-007 규칙 1).
     var pendingHandoff: PendingHandoff?
-    /// 답을 기다리는 `버리기` 2건 이상 확인(ARC-008 규칙 1, COM-007).
-    var pendingDrop: PendingDrop?
-    /// 답을 기다리는 `휴지통 비우기` 확인(ARC-008 규칙 6, COM-007).
-    var pendingBinEmpty: PendingBinEmpty?
-    /// 답을 기다리는 `묶음 <이름> 지우기` 확인(ARC-003 규칙 8, COM-007).
-    var pendingBundleDelete: PendingBundleDelete?
     /// 답을 기다리는 `찾아두기 <검색어> 지우기` 확인(ARC-012 규칙 7, COM-007).
     var pendingSavedSearchDelete: PendingSavedSearchDelete?
     /// `가져오기`를 치고 북마크 파일을 기다린다. 다른 입력을 치면 놓는다.
@@ -76,8 +71,9 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     var suggestedImport: DroppedFile?
     /// 명령 모듈. 이 RIB이 쥐고, 모듈은 `TerminalContext`로 이 RIB을 쓴다.
     private(set) lazy var connections = TerminalConnectionCommands(context: self)
+    private(set) lazy var collections = TerminalCollectionCommands(context: self)
     /// 확인 대기를 가진 명령 모듈. 입력이 오면 차례로 답인지 묻는다.
-    private var commands: [any TerminalCommand] { [connections] }
+    private var commands: [any TerminalCommand] { [collections, connections] }
     /// 오타 제안(#118, commands.md 207줄). 빈 입력 엔터면 이 문자열을 실행하고, 다른 입력이면 지운다.
     var pendingSuggestion: String?
     /// `POST /samples` 중복 실행 방지.
@@ -140,9 +136,9 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
         case .moreRequested: loadMore()
         case .samplesRequested: saveSamples()
         case .reviseSubmitted(let number, let title, let summary):
-            submitRevise(number: number, title: title, summary: summary)
+            collections.submitRevise(number: number, title: title, summary: summary)
         case .reviseCancelled:
-            cancelRevise()
+            collections.cancelRevise()
         }
     }
 
@@ -221,21 +217,6 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             confirmHandoff(pending, choice: choice, typed: text)
             return
         }
-        if let pending = pendingDrop, pending.matches(text) {
-            pendingDrop = nil
-            confirmDrop(pending, typed: text)
-            return
-        }
-        if let pending = pendingBinEmpty, pending.matches(text) {
-            pendingBinEmpty = nil
-            confirmBinEmpty(typed: text)
-            return
-        }
-        if let pending = pendingBundleDelete, pending.matches(text) {
-            pendingBundleDelete = nil
-            confirmBundleDelete(pending, typed: text)
-            return
-        }
         if let pending = pendingSavedSearchDelete, pending.matches(text) {
             pendingSavedSearchDelete = nil
             confirmSavedSearchDelete(pending, typed: text)
@@ -270,13 +251,13 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
         case .pick:
             pick(PickCommand.parse(command.argument), typed: text)
         case .drop:
-            dropItems(command.argument, typed: text)
+            collections.dropItems(command.argument, typed: text)
         case .revive:
-            reviveItems(command.argument, typed: text)
+            collections.reviveItems(command.argument, typed: text)
         case .bin:
-            handleBin(command.argument, typed: text)
+            collections.handleBin(command.argument, typed: text)
         case .pack:
-            handleBundle(command.argument, typed: text)
+            collections.handleBundle(command.argument, typed: text)
         case .peek:
             peek(command.argument, typed: text)
         case .gather:
@@ -289,7 +270,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             isAwaitingImport = true
             update(viewState.appending(lines: [.prompt(text), .importPrompt]).with(input: ""))
         case .revise:
-            reviseItem(command.argument, typed: text)
+            collections.reviseItem(command.argument, typed: text)
         case .guide:
             update(viewState.appending(lines: [.prompt(text), .guide]).with(input: ""))
         case .about:
@@ -495,13 +476,9 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     }
 
     func cancelPendingConfirmations() {
-        let hadPending = pendingHandoff != nil || pendingDrop != nil || pendingBinEmpty != nil
-            || pendingBundleDelete != nil || pendingSavedSearchDelete != nil
+        let hadPending = pendingHandoff != nil || pendingSavedSearchDelete != nil
             || commands.contains(where: \.hasPendingAnswer)
         pendingHandoff = nil
-        pendingDrop = nil
-        pendingBinEmpty = nil
-        pendingBundleDelete = nil
         pendingSavedSearchDelete = nil
         commands.forEach { $0.cancelPendingAnswer() }
         if hadPending {
@@ -533,7 +510,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             }
             if case .bin = page.source {
                 let outcome = await TrashAPI.list(
-                    limit: Self.binPageSize, cursor: page.cursor, transport: httpTransport, accessToken: token
+                    limit: TerminalPageSize.bin, cursor: page.cursor, transport: httpTransport, accessToken: token
                 )
                 guard !Task.isCancelled, listPage == page else { return }
                 switch outcome {
@@ -594,7 +571,17 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
         case .bin:
             return .cancelled
         case .bundle(let name):
-            return await nextBundlePage(of: page, name: name, accessToken: accessToken)
+            let outcome = await BundleAPI.page(
+                name: name, limit: TerminalPageSize.bundle, cursor: page.cursor, transport: httpTransport,
+                accessToken: accessToken
+            )
+            switch outcome {
+            case .success(let page): return .page(items: page.items, total: page.total, nextCursor: page.nextCursor)
+            case .rejected: return .failed(.serverError)
+            case .sessionExpired: return .sessionExpired
+            case .failed(let reason): return .failed(reason)
+            case .cancelled: return .cancelled
+            }
         }
     }
 

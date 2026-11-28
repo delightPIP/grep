@@ -1,7 +1,8 @@
-import FeatureTerminalInterface
 import TerminalDomain
 import GrepCore
 import GrepData
+import TerminalCommandKit
+import TerminalDomain
 
 // MARK: 버리기·되살리기·휴지통(#93, #96, ARC-008)
 
@@ -76,10 +77,8 @@ enum TrashNumberParser {
     }
 }
 
-extension TerminalInteractor {
-    static let binPageSize = 20
-
-    func dropItems(_ argument: String, typed: String) {
+extension TerminalCollectionCommands {
+    public func dropItems(_ argument: String, typed: String) {
         switch TrashNumberParser.parse(argument) {
         case .missingArgument:
             update(viewState.appending(lines: [.prompt(typed), .missingArgument(.drop)]).with(input: ""))
@@ -99,7 +98,7 @@ extension TerminalInteractor {
         executeDrop(pending.numbers, typed: typed)
     }
 
-    func reviveItems(_ argument: String, typed: String) {
+    public func reviveItems(_ argument: String, typed: String) {
         switch TrashNumberParser.parse(argument) {
         case .missingArgument:
             update(viewState.appending(lines: [.prompt(typed), .missingArgument(.revive)]).with(input: ""))
@@ -110,7 +109,7 @@ extension TerminalInteractor {
         }
     }
 
-    func handleBin(_ argument: String, typed: String) {
+    public func handleBin(_ argument: String, typed: String) {
         if argument.isEmpty {
             showBin(typed: typed)
         } else if argument == "비우기" || argument == "empty" {
@@ -142,7 +141,7 @@ extension TerminalInteractor {
         run(typed: typed) { [weak self] token in
             guard let self else { return }
             let outcome = await TrashAPI.list(
-                limit: Self.binPageSize, cursor: nil, transport: httpTransport, accessToken: token
+                limit: TerminalPageSize.bin, cursor: nil, transport: httpTransport, accessToken: token
             )
             guard !Task.isCancelled else { return }
             switch outcome {

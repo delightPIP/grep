@@ -1,7 +1,8 @@
-import FeatureTerminalInterface
 import TerminalDomain
 import GrepCore
 import GrepData
+import TerminalCommandKit
+import TerminalDomain
 
 // MARK: 묶음(#121, ARC-003)
 
@@ -14,10 +15,8 @@ struct PendingBundleDelete: Equatable {
     }
 }
 
-extension TerminalInteractor {
-    static let bundlePageSize = 10
-
-    func handleBundle(_ argument: String, typed: String) {
+extension TerminalCollectionCommands {
+    public func handleBundle(_ argument: String, typed: String) {
         switch BundleCommand.parse(argument) {
         case .list:
             showBundles(typed: typed)
@@ -48,19 +47,6 @@ extension TerminalInteractor {
     }
 
     /// 묶음 안 자료의 다음 쪽(`→ 더 보기`).
-    func nextBundlePage(of page: ListPage, name: String, accessToken: String) async -> BrowseAPI.PageOutcome {
-        let outcome = await BundleAPI.page(
-            name: name, limit: Self.bundlePageSize, cursor: page.cursor, transport: httpTransport, accessToken: accessToken
-        )
-        switch outcome {
-        case .success(let page): return .page(items: page.items, total: page.total, nextCursor: page.nextCursor)
-        case .rejected: return .failed(.serverError)
-        case .sessionExpired: return .sessionExpired
-        case .failed(let reason): return .failed(reason)
-        case .cancelled: return .cancelled
-        }
-    }
-
     private func showBundles(typed: String) {
         run(typed: typed) { [weak self] token in
             guard let self else { return }
@@ -74,7 +60,7 @@ extension TerminalInteractor {
         run(typed: typed) { [weak self] token in
             guard let self else { return }
             let outcome = await BundleAPI.page(
-                name: name, limit: Self.bundlePageSize, cursor: nil, transport: httpTransport, accessToken: token
+                name: name, limit: TerminalPageSize.bundle, cursor: nil, transport: httpTransport, accessToken: token
             )
             guard !Task.isCancelled else { return }
             guard case .success(let page) = outcome else {
