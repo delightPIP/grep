@@ -3,6 +3,7 @@
 // 순수 뷰 부품이다. 상태를 갖지 않고 Swift를 모른다.
 import type { ChangeEvent, KeyboardEvent, ReactNode, Ref } from "react";
 import "../styles/grep.css";
+import { pixelRects } from "./burrow";
 
 export type Tone = "ok" | "info" | "warn" | "error";
 
@@ -97,10 +98,12 @@ export type DockInputProps = {
   onSubmit: (text: string) => void;
   /** 칩을 눌러 명령을 찍은 뒤 입력줄로 돌아올 때 쓴다(엔터로 실행). */
   inputRef?: Ref<HTMLInputElement>;
+  /** 입력줄 바로 위, 입력줄과 함께 화면 아래에 붙는 것(땅굴 두더지). */
+  above?: ReactNode;
 };
 
 /** 화면 아래 고정 입력줄(시안 Input dock). */
-export function DockInput({ value, placeholder, onChange, onSubmit, inputRef }: DockInputProps) {
+export function DockInput({ value, placeholder, onChange, onSubmit, inputRef, above }: DockInputProps) {
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     // 한글 조합을 끝내는 엔터는 제출이 아니다.
     if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
@@ -109,6 +112,7 @@ export function DockInput({ value, placeholder, onChange, onSubmit, inputRef }: 
   }
   return (
     <div className="gt-block gt-dock">
+      {above}
       <div className="gt-dock-line">
         <div className="gt-input">
           <PromptHead />
@@ -131,10 +135,7 @@ export function DockInput({ value, placeholder, onChange, onSubmit, inputRef }: 
   );
 }
 
-// 그렙 두더지 기본 모습(16x16). 시안 bundle.js MOLE.idle, MOLE_PAL.
-const MOLE_PALETTE: Record<string, string> = {
-  M: "#4a4460", R: "#6a4228", h: "#f5c9a3", m: "#6c6585", o: "#16120f", r: "#8a5a3a", s: "#f2a0a8",
-};
+// 그렙 두더지 기본 모습(16x16). 시안 bundle.js MOLE.idle.
 const MOLE_IDLE = [
   "................", "................", ".....oooooo.....", "....ommmmmmo....",
   "...ommmmmmmmo...", "...omommmmomo...", "..ommomssmommo..", "..ommmssssmmmo..",
@@ -142,28 +143,11 @@ const MOLE_IDLE = [
   ".rrommmmmmmmorr.", "rrrRrrrrrrRrrrrr", ".rrrrrRrrrrrrrr.", "................",
 ];
 
-function moleRects(): ReactNode[] {
-  return MOLE_IDLE.flatMap((row, y) => {
-    const rects: ReactNode[] = [];
-    let x = 0;
-    while (x < row.length) {
-      const ch = row.charAt(x);
-      let width = 1;
-      while (x + width < row.length && row.charAt(x + width) === ch) width++;
-      if (ch !== ".") {
-        rects.push(<rect key={`${y}-${x}`} x={x} y={y} width={width} height={1} fill={MOLE_PALETTE[ch]} />);
-      }
-      x += width;
-    }
-    return rects;
-  });
-}
-
 export function Banner({ lead, tagline }: { lead: string; tagline: string }) {
   return (
     <div className="gt-banner-row">
       <svg className="gt-mascot" viewBox="0 0 16 16" width={64} height={64} shapeRendering="crispEdges" aria-hidden="true">
-        {moleRects()}
+        {pixelRects(MOLE_IDLE)}
       </svg>
       <div className="gt-banner">
         그렙 ~ $<span className="gt-banner-lead">{lead}</span>

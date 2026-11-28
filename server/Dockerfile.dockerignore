@@ -1,0 +1,11 @@
+# server/Dockerfile 전용 무시 목록(BuildKit은 Dockerfile 옆의 <이름>.dockerignore를 먼저 쓴다).
+# 서버 빌드에 필요한 것만 남긴다.
+*
+!server/gradlew
+!server/gradle/
+!server/settings.gradle.kts
+!server/build.gradle.kts
+!server/src/main/
+!db/migrations/
+!db/seed/samples/
+!db/seed/demo/

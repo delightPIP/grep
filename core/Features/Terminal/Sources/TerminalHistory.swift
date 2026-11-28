@@ -219,6 +219,7 @@ private struct StoredLine: Codable {
         case searchSaved, savedSearchList, savedSearchPeriod, savedSearchTooLong, savedSearchDeleteConfirm
         case savedSearchDeleted, savedSearchNotFound, importPrompt, importProgress, importFinished, folderHint
         case connectionList, disconnectConfirm, disconnected, connectionNotFound, connectionEnded
+        case importSuggest
     }
 
     let kind: Kind
@@ -440,6 +441,9 @@ private struct StoredLine: Codable {
             kind = .savedSearchNotFound
             text = query
         case .folderHint: kind = .folderHint
+        case .importSuggest(let fileName):
+            kind = .importSuggest
+            name = fileName
         case .connectionList(let mcpUrl, let connections):
             kind = .connectionList
             text = mcpUrl
@@ -579,6 +583,7 @@ private struct StoredLine: Codable {
         case .savedSearchNotFound: return text.map { .savedSearchNotFound(query: $0) }
         case .importPrompt: return .importPrompt
         case .folderHint: return .folderHint
+        case .importSuggest: return name.map { .importSuggest(fileName: $0) }
         case .connectionList:
             guard let text, let connections else { return nil }
             return .connectionList(mcpUrl: text, connections: connections)

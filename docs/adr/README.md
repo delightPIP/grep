@@ -32,7 +32,7 @@
 |---|---|---|---|
 | [ADR-0001](ADR-0001-api-contract-first.md) | 프론트엔드와 백엔드는 OpenAPI 계약으로만 연결하고, 서비스 규칙은 서버가 최종 판정한다 | 채택 | 2026-11-25 |
 | [ADR-BCK-002](backend/ADR-BCK-002-postgres-and-object-storage.md) | 자료와 작업 큐는 Postgres 하나에, 파일은 오브젝트 스토리지에 둔다 | 채택 | 2026-11-25 |
-| [ADR-BCK-003](backend/ADR-BCK-003-kotlin-spring-boot.md) | 서버 언어는 Kotlin, 프레임워크는 Spring Boot로 한다 | 채택 | 2026-11-25 |
+| [ADR-BCK-003](backend/ADR-BCK-003-kotlin-spring-boot.md) | 서버 언어는 Kotlin, 프레임워크는 Spring Boot로 한다 | 일부 대체됨 (결정 4 → ADR-BCK-018) | 2026-11-25 |
 | [ADR-BCK-004](backend/ADR-BCK-004-modular-monolith-hexagonal.md) | 서버는 기능별 모듈러 모놀리스로 만들고, 모듈 안은 포트와 어댑터로 나눈다 | 채택 | 2026-11-25 |
 | [ADR-BCK-005](backend/ADR-BCK-005-image-text-llm-vision.md) | 이미지 글자 읽기(F16)는 서버가 LLM 비전으로 하고, 앱이 기기에서 읽은 글자는 함께 받는다 | 채택 | 2026-11-25 |
 | [ADR-BCK-006](backend/ADR-BCK-006-supabase-without-lock-in.md) | DB, 인증, 파일 저장소는 Supabase를 쓰고, Supabase 전용 기능에는 묶이지 않는다 | 채택 | 2026-11-25 |
@@ -48,4 +48,5 @@
 | [ADR-BCK-015](backend/ADR-BCK-015-mcp-oauth-authorization-server.md) | AI 도구 연결(MCP)은 그렙 서버가 OAuth 인가 서버가 되어 연결마다 토큰을 준다 | 채택 | 2026-11-27 |
 | [ADR-BCK-016](backend/ADR-BCK-016-gemini-embedding-pgvector.md) | 뜻이 가까운 찾기는 Gemini 임베딩을 처리 워커에서 만들고 pgvector에 둔다 | 채택 | 2026-11-27 |
 | [ADR-BCK-017](backend/ADR-BCK-017-imports-background-low-priority.md) | 가져온 자료도 백그라운드에서 요약하되, 직접 저장한 자료보다 뒤에 처리한다 | 채택 | 2026-11-28 |
+| [ADR-BCK-018](backend/ADR-BCK-018-mcp-server-without-sdk.md) | MCP 서버는 SDK 없이 Spring MVC에서 JSON-RPC로 직접 만든다 | 채택 | 2026-11-28 |
 | [ADR-0015](ADR-0015-mobile-feature-modules-per-issue.md) | iOS·Android 앱은 공유 코어의 피처마다 UI·Adapter·Example 모듈로 만들고, 웹 이슈가 끝날 때마다 짧은 브랜치로 따라간다 | 채택 | 2026-11-27 |

@@ -115,5 +115,7 @@
 | 111 | 2026-11-28 | [QA 확인 필요 Q-3·Q-4 정책 반영](111-qa-decisions-samples-search-query.md) |
 | 112 | 2026-11-28 | [QA 확인 필요 Q-7 정책 반영](112-qa-decision-revise-search.md) |
 | 113 | 2026-11-28 | [QA F-03 찾아두기 줄을 장면표·대본에 반영](113-qa-f03-saved-search-line-in-script.md) |
+| 114 | 2026-11-28 | [웹 라운드 3 뷰 갈래: 땅굴 두더지·밝은 테마·가져오기 제안 줄](114-web-round3-mole-theme-import-suggest.md) |
+| 115 | 2026-11-28 | [웹 라운드 3 통합: 땅굴 두더지·밝은 테마·가져오기 제안, AI 도구 연결 1단계](115-web-round3-mcp-stage1-integration.md) |
 
 새 항목 파일을 만들 때 이 표에 한 줄을 추가한다. 파일명은 `NNN-<영문-슬러그>.md`이고 NNN은 다음 번호다.

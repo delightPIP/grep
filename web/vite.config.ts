@@ -9,6 +9,6 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     // wasm 빌드 결과가 없어도 돌아가는 테스트만 둔다(순수 뷰, 로그인 모듈).
-    include: ["features/**/*.test.{ts,tsx}", "auth/**/*.test.{ts,tsx}", "support/**/*.test.{ts,tsx}"],
+    include: ["features/**/*.test.{ts,tsx}", "auth/**/*.test.{ts,tsx}", "support/**/*.test.{ts,tsx}", "ui/**/*.test.{ts,tsx}"],
   },
 });

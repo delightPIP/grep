@@ -39,6 +39,12 @@ class MetricEventService(
 		MetricEvent(userId, ITEM_SAVED, method, itemCount = 1, daysSinceSaved = emptyList(), dayKst = today())
 	}
 
+	/** 방식은 `connection`, 건수 1, 지난 일수 하나(05 6-5절 D-08). */
+	override fun connectionRead(userId: UUID, savedAt: Instant) = recordQuietly {
+		val today = today()
+		MetricEvent(userId, CONNECTION_READ, CONNECTION_METHOD, itemCount = 1, daysSinceSaved = listOf(daysBetween(savedAt, today)), dayKst = today)
+	}
+
 	/**
 	 * 넘길 글 복사 성공(클라이언트 보고, 08 6절 개발 답 9). 번호는 건수와 지난 일수를 세는 데만 쓴다.
 	 * 휴지통·없는 번호·남의 번호는 세지 않는다.
@@ -61,6 +67,8 @@ class MetricEventService(
 	companion object {
 		const val ITEM_SAVED = "item_saved"
 		const val HANDOFF_COPIED = "handoff_copied"
+		const val CONNECTION_READ = "connection_read"
+		const val CONNECTION_METHOD = "connection"
 		val HANDOFF_METHODS = setOf("pick", "pipe")
 		private val KOREA: ZoneId = ZoneId.of("Asia/Seoul")
 		private val log = LoggerFactory.getLogger(MetricEventService::class.java)

@@ -166,7 +166,9 @@ final class TerminalTests {
         // then
         #expect(auth.signOutCount == 0)
         #expect(listener.signOutRequestCount == 0)
-        #expect(view.state == TerminalViewState(itemCount: 34, lines: [.prompt("logout"), .unknownCommand("logout")], input: ""))
+        #expect(view.state == TerminalViewState(itemCount: 34, lines: [.prompt("logout"), .unknownCommand("logout")], input: "",
+            mole: Mole(action: .error, seq: 1)
+        ))
     }
 
     @Test func 터미널이떠있을때_인자가붙은없는명령을치면_첫낱말을명령이름으로그리는지() async {
@@ -274,7 +276,9 @@ final class TerminalTests {
         await runCurrent()
 
         // then
-        #expect(view.state == TerminalViewState(itemCount: 35, lines: [.prompt(line), .saved(Self.linkItem)], processingCount: 1))
+        #expect(view.state == TerminalViewState(itemCount: 35, lines: [.prompt(line), .saved(Self.linkItem)], processingCount: 1,
+            mole: Mole(action: .save, seq: 1)
+        ))
     }
 
     @Test func 링크저장을기다릴때_서버가이미있음으로답하면_기존자료를보이고자료수를그대로두는지() async {
@@ -325,7 +329,7 @@ final class TerminalTests {
         // then
         #expect(view.state == TerminalViewState(
             itemCount: 34, lines: [.prompt(line), .saveFailed(reason, .inputKept)], input: line,
-            isOffline: reason == .disconnected
+            isOffline: reason == .disconnected, mole: Mole(action: .error, seq: 1)
         ))
     }
 

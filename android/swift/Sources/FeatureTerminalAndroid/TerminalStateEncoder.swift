@@ -229,7 +229,8 @@ private struct LineDTO: Encodable {
              .bundleDeleteConfirm, .bundleDeleted, .bundleNameInvalid, .folderHint, .itemDetail, .oneNumberOnly,
              .searchSaved, .savedSearchList, .savedSearchPeriod, .savedSearchTooLong, .savedSearchDeleteConfirm,
              .savedSearchDeleted, .savedSearchNotFound, .connectionList, .disconnectConfirm, .disconnected,
-             .connectionNotFound, .connectionEnded, .importPrompt, .importProgress, .importFinished:
+             .connectionNotFound, .connectionEnded, .importPrompt, .importProgress, .importFinished,
+             .importSuggest:
             return nil
         }
     }

@@ -24,6 +24,7 @@ extension TerminalViewState {
             "processingCount": processingCount,
             "isOffline": isOffline,
             "revising": revising?.bridgeValue,
+            "mole": mole.map { object(["action": $0.action.rawValue, "seq": $0.seq]) },
         ])
         guard let object = state.object else { preconditionFailure("state should convert to a JS object") }
         return object
@@ -140,6 +141,7 @@ extension TerminalViewState.Line {
                 "importFinished",
                 ["saved": saved, "skipped": skipped, "failed": failed, "overLimit": overLimit, "failedUrls": failedUrls]
             )
+        case .importSuggest(let fileName): line("importSuggest", ["fileName": fileName])
         }
     }
 }

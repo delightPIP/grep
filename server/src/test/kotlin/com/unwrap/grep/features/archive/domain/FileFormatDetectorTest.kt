@@ -121,4 +121,59 @@ class FileFormatDetectorTest {
 		assertEquals(FileDetection.Rejected("hwp"), named)
 		assertEquals(FileDetection.Rejected("bin"), unnamed)
 	}
+
+	@Test
+	fun `HTML파일을올리면_받지않는형식html로거절하는지`() {
+		// given
+		val html = "<html><head><title>글</title></head><body>본문</body></html>".toByteArray()
+
+		// when
+		val byName = FileFormatDetector.detect("그냥 글".toByteArray(), "page.HTM")
+		val byContent = FileFormatDetector.detect(html, "page.html")
+
+		// then
+		assertEquals(FileDetection.Rejected("html"), byName)
+		assertEquals(FileDetection.Rejected("html"), byContent)
+	}
+
+	@Test
+	fun `이름이txt여도HTML내용이면_거절하는지`() {
+		// given
+		val withBomAndSpace = byteArrayOf(0xEF.toByte(), 0xBB.toByte(), 0xBF.toByte()) + "\n  <!doctype html>\n<html>".toByteArray()
+		val upperHtml = "\r\n<HTML lang=\"ko\">".toByteArray()
+
+		// when
+		val first = FileFormatDetector.detect(withBomAndSpace, "메모.txt")
+		val second = FileFormatDetector.detect(upperHtml, "메모.md")
+
+		// then
+		assertEquals(FileDetection.Rejected("html"), first)
+		assertEquals(FileDetection.Rejected("html"), second)
+	}
+
+	@Test
+	fun `북마크HTML이면_거절하는지`() {
+		// given
+		val bookmarks = "<!DOCTYPE NETSCAPE-Bookmark-file-1>\n<META HTTP-EQUIV=\"Content-Type\" CONTENT=\"text/html; charset=UTF-8\">\n<DL><p>".toByteArray()
+
+		// when
+		val result = FileFormatDetector.detect(bookmarks, "grep-bookmarks-test")
+
+		// then
+		assertEquals(FileDetection.Rejected("html"), result)
+	}
+
+	@Test
+	fun `HTML태그가본문중간에만있는글이면_txt와md판정을그대로두는지`() {
+		// given
+		val text = "메모 첫 줄\n예시: <html> 태그를 쓴다".toByteArray()
+
+		// when
+		val txt = FileFormatDetector.detect(text, "메모.txt")
+		val md = FileFormatDetector.detect(text, "메모.md")
+
+		// then
+		assertEquals(FileDetection.Accepted(FileFormat.TXT), txt)
+		assertEquals(FileDetection.Accepted(FileFormat.MD), md)
+	}
 }

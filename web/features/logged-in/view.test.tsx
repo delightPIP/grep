@@ -1,5 +1,5 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CommandFailure, ItemDetail, ItemSummary, LoggedInState, TerminalLine } from "../../support/view-state";
 import { LoggedInView } from "./view";
 
@@ -2497,6 +2497,36 @@ describe("LoggedInView", () => {
       return { kind: "importFinished", saved: 150, skipped: 25, failed: 0, overLimit: 0, failedUrls: [], ...overrides };
     }
 
+    it("북마크파일을명령없이놓았을때_화면을그리면_받지않는형식다음에가져오기를제안하는지", () => {
+      // given
+      const lines: LoggedInState["lines"] = [
+        { kind: "prompt", text: "담기 bookmarks.html" },
+        {
+          kind: "saveFailed",
+          reason: { kind: "unsupportedFormat", fileExtension: "html" },
+          recovery: { kind: "file", name: "bookmarks.html" },
+        },
+        { kind: "importSuggest", fileName: "bookmarks.html" },
+      ];
+
+      // when
+      const shown = shownOutput(lines);
+
+      // then
+      expect(shown.slice(1)).toEqual(["✗ 저장 안 됨: 받지 않는 형식 (.html)", "→ 북마크 파일이면: 가져오기"]);
+    });
+
+    it("가져오기제안이있을때_가져오기칩을누르면_입력줄에가져오기를찍는지", () => {
+      // given
+      const { onInputChange } = renderView({ lines: [{ kind: "importSuggest", fileName: "bookmarks.html" }] });
+
+      // when
+      fireEvent.click(screen.getByRole("button", { name: "가져오기" }));
+
+      // then
+      expect(onInputChange).toHaveBeenCalledWith("가져오기");
+    });
+
     it("가져오기를쳤을때_화면을그리면_북마크파일끌어다놓기안내를보이는지", () => {
       // given
       // when
@@ -2769,6 +2799,102 @@ describe("LoggedInView", () => {
         "→ 기간 없이: 찾기 텀블러 할인",
         "· 뜻이 가까운 자료 2건 (낱말은 다름)",
       ]);
+    });
+  });
+
+  describe("땅굴 두더지(#175, 디자인 시스템 9절·시안 07·08)", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    function wait(ms: number) {
+      act(() => {
+        vi.advanceTimersByTime(ms);
+      });
+    }
+
+    function renderWithMole(mole: LoggedInState["mole"]) {
+      const props = {
+        itemCount: 3,
+        lines: [],
+        input: "",
+        selection: [],
+        processingCount: 0,
+        isOffline: false,
+        onInputChange: vi.fn(),
+        onSubmit: vi.fn(),
+        onPaste: vi.fn(),
+        onFilesDrop: vi.fn(),
+      };
+      const view = render(<LoggedInView {...props} mole={mole} />);
+      return {
+        container: view.container,
+        update: (next: LoggedInState["mole"], input = "") =>
+          view.rerender(<LoggedInView {...props} input={input} mole={next} />),
+      };
+    }
+
+    const moleButton = () => screen.getByRole("button", { name: "두더지 누르기" });
+
+    it("화면을_그렸을때_땅굴이_입력줄_바로_위에_붙는지", () => {
+      // given
+      const { container } = renderWithMole(null);
+
+      // when
+      const dock = container.querySelector(".gt-dock");
+
+      // then
+      expect(dock?.firstElementChild?.classList.contains("gt-burrow")).toBe(true);
+      expect(dock?.lastElementChild?.classList.contains("gt-dock-line")).toBe(true);
+    });
+
+    it("코어가_저장을_넘겼을때_잠시_뒤면_떨어지는_문서를_받는지", () => {
+      // given
+      const { container, update } = renderWithMole(null);
+
+      // when
+      update({ action: "save", seq: 1 });
+      wait(520);
+
+      // then
+      expect(container.querySelector(".gt-burrow-doc.gt-fall")).not.toBeNull();
+    });
+
+    it("같은_동작이_새_순번으로_왔을때_다시_하고_순번이_그대로면_다시_하지_않는지", () => {
+      // given
+      const { update } = renderWithMole({ action: "error", seq: 1 });
+      wait(800);
+
+      // when
+      update({ action: "error", seq: 1 }, "찾");
+      wait(0);
+
+      // then
+      expect(moleButton().classList.contains("is-shake")).toBe(false);
+      update({ action: "error", seq: 2 }, "찾");
+      wait(0);
+      expect(moleButton().classList.contains("is-shake")).toBe(true);
+    });
+
+    it("파일을_끌어_오는_동안이면_가운데서_만세하고_떠나면_그치는지", () => {
+      // given
+      const { container } = renderWithMole(null);
+      const screenElement = container.querySelector(".gt-screen")!;
+
+      // when
+      fireEvent.dragEnter(screenElement, { dataTransfer: { types: ["Files"], files: [] } });
+      wait(320);
+
+      // then
+      expect(moleButton().classList.contains("is-cheer")).toBe(true);
+      expect(moleButton().style.left).toBe("50%");
+      fireEvent.dragLeave(screenElement, { relatedTarget: null });
+      wait(0);
+      expect(moleButton().classList.contains("is-cheer")).toBe(false);
     });
   });
 });
