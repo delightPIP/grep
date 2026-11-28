@@ -6,8 +6,8 @@ import Foundation
 import GrepCore
 
 /// `GET /me`를 보내고 응답을 해석한다(api/openapi.yaml `getMe`).
-enum MeAPI {
-    enum Outcome: Equatable {
+public enum MeAPI {
+    public enum Outcome: Equatable {
         case loaded(itemCount: Int)
         /// 401 `session_expired`. 세션이 30일 미사용이거나 90일을 넘었다(ACC-001 값).
         case sessionExpired
@@ -22,15 +22,15 @@ enum MeAPI {
     private static let sessionExpiredCode = "session_expired"
 
     private struct MeBody: Decodable {
-        let itemCount: Int
+        public let itemCount: Int
     }
 
     private struct ErrorBody: Decodable {
-        let code: String
+        public let code: String
     }
 
     @MainActor
-    static func load(transport: any HTTPTransport, accessToken: String) async -> Outcome {
+    public static func load(transport: any HTTPTransport, accessToken: String) async -> Outcome {
         let request = HTTPRequest(method: .get, path: path, headers: ["Authorization": "Bearer \(accessToken)"])
         let response: HTTPResponse
         do {

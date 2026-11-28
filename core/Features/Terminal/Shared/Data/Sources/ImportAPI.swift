@@ -1,5 +1,7 @@
 
 import GrepCore
+import TerminalDomain
+import GrepData
 
 /// 북마크 가져오기 API(api/openapi.yaml `startImport`·`getImport`). 응답 해석까지만 한다.
 public enum ImportAPI {

@@ -3,6 +3,7 @@ import FeatureLoggedInInterface
 import FeatureSettingsInterface
 import FeatureTerminalInterface
 import GrepCore
+import GrepData
 import RIBs
 
 /// 로그인한 동안의 컨테이너(ADR-0015 결정 1). 계정에 딸린 일만 한다: `GET /me`, 만료 전에 치던 줄 되살리기, 만료, 로그아웃.

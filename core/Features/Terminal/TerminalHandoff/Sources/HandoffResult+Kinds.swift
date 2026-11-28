@@ -1,5 +1,6 @@
 import GrepCore
 import GrepData
+import TerminalData
 import TerminalCommandKit
 import TerminalDomain
 

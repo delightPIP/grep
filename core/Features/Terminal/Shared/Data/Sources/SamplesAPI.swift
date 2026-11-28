@@ -1,5 +1,7 @@
 
 import GrepCore
+import TerminalDomain
+import GrepData
 
 /// 샘플 8건 저장 API(api/openapi.yaml `saveSamples`). 응답 해석까지만 한다.
 public enum SamplesAPI {

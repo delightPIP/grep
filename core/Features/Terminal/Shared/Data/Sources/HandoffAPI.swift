@@ -1,5 +1,7 @@
 
 import GrepCore
+import TerminalDomain
+import GrepData
 
 /// 넘길 글 API(api/openapi.yaml `createHandoff`). 응답 해석까지만 한다.
 public enum HandoffAPI {

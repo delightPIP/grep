@@ -27,7 +27,7 @@ let package = Package(
         .target(
             name: "FeatureLoggedIn",
             dependencies: [
-                ribs, core("GrepCore"), "FeatureLoggedInInterface",
+                ribs, core("GrepCore"), core("GrepData"), "FeatureLoggedInInterface",
                 terminal("FeatureTerminalInterface"), archive("FeatureArchiveInterface"), settings("FeatureSettingsInterface"),
             ],
             path: "Sources"

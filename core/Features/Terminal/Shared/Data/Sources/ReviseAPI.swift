@@ -5,6 +5,8 @@ import Foundation
 #endif
 
 import GrepCore
+import TerminalDomain
+import GrepData
 
 /// 자료 고치기 API(api/openapi.yaml `reviseItem`). 응답 해석까지만 한다.
 public enum ReviseAPI {

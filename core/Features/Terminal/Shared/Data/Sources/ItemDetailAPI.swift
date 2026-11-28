@@ -1,5 +1,7 @@
 
 import GrepCore
+import TerminalDomain
+import GrepData
 
 /// 자세히 보기 API(api/openapi.yaml `getItemDetail`). 응답 해석까지만 한다.
 public enum ItemDetailAPI {

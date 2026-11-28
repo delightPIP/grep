@@ -1,5 +1,7 @@
 
 import GrepCore
+import TerminalDomain
+import GrepData
 
 /// 측정 이벤트 보고 API(api/openapi.yaml `recordEvent`).
 /// 클립보드 복사에 성공한 뒤에만 보내며 결과를 기다리지 않고, 실패해도 화면은 그대로 둔다(08 6절 개발 답 9).
