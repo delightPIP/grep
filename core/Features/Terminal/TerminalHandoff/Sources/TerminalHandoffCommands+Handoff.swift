@@ -1,13 +1,14 @@
-import FeatureTerminalInterface
 import TerminalDomain
 import GrepCore
 import GrepData
+import TerminalCommandKit
+import TerminalDomain
 
 // MARK: 넘기기(#64), 실패(#65), 측정 이벤트(#105)
 
-extension TerminalInteractor {
+extension TerminalHandoffCommands {
     /// `넘기기`. 고른 자료를 고른 순서대로 넘긴다. 고른 자료가 없으면 `✗ 선택한 자료 없음`.
-    func handOffSelection(typed: String) {
+    public func handOffSelection(typed: String) {
         let numbers = viewState.selection.map(\.number)
         guard !numbers.isEmpty else {
             update(viewState.appending(lines: [.prompt(typed), .missingArgument(.handoff)]).with(input: ""))
@@ -21,7 +22,7 @@ extension TerminalInteractor {
 
     /// `넘기기 <묶음>`(ARC-003). 선택은 건드리지 않는다.
     /// 이벤트 `handoff_copied`의 method에 묶음 값이 아직 없어(api `EventRequest`) 보고하지 않는다.
-    func handOffBundle(_ argument: String, typed: String) {
+    public func handOffBundle(_ argument: String, typed: String) {
         if let problem = BundleCommand.problem(of: argument) {
             update(viewState.appending(lines: [.prompt(typed), .bundleNameInvalid(problem)]).with(input: ""))
             return

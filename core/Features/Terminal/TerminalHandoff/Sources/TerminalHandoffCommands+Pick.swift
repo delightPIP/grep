@@ -1,12 +1,13 @@
-import FeatureTerminalInterface
 import TerminalDomain
 import GrepCore
 import GrepData
+import TerminalCommandKit
+import TerminalDomain
 
 // MARK: 고르기(#62)
 
-extension TerminalInteractor {
-    func pick(_ parsed: PickCommand.Parsed, typed: String) {
+extension TerminalHandoffCommands {
+    public func pick(_ parsed: PickCommand.Parsed, typed: String) {
         switch parsed {
         case .missingArgument:
             update(viewState.appending(lines: [.prompt(typed), .missingArgument(.pick)]).with(input: ""))

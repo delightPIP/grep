@@ -37,6 +37,11 @@ let package = Package(
             path: "TerminalCollections/Sources"
         ),
         .target(
+            name: "TerminalHandoff",
+            dependencies: [core("GrepCore"), core("GrepData"), "TerminalDomain", "TerminalCommandKit"],
+            path: "TerminalHandoff/Sources"
+        ),
+        .target(
             name: "TerminalConnections",
             dependencies: [core("GrepCore"), core("GrepData"), "TerminalDomain", "TerminalCommandKit"],
             path: "TerminalConnections/Sources"
@@ -50,7 +55,7 @@ let package = Package(
             name: "FeatureTerminal",
             dependencies: [
                 ribs, core("GrepCore"), core("GrepData"), "TerminalDomain", "TerminalCommandKit", "FeatureTerminalInterface",
-                "TerminalBrowse", "TerminalCollections", "TerminalConnections",
+                "TerminalBrowse", "TerminalCollections", "TerminalConnections", "TerminalHandoff",
             ],
             path: "TerminalMain/Sources"
         ),

@@ -1,17 +1,18 @@
-import FeatureTerminalInterface
 import TerminalDomain
 import GrepCore
 import GrepData
+import TerminalCommandKit
+import TerminalDomain
 
 // MARK: 이어 쓰기 `찾기 … | 넘기기`(#66)
 
-extension TerminalInteractor {
+extension TerminalHandoffCommands {
     /// `전부`가 남은 결과를 받을 때의 한 쪽 건수(api/openapi.yaml `Limit` 최댓값).
     private static let remainingPageSize = 50
 
     /// 찾기 뒤에 `|`가 있으면 이어 쓰기로 받는다. 이어 쓰기가 아니면 false.
     /// shortcut: 뒤 명령은 `넘기기`만 받는다. 다른 명령은 받을 줄이 계약에 없어 없는 명령으로 알린다.
-    func pipe(seekArgument: String, typed: String) -> Bool {
+    public func pipe(seekArgument: String, typed: String) -> Bool {
         guard let (head, tail) = PipeCommand.split(seekArgument) else { return false }
         guard let next = InputCommand(tail), next.name == .handoff, next.argument.isEmpty else {
             update(viewState.appending(lines: [.prompt(typed), .unknownCommand(tail)]).with(input: ""))
@@ -32,12 +33,12 @@ extension TerminalInteractor {
     private func searchThenHandOff(_ query: SearchQuery, period: Period?, typed: String) {
         let sequence = inputSequence
         run(typed: typed) { [weak self] token in
-            await self?.searchThenHandOff(query, period: period, typed: typed, sequence: sequence, accessToken: token)
+            await self?.searchAndHandOff(query, period: period, typed: typed, sequence: sequence, accessToken: token)
         }
     }
 
     /// 친 줄은 이미 찍혀 있다. `sequence`는 명령을 친 때의 입력 차례(`찾아두기 … | 넘기기`도 쓴다).
-    func searchThenHandOff(
+    public func searchAndHandOff(
         _ query: SearchQuery,
         period: Period?,
         typed: String,

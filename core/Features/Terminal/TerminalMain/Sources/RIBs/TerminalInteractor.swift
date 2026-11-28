@@ -8,6 +8,7 @@ import TerminalBrowse
 import TerminalCollections
 import TerminalCommandKit
 import TerminalConnections
+import TerminalHandoff
 import TerminalDomain
 import GrepCore
 import GrepData
@@ -62,8 +63,6 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     private var listPage: ListPage?
     /// 다음 쪽을 받고 있는 목록. 그 목록의 `더 보기`만 무시한다.
     private var loadingPage: ListPage?
-    /// 답을 기다리는 `찾기 … | 넘기기` 확인. 다음 입력 한 번이 답이다(COM-007 규칙 1).
-    var pendingHandoff: PendingHandoff?
     /// `가져오기`를 치고 북마크 파일을 기다린다. 다른 입력을 치면 놓는다.
     var isAwaitingImport = false
     /// `가져오기`를 제안한 북마크 파일(#172). 다음 입력이 `가져오기`면 이 파일을 보내고, 다른 입력이면 놓는다.
@@ -72,8 +71,9 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     private(set) lazy var connections = TerminalConnectionCommands(context: self)
     private(set) lazy var collections = TerminalCollectionCommands(context: self)
     private(set) lazy var browse = TerminalBrowseCommands(context: self)
+    private(set) lazy var handoff = TerminalHandoffCommands(context: self)
     /// 확인 대기를 가진 명령 모듈. 입력이 오면 차례로 답인지 묻는다.
-    private var commands: [any TerminalCommand] { [browse, collections, connections] }
+    private var commands: [any TerminalCommand] { [handoff, browse, collections, connections] }
     /// 오타 제안(#118, commands.md 207줄). 빈 입력 엔터면 이 문자열을 실행하고, 다른 입력이면 지운다.
     var pendingSuggestion: String?
     /// `POST /samples` 중복 실행 방지.
@@ -176,6 +176,12 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
         startTask(operation)
     }
 
+    func searchThenHandOff(
+        _ query: SearchQuery, period: Period?, typed: String, sequence: Int, accessToken: String
+    ) async {
+        await handoff.searchAndHandOff(query, period: period, typed: typed, sequence: sequence, accessToken: accessToken)
+    }
+
     func requestSignOutEverywhere() {
         forgetHistory()
         listener?.didRequestSignOutEverywhere()
@@ -212,11 +218,6 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             return
         }
         pendingSuggestion = nil
-        if let pending = pendingHandoff, let choice = pending.choice(for: text) {
-            pendingHandoff = nil
-            confirmHandoff(pending, choice: choice, typed: text)
-            return
-        }
         if commands.contains(where: { $0.answer(text) }) {
             return
         }
@@ -239,12 +240,12 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
         case .recent:
             let parsed = RecentCommand.parse(command.argument)
             browse.showRecent(limit: parsed.limit, period: parsed.period, typed: text)
-        case .seek where pipe(seekArgument: command.argument, typed: text):
+        case .seek where handoff.pipe(seekArgument: command.argument, typed: text):
             break
         case .seek:
             browse.seek(SeekCommand.parse(command.argument), typed: text)
         case .pick:
-            pick(PickCommand.parse(command.argument), typed: text)
+            handoff.pick(PickCommand.parse(command.argument), typed: text)
         case .drop:
             collections.dropItems(command.argument, typed: text)
         case .revive:
@@ -271,9 +272,9 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
         case .about:
             update(viewState.appending(lines: [.prompt(text), aboutLine(for: command.argument)]).with(input: ""))
         case .handoff where command.argument.isEmpty:
-            handOffSelection(typed: text)
+            handoff.handOffSelection(typed: text)
         case .handoff:
-            handOffBundle(command.argument, typed: text)
+            handoff.handOffBundle(command.argument, typed: text)
         default:
             let suggestion = CommandSuggester.suggest(word: command.word, argument: command.argument)
             pendingSuggestion = suggestion
@@ -438,9 +439,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     // MARK: 최근과 더 보기
 
     func cancelPendingConfirmations() {
-        let hadPending = pendingHandoff != nil
-            || commands.contains(where: \.hasPendingAnswer)
-        pendingHandoff = nil
+        let hadPending = commands.contains(where: \.hasPendingAnswer)
         commands.forEach { $0.cancelPendingAnswer() }
         if hadPending {
             update(viewState.appending(lines: [.cancelled]).with(input: ""))
