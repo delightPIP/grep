@@ -76,6 +76,39 @@ struct LoggedInTabsModelTests {
         #expect(model.settingsPresentation.isSigningOut)
     }
 
+    @Test func 설정에서모든기기로그아웃을확인했을때_중복호출하면_모든기기콜백만한번부르는지() {
+        // given
+        var signOutCount = 0
+        var everywhereCount = 0
+        let model = LoggedInTabsModel(
+            archiveLoader: StubArchiveLoader(outcomes: []),
+            onSignOut: { signOutCount += 1 },
+            onSignOutEverywhere: { everywhereCount += 1 }
+        )
+
+        // when
+        model.requestSignOutEverywhere()
+        model.requestSignOutEverywhere()
+        model.requestSignOut()
+
+        // then
+        #expect(everywhereCount == 1)
+        #expect(signOutCount == 0)
+        #expect(model.settingsPresentation.isSigningOut)
+        #expect(model.settingsPresentation.canSignOutEverywhere)
+    }
+
+    @Test func 모든기기콜백이없을때_설정을그리면_모든기기버튼을막는지() {
+        // given
+        let model = LoggedInTabsModel(archiveLoader: StubArchiveLoader(outcomes: []), onSignOut: {})
+
+        // when
+        let presentation = model.settingsPresentation
+
+        // then
+        #expect(!presentation.canSignOutEverywhere)
+    }
+
     @Test func 같은탭을다시눌렀을때_reselect를호출하면_해당탭트리거만증가하는지() {
         // given
         let model = LoggedInTabsModel(archiveLoader: StubArchiveLoader(outcomes: []), onSignOut: {})

@@ -89,6 +89,9 @@ public struct LoggedInTabsView<TerminalContent: View>: View {
                     model.requestSignOut()
                 },
                 onOpenTrash: trashModel.map { _ in { isTrashOpen = true } },
+                onSignOutEverywhere: {
+                    model.requestSignOutEverywhere()
+                },
                 onModalVisibilityChange: { visible in
                     isSettingsModalPresented = visible
                 }

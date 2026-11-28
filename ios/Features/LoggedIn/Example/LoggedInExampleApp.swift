@@ -15,7 +15,7 @@ enum LoggedInDemoScenario: String, CaseIterable, Identifiable {
     case archiveWithItems = "보관함 바로 보기 · 자료 있음 (더 보기)"
     case archiveEmpty = "보관함 · 자료 0건"
     case archiveOfflineThenRecover = "보관함 · 연결 끊김 (다시 시도 복구)"
-    case settingsSignOut = "설정 바로 보기 · 로그아웃 확인"
+    case settingsSignOut = "설정 바로 보기 · 로그아웃·모든 기기 로그아웃 확인"
     case settingsTrash = "설정 › 휴지통 (3건 · 되살리기 · 비우기)"
     case settingsTrashOffline = "설정 › 휴지통 · 되살리기 실패 (연결 끊김)"
 
@@ -139,6 +139,10 @@ final class LoggedInExampleHarness: TerminalListener, TerminalDependency {
             pageLimit: 20,
             onSignOut: { [weak self] in
                 self?.didRequestSignOut()
+            },
+            onSignOutEverywhere: { [weak self] in
+                self?.lastEvent = "모든 기기 로그아웃 요청 (로그아웃 모든기기 → 로그아웃)"
+                self?.activeScenario = nil
             },
             onPickItem: { [weak self] number in
                 guard let self else { return }

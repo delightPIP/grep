@@ -76,6 +76,8 @@ public enum TerminalStateMapper {
             TerminalConfirmPrompt(question: "버리기? \(total)건 (휴지통으로)", answer: "버리기")
         case .binEmptyConfirm(let total):
             TerminalConfirmPrompt(question: "비우기? \(total)건 (되돌릴 수 없음)", answer: "비우기")
+        case .signOutEverywhereConfirm(let connectionCount):
+            TerminalConfirmPrompt(question: "로그아웃?\(signOutEverywhereBody(connectionCount))", answer: "로그아웃")
         default:
             nil
         }
@@ -84,6 +86,12 @@ public enum TerminalStateMapper {
     /// 웹 `toLocaleString("ko-KR")`과 같은 천 단위 쉼표.
     private static func groupedCount(_ count: Int) -> String {
         count.formatted(.number.grouping(.automatic).locale(Locale(identifier: "ko_KR")))
+    }
+
+    /// ACC-002 사용자 문구. 끊길 AI 도구 연결이 있으면 `· AI 도구 연결 N개`, 없거나 모르면 그 칸을 뺀다(웹과 같음).
+    private static func signOutEverywhereBody(_ connectionCount: Int?) -> String {
+        let connections = connectionCount.flatMap { $0 > 0 ? " · AI 도구 연결 \($0)개" : nil } ?? ""
+        return " 모든 기기\(connections) (다른 기기는 최대 1시간 뒤)"
     }
 
     /// 목록 머리 줄. 다음 쪽이 남았으면 `12건 중 1건`(commands 6절).
@@ -329,8 +337,10 @@ public enum TerminalStateMapper {
         case .pickCleared:
             // commands 6절 "모두 풀면 `✓ 선택 비움`". 건수는 문구에 없다.
             return [.status(tone: .ok, boldPrefix: "선택 비움", body: "")]
-        case .signOutEverywhereConfirm,
-             .bundleList, .bundleAdded, .bundleView, .bundleNotFound, .bundleUnpicked, .notInBundle,
+        case .signOutEverywhereConfirm(let connectionCount):
+            // ACC-002 사용자 문구. 답은 확인 시트의 낱말 버튼으로 받는다(MOB-002 규칙 4).
+            return [.status(tone: .warn, boldPrefix: "로그아웃?", body: signOutEverywhereBody(connectionCount))]
+        case .bundleList, .bundleAdded, .bundleView, .bundleNotFound, .bundleUnpicked, .notInBundle,
              .bundleDeleteConfirm, .bundleDeleted, .bundleNameInvalid, .folderHint, .itemDetail, .oneNumberOnly,
              .searchSaved, .savedSearchList, .savedSearchPeriod, .savedSearchTooLong, .savedSearchDeleteConfirm,
              .savedSearchDeleted, .savedSearchNotFound, .connectionList, .disconnectConfirm, .disconnected,

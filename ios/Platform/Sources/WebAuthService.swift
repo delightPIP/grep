@@ -205,6 +205,28 @@ public final class WebAuthService: AuthService {
         sessionStore.clear()
     }
 
+    /// ACC-002 규칙 4·5: 서버의 모든 갱신 토큰을 끊고 이 기기는 바로 로그아웃한다(웹 `signOut({ scope: "global" })`과 같음).
+    /// 서버에 닿지 못해도 이 기기 세션은 지운다. 다른 기기는 접근 토큰이 만료될 때(최대 1시간) 로그아웃된다.
+    public func signOutEverywhere() async {
+        defer { sessionStore.clear() }
+        guard let session = sessionStore.load(),
+              var components = URLComponents(
+                  url: configuration.supabaseURL.appending(path: "auth/v1/logout"),
+                  resolvingAgainstBaseURL: false
+              ) else {
+            return
+        }
+        components.queryItems = [URLQueryItem(name: "scope", value: "global")]
+        guard let url = components.url else { return }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = URLSessionHTTPTransport.defaultTimeout
+        request.setValue(configuration.publishableKey, forHTTPHeaderField: "apikey")
+        request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+        _ = try? await urlSession.data(for: request)
+    }
+
     public func accessToken() async -> String? {
         guard let session = sessionStore.load() else { return nil }
         if session.expiresAt > now().addingTimeInterval(Self.refreshLeeway) {

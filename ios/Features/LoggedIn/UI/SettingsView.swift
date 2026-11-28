@@ -6,21 +6,25 @@ public struct SettingsView: View {
     let resetToRootTrigger: Int
     let onSignOut: () -> Void
     let onOpenTrash: (() -> Void)?
+    let onSignOutEverywhere: (() -> Void)?
     let onModalVisibilityChange: ((Bool) -> Void)?
 
     @State private var showSignOutSheet = false
+    @State private var showSignOutEverywhereSheet = false
 
     public init(
         presentation: SettingsPresentation,
         resetToRootTrigger: Int = 0,
         onSignOut: @escaping () -> Void,
         onOpenTrash: (() -> Void)? = nil,
+        onSignOutEverywhere: (() -> Void)? = nil,
         onModalVisibilityChange: ((Bool) -> Void)? = nil
     ) {
         self.presentation = presentation
         self.resetToRootTrigger = resetToRootTrigger
         self.onSignOut = onSignOut
         self.onOpenTrash = onOpenTrash
+        self.onSignOutEverywhere = onSignOutEverywhere
         self.onModalVisibilityChange = onModalVisibilityChange
     }
 
@@ -58,15 +62,17 @@ public struct SettingsView: View {
                             ) {
                                 showSignOutSheet = true
                             }
+                            // ACC-002 규칙 4: 확인을 받은 뒤 계정의 모든 갱신 토큰과 AI 도구 연결을 끊는다.
                             GrepSettingRow(
                                 label: "모든 기기 로그아웃",
-                                sub: "AI 도구 연결도 끊김 · 준비 중",
+                                sub: presentation.canSignOutEverywhere ? "AI 도구 연결도 끊김" : "AI 도구 연결도 끊김 · 준비 중",
                                 actionLabel: "모든 기기",
                                 actionKind: .danger,
-                                isActionDisabled: true,
-                                actionAccessibilityId: "settingsFuture_signOutAll",
-                                onAction: nil
-                            )
+                                isActionDisabled: !presentation.canSignOutEverywhere || presentation.isSigningOut,
+                                actionAccessibilityId: "settingsSignOutEverywhereButton"
+                            ) {
+                                showSignOutEverywhereSheet = true
+                            }
 
                             sectionHeader("AI 도구 연결")
                             GrepSettingRow(
@@ -118,6 +124,7 @@ public struct SettingsView: View {
                     }
                     .onChange(of: resetToRootTrigger) { _, _ in
                         showSignOutSheet = false
+                        showSignOutEverywhereSheet = false
                         withAnimation(.easeOut(duration: 0.15)) {
                             proxy.scrollTo("settingsTop", anchor: .top)
                         }
@@ -146,9 +153,30 @@ public struct SettingsView: View {
                     }
                 )
             }
+
+            if showSignOutEverywhereSheet {
+                // ACC-002 사용자 문구. 끊길 AI 도구 연결 수는 설정 화면이 모르므로 그 칸을 뺀다(웹과 같음).
+                GrepBottomSheet(
+                    title: "로그아웃? 모든 기기 (다른 기기는 최대 1시간 뒤)",
+                    lines: ["AI 도구 연결도 끊김"],
+                    primaryLabel: "로그아웃",
+                    primaryKind: .danger,
+                    cancelLabel: "취소",
+                    onPrimary: {
+                        showSignOutEverywhereSheet = false
+                        onSignOutEverywhere?()
+                    },
+                    onCancel: {
+                        showSignOutEverywhereSheet = false
+                    }
+                )
+            }
         }
         .preferredColorScheme(.dark)
         .onChange(of: showSignOutSheet) { _, visible in
+            onModalVisibilityChange?(visible)
+        }
+        .onChange(of: showSignOutEverywhereSheet) { _, visible in
             onModalVisibilityChange?(visible)
         }
     }
