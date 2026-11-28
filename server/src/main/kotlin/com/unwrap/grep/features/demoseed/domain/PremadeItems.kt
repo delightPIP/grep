@@ -1,11 +1,11 @@
 package com.unwrap.grep.features.demoseed.domain
 
 import com.unwrap.grep.features.archive.api.ItemBody
-import com.unwrap.grep.features.archive.domain.FileFormat
-import com.unwrap.grep.features.archive.domain.ItemKind
-import com.unwrap.grep.features.archive.domain.LinkNormalizer
-import com.unwrap.grep.features.archive.domain.ObjectStorage
-import com.unwrap.grep.features.archive.domain.StoredFile
+import com.unwrap.grep.features.archive.item.domain.FileFormat
+import com.unwrap.grep.features.archive.item.domain.ItemKind
+import com.unwrap.grep.features.archive.item.domain.LinkNormalizer
+import com.unwrap.grep.features.archive.item.domain.ObjectStorage
+import com.unwrap.grep.features.archive.item.domain.StoredFile
 import java.security.MessageDigest
 import java.time.Instant
 import java.util.HexFormat

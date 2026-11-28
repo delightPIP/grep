@@ -1,9 +1,9 @@
 package com.unwrap.grep.features.demoseed.domain
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
-import com.unwrap.grep.features.archive.domain.FileFormat
-import com.unwrap.grep.features.archive.domain.ItemKind
-import com.unwrap.grep.features.archive.domain.ItemStatus
+import com.unwrap.grep.features.archive.item.domain.FileFormat
+import com.unwrap.grep.features.archive.item.domain.ItemKind
+import com.unwrap.grep.features.archive.item.domain.ItemStatus
 import tools.jackson.module.kotlin.jacksonObjectMapper
 import tools.jackson.module.kotlin.readValue
 import java.nio.file.Files

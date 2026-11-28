@@ -1,6 +1,5 @@
 package com.unwrap.grep.features.account.domain
 
-import org.springframework.stereotype.Component
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -23,7 +22,6 @@ data class PendingAuthorization(
  * 진행 중인 인가 요청을 메모리에 10분 둔다. 브라우저는 쿠키로 [PendingAuthorization.id]만 들고 다닌다.
  * shortcut: 서버 한 대(ADR-0011, Render 무료 한 대) 기준이다. 재시작하면 진행 중인 승인은 처음부터 다시 한다. 서버를 늘리면 표로 옮긴다.
  */
-@Component
 class PendingAuthorizations(private val clock: Clock) {
 	private val entries = ConcurrentHashMap<String, PendingAuthorization>()
 

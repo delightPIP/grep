@@ -6,6 +6,7 @@ import com.unwrap.grep.features.account.domain.EndConnectionResult
 import com.unwrap.grep.shared.kernel.ApiErrorCode
 import com.unwrap.grep.shared.kernel.ApiProblem
 import com.unwrap.grep.shared.kernel.CURRENT_USER_ID
+import com.unwrap.grep.shared.kernel.CountResponse
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -24,9 +25,6 @@ data class ConnectionListResponse(val mcpUrl: String, val connections: List<Conn
 
 /** openapi `EndConnectionResult`. */
 data class EndConnectionResponse(val result: String, val client: String)
-
-/** openapi `CountResult`. */
-data class CountResponse(val count: Int)
 
 /** openapi `ConnectionNotices`. */
 data class ConnectionNoticesResponse(val ended: List<EndedConnection>) {

@@ -48,7 +48,7 @@
 
 - 기획서 F1("같은 링크를 다시 저장하면 새로 만들지 않는다"), 10절 엣지 케이스, PR #3의 PO 메모(F21을 "같은 링크" 범위로 P0에 넣음)
 - ADR-0001(서버가 중복 판정), ADR-BCK-002(`UNIQUE(user_id, normalized_url)`, `UNIQUE(user_id, content_hash)`)
-- 구현: `server/src/main/kotlin/com/unwrap/grep/features/archive/domain/LinkNormalizer.kt`(정규화), `server/src/main/kotlin/com/unwrap/grep/features/archive/domain/SaveItemService.kt`(같은 자료 판정, 사용자 행 잠금으로 동시 저장을 차례로 세움)
+- 구현: `server/src/main/kotlin/com/unwrap/grep/features/archive/item/domain/LinkNormalizer.kt`(정규화), `server/src/main/kotlin/com/unwrap/grep/features/archive/item/domain/SaveItemService.kt`(같은 자료 판정, 사용자 행 잠금으로 동시 저장을 차례로 세움)
 
 ## 검증 방법
 

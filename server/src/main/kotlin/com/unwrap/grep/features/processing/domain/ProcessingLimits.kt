@@ -1,9 +1,6 @@
 package com.unwrap.grep.features.processing.domain
 
 import com.unwrap.grep.features.archive.api.LowPriorityGate
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Configuration
 import java.time.Instant
 
 /**
@@ -24,13 +21,4 @@ data class ProcessingLimits(val dailyLimit: Int, val directSaveReserve: Int) {
 	companion object {
 		const val DEFAULT_DAILY_LIMIT = 50
 	}
-}
-
-@Configuration(proxyBeanMethods = false)
-class ProcessingLimitsConfig {
-	@Bean
-	fun processingLimits(
-		@Value("\${grep.processing.daily-limit}") dailyLimit: Int,
-		@Value("\${grep.processing.direct-save-reserve}") directSaveReserve: Int,
-	) = ProcessingLimits(dailyLimit, directSaveReserve)
 }

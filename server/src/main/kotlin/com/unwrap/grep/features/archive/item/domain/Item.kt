@@ -1,0 +1,130 @@
+package com.unwrap.grep.features.archive.item.domain
+
+import com.unwrap.grep.features.archive.bundle.domain.ItemFilter
+import com.unwrap.grep.features.archive.search.domain.SavedRange
+import java.time.Instant
+import java.util.UUID
+
+enum class ItemKind(val value: String) { LINK("link"), TEXT("text"), FILE("file") }
+
+/** ARC-005 처리 상태. 이 다섯 가지뿐이다. */
+enum class ItemStatus(val value: String) {
+	RECEIVED("received"), PROCESSING("processing"), READY("ready"), BLOCKED("blocked"), FAILED("failed");
+
+	companion object {
+		fun of(value: String): ItemStatus = entries.first { it.value == value }
+	}
+}
+
+/** 저장된 자료. API에는 번호로만 내보내고 내부 id는 싣지 않는다(ARC-001). */
+data class StoredItem(
+	val number: Long,
+	val kind: ItemKind,
+	val title: String,
+	val source: String?,
+	val status: ItemStatus,
+	val blockedReason: String?,
+	val listSummary: String?,
+	val userSummary: String?,
+	val partialNote: String?,
+	val tags: List<String>,
+	val savedAt: Instant,
+	val inTrash: Boolean,
+)
+
+/** 새 자료 한 건. 번호는 저장 트랜잭션 안에서 붙인다(ARC-001 규칙 2). */
+data class NewItem(
+	val userId: UUID,
+	val kind: ItemKind,
+	val title: String,
+	val source: String?,
+	val idempotencyKey: UUID,
+	val url: String? = null,
+	val normalizedUrl: String? = null,
+	val textBody: String? = null,
+	val file: StoredFile? = null,
+	/** 가져온 자료(F8)는 처리 작업을 낮은 우선순위로 만든다(V7, ADR-BCK-017). */
+	val lowPriority: Boolean = false,
+)
+
+data class StoredFile(
+	val objectPath: String,
+	val fileName: String,
+	val format: FileFormat,
+	val size: Long,
+	val contentHash: String,
+)
+
+sealed interface SaveItemCommand {
+	data class Link(val url: String) : SaveItemCommand
+	data class Text(val text: String) : SaveItemCommand
+	data class File(val uploadId: UUID) : SaveItemCommand
+}
+
+sealed interface SaveOutcome {
+	val item: StoredItem
+
+	/** 새로 저장했다. */
+	data class Saved(override val item: StoredItem) : SaveOutcome
+
+	/** 같은 멱등성 키로 이미 저장한 자료. 처음 결과(saved)를 다시 준다. */
+	data class Replayed(override val item: StoredItem) : SaveOutcome
+
+	/** 같은 자료가 있다(COM-001 규칙 3). */
+	data class Duplicate(override val item: StoredItem) : SaveOutcome
+
+	/** 같은 자료가 휴지통에 있다(COM-001 규칙 7). */
+	data class InTrash(override val item: StoredItem) : SaveOutcome
+
+	companion object {
+		fun existing(item: StoredItem): SaveOutcome = if (item.inTrash) InTrash(item) else Duplicate(item)
+	}
+}
+
+/** POST /uploads로 만든 업로드 자리. */
+data class UploadSlot(val id: UUID, val userId: UUID, val objectPath: String, val fileName: String)
+
+interface ItemRepository {
+	/** 사용자 행을 잠가 같은 사용자의 저장을 차례로 세운다(ARC-001 규칙 3). 트랜잭션 안에서만 부른다. */
+	fun lockOwner(userId: UUID)
+
+	fun findByIdempotencyKey(userId: UUID, key: UUID): StoredItem?
+
+	/** 휴지통 자료도 찾는다(COM-001 규칙 7). */
+	fun findByNormalizedUrl(userId: UUID, normalizedUrl: String): StoredItem?
+
+	fun findByContentHash(userId: UUID, contentHash: String): StoredItem?
+
+	/** 번호를 발급하고 자료와 처리 작업을 넣는다. [lockOwner]와 같은 트랜잭션에서 부른다. */
+	fun insert(item: NewItem): StoredItem
+
+	/** [numbers] 중 휴지통 밖 자료의 기다리는 낮은 우선순위 작업을 보통으로 올린다(가져온 자료를 열거나 넘길 때, ADR-BCK-017). */
+	fun raiseProcessingPriority(userId: UUID, numbers: Collection<Long>)
+
+	/** 휴지통 밖 자료 수. [saved]가 있으면 그 기간 안만, [filter]가 있으면 그 자동 묶음만. */
+	fun countActive(userId: UUID, saved: SavedRange = SavedRange.ANY, filter: ItemFilter = ItemFilter.NONE): Long
+
+	/** 휴지통 밖 자료를 번호 내림차순으로 [limit]건. [beforeNumber]가 있으면 그보다 작은 번호만, [saved] 기간 안만. */
+	fun findActive(
+		userId: UUID,
+		beforeNumber: Long?,
+		limit: Int,
+		saved: SavedRange = SavedRange.ANY,
+		filter: ItemFilter = ItemFilter.NONE,
+	): List<StoredItem>
+
+	/** [numbers] 중 휴지통 밖 자료. 순서는 정하지 않는다. */
+	fun findActiveByNumbers(userId: UUID, numbers: Collection<Long>): List<StoredItem>
+}
+
+interface UploadRepository {
+	fun create(slot: UploadSlot, declaredSize: Long, createdAt: Instant)
+
+	/** 그 사용자의 것이고 아직 저장에 쓰이지 않은 자리만 돌려준다(COM-006). */
+	fun findUnconsumed(userId: UUID, uploadId: UUID): UploadSlot?
+
+	/** 아직 쓰이지 않았으면 쓰였다고 표시하고 true. 다른 요청이 먼저 썼으면 false. */
+	fun claim(uploadId: UUID, at: Instant): Boolean
+
+	fun delete(uploadId: UUID)
+}

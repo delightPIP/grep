@@ -1,12 +1,10 @@
 package com.unwrap.grep.features.account.adapters.http
 
-import com.unwrap.grep.features.account.domain.AccountService
 import com.unwrap.grep.features.account.domain.AuthProvider
 import com.unwrap.grep.features.account.domain.AuthorizationRedirectError
-import com.unwrap.grep.features.account.domain.AuthResult
 import com.unwrap.grep.features.account.domain.ConnectionTokens
-import com.unwrap.grep.features.account.domain.ConsentAccount
-import com.unwrap.grep.features.account.domain.LoginExchange
+import com.unwrap.grep.features.account.domain.ConsentLoginResult
+import com.unwrap.grep.features.account.domain.ConsentLoginService
 import com.unwrap.grep.features.account.domain.OAuthError
 import com.unwrap.grep.features.account.domain.OAuthService
 import com.unwrap.grep.features.account.domain.PendingAuthorization
@@ -19,8 +17,6 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseCookie
 import org.springframework.http.ResponseEntity
-import org.springframework.security.oauth2.jwt.JwtDecoder
-import org.springframework.security.oauth2.jwt.JwtException
 import org.springframework.web.bind.annotation.CookieValue
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
@@ -40,8 +36,7 @@ class ConsentController(
 	private val oauth: OAuthService,
 	private val pending: PendingAuthorizations,
 	private val supabase: SupabaseLogin,
-	private val jwtDecoder: JwtDecoder,
-	private val accounts: AccountService,
+	private val consentLogin: ConsentLoginService,
 	@Value("\${grep.public-url}") publicUrl: String,
 ) {
 	private val baseUrl = publicUrl.trimEnd('/')
@@ -91,21 +86,10 @@ class ConsentController(
 		@RequestParam(required = false) code: String?,
 		@RequestParam(required = false) error: String?,
 		@CookieValue(COOKIE, required = false) requestId: String?,
-	): ResponseEntity<String> {
-		val current = pending.find(requestId) ?: return html(HttpStatus.BAD_REQUEST, ConsentPages.expired())
-		val verifier = current.loginVerifier
-		if (error != null || code.isNullOrBlank() || verifier == null) {
-			val notice = if (error == "access_denied") CANCELLED else "$FAILED$DENIED"
-			return html(HttpStatus.OK, ConsentPages.login(notice))
-		}
-		val token = when (val exchanged = supabase.exchange(code, verifier)) {
-			is LoginExchange.Failure -> return html(HttpStatus.OK, ConsentPages.login("$FAILED${exchanged.reason}"))
-			is LoginExchange.Success -> exchanged.accessToken
-		}
-		val account = consentAccount(token) ?: return html(HttpStatus.OK, ConsentPages.login("$FAILED$DENIED"))
-		pending.update(current.copy(loginVerifier = null, account = account))
-		supabase.signOut(token)
-		return ResponseEntity.status(HttpStatus.SEE_OTHER).location(URI("$baseUrl$CONSENT_PATH")).build()
+	): ResponseEntity<String> = when (val result = consentLogin.completeLogin(requestId, code, error)) {
+		ConsentLoginResult.Expired -> html(HttpStatus.BAD_REQUEST, ConsentPages.expired())
+		is ConsentLoginResult.Retry -> html(HttpStatus.OK, ConsentPages.login(result.notice))
+		ConsentLoginResult.LoggedIn -> ResponseEntity.status(HttpStatus.SEE_OTHER).location(URI("$baseUrl$CONSENT_PATH")).build()
 	}
 
 	@GetMapping(CONSENT_PATH)
@@ -144,20 +128,6 @@ class ConsentController(
 		return html(HttpStatus.OK, ConsentPages.denied(request.client.name, redirect), clearCookie())
 	}
 
-	/** 승인 화면 첫 줄의 `<계정>`: 이메일과 로그인 방식. 계정은 로그인 방식마다 따로다(ACC-001 규칙 4). */
-	private fun consentAccount(supabaseToken: String): ConsentAccount? {
-		val jwt = try {
-			jwtDecoder.decode(supabaseToken)
-		} catch (e: JwtException) {
-			return null
-		}
-		val identity = SupabaseClaims.identity(jwt) ?: return null
-		val account = (accounts.authenticate(identity) as? AuthResult.Active)?.account ?: return null
-		val provider = if (account.provider == AuthProvider.GOOGLE) "Google" else "GitHub"
-		val label = SupabaseClaims.email(jwt)?.let { "$it($provider)" } ?: "$provider 계정"
-		return ConsentAccount(account.userId, label)
-	}
-
 	private fun withParams(uri: String, vararg params: Pair<String, String?>): String {
 		val builder = UriComponentsBuilder.fromUriString(uri)
 		params.forEach { (name, value) -> if (value != null) builder.queryParam(name, value) }
@@ -188,9 +158,6 @@ class ConsentController(
 		const val CONSENT_PATH = "/oauth/consent"
 		const val ALLOW = "allow"
 		const val DENY = "deny"
-		const val CANCELLED = "✗ 로그인 취소됨"
-		const val FAILED = "✗ 로그인 실패: "
-		const val DENIED = "권한 거부"
 		const val CSP = "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
 		val COOKIE_TTL: Duration = Duration.ofMinutes(10)
 	}

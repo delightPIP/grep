@@ -1,8 +1,8 @@
 package com.unwrap.grep.features.demoseed.domain
 
 import com.unwrap.grep.features.account.domain.AuthProvider
-import com.unwrap.grep.features.archive.domain.ItemSearch
-import com.unwrap.grep.features.archive.domain.SearchQuery
+import com.unwrap.grep.features.archive.search.domain.ItemSearch
+import com.unwrap.grep.features.archive.search.domain.SearchQuery
 import com.unwrap.grep.features.archive.testing.ArchiveApiTestSupport
 import com.unwrap.grep.features.processing.domain.ProcessingWorker
 import com.unwrap.grep.features.processing.testing.FakeProcessingConfiguration

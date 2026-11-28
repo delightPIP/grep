@@ -55,7 +55,7 @@
 - PO 결정(2026-11-26): 휴지통 30일
 - 외부 전문가 검토(2026-11-26): 명령어 화면은 오타 하나로 대량 삭제가 일어남. 휴지통 30일(Google Drive·Dropbox 관행), 휴지통 자료는 검색·AI 연결에서 즉시 제외
 - 공통 열린 질문 "자료를 지운 직후 되돌리기 유예"를 이 정책으로 닫음
-- 구현: 서버 `server/src/main/kotlin/com/unwrap/grep/features/archive/domain/TrashService.kt`, 30일 삭제 `server/src/main/kotlin/com/unwrap/grep/features/archive/adapters/scheduling/TrashPurgeScheduler.kt`, 코어 `core/Features/Terminal/Sources/RIBs/Interactor/TerminalInteractor+Trash.swift`, 웹 뷰 `web/features/logged-in/view.tsx`(#93·#96, PR #155)
+- 구현: 서버 `server/src/main/kotlin/com/unwrap/grep/features/archive/trash/domain/TrashService.kt`, 30일 삭제 `server/src/main/kotlin/com/unwrap/grep/features/archive/trash/adapters/scheduling/TrashPurgeScheduler.kt`, 코어 `core/Features/Terminal/Sources/RIBs/Interactor/TerminalInteractor+Trash.swift`, 웹 뷰 `web/features/logged-in/view.tsx`(#93·#96, PR #155)
 
 ## 검증 방법
 

@@ -1,7 +1,7 @@
 package com.unwrap.grep.features.archive.testing
 
-import com.unwrap.grep.features.archive.domain.ObjectStorage
-import com.unwrap.grep.features.archive.domain.StoredObject
+import com.unwrap.grep.features.archive.item.domain.ObjectStorage
+import com.unwrap.grep.features.archive.item.domain.StoredObject
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Primary
