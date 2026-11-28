@@ -41,7 +41,7 @@
 | [ADR-IOS-009](ios/ADR-IOS-009-share-sheet.md) | iOS에서 공유로 받기는 네이티브 공유 확장으로, 보내기는 시스템 공유 시트로 한다 | 채택 | 2026-11-25 |
 | [ADR-AND-001](android/ADR-AND-001-share-intent-receiver.md) | Android에서 공유로 받기는 `ACTION_SEND` 인텐트 필터를 둔 투명 액티비티로 한다 | 채택 | 2026-11-28 |
 | [ADR-0010](ADR-0010-monorepo-top-level-folders.md) | 앱 코드는 이 저장소에 두고 계약·서버·공유 코어·플랫폼별 앱을 최상위 폴더로 나눈다 | 채택 | 2026-11-26 |
-| [ADR-0011](ADR-0011-free-tier-deploy-portable.md) | 데모 단계 배포는 Render 무료(서버)·Cloudflare Pages(웹)·Supabase로 하고, 옮기기 쉽게 만든다 | 채택 | 2026-11-26 |
+| [ADR-0011](ADR-0011-free-tier-deploy-portable.md) | 데모 단계 배포는 Render 무료(서버)·Cloudflare Pages(웹)·Supabase로 하고, 옮기기 쉽게 만든다 | 대체됨 (결정 2 → ADR-0016) | 2026-11-26 |
 | [ADR-WEB-012](web/ADR-WEB-012-popup-login-broadcast-channel.md) | 웹 로그인은 팝업으로 하고, 결과는 콜백 페이지가 BroadcastChannel로 넘긴다 | 대체됨 (→ ADR-WEB-013) | 2026-11-26 |
 | [ADR-WEB-013](web/ADR-WEB-013-login-popup-close-as-cancel.md) | 웹 로그인 창 닫힘은 그렙 창이 포커스를 되찾는 것으로 알고, 바로 취소로 처리한다 | 채택 | 2026-11-26 |
 | [ADR-BCK-014](backend/ADR-BCK-014-gemini-flash-free-tier.md) | 발표까지 요약·태그·글자 읽기 LLM은 Gemini Flash 무료 등급으로 한다 | 채택 | 2026-11-27 |
@@ -50,3 +50,4 @@
 | [ADR-BCK-017](backend/ADR-BCK-017-imports-background-low-priority.md) | 가져온 자료도 백그라운드에서 요약하되, 직접 저장한 자료보다 뒤에 처리한다 | 채택 | 2026-11-28 |
 | [ADR-BCK-018](backend/ADR-BCK-018-mcp-server-without-sdk.md) | MCP 서버는 SDK 없이 Spring MVC에서 JSON-RPC로 직접 만든다 | 채택 | 2026-11-28 |
 | [ADR-0015](ADR-0015-mobile-feature-modules-per-issue.md) | iOS·Android 앱은 공유 코어의 피처마다 UI·Adapter·Example 모듈로 만들고, 웹 이슈가 끝날 때마다 짧은 브랜치로 따라간다 | 채택 | 2026-11-27 |
+| [ADR-0016](ADR-0016-server-serves-web-keep-awake.md) | 데모 배포에서 웹은 서버가 함께 내보내고, 무료 서버는 외부 핑으로 깨워 둔다 | 채택 | 2026-11-28 |

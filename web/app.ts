@@ -20,5 +20,6 @@ exports.startGrepApp(
   browserClipboard,
   files,
   localHistoryStore,
-  import.meta.env.VITE_API_BASE_URL,
+  // 비어 있으면 같은 출처로 부른다(서버가 웹을 함께 내보낼 때, ADR-0016).
+  import.meta.env.VITE_API_BASE_URL ?? "",
 );
