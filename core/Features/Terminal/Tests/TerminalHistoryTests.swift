@@ -325,4 +325,29 @@ struct TerminalHistoryTests {
         #expect(fixture.listener.expiredInputs == ["최근"])
         #expect(snapshot(of: fixture) == Snapshot(lines: [.prompt("최근")], input: "최근", selection: []))
     }
+
+    // MARK: #179 선택 칩 종류
+
+    @Test func 파일자료를고른기록일때_남기고읽으면_종류와출처가그대로인지() {
+        // given
+        let file = ItemRef(number: 25, title: "명세.pdf", kind: .file, source: "pdf")
+        let snapshot = Snapshot(lines: [.picked([file])], input: "", selection: [file])
+
+        // when
+        let decoded = TerminalHistory.decode(TerminalHistory.encode(snapshot))
+
+        // then
+        #expect(decoded == snapshot)
+    }
+
+    @Test func 종류가없는예전기록일때_읽으면_선택을글로되살리는지() {
+        // given
+        let payload = #"{"version":1,"input":"","selection":[{"number":12,"title":"메모"}],"lines":"[]"}"#
+
+        // when
+        let decoded = TerminalHistory.decode(payload)
+
+        // then
+        #expect(decoded?.selection == [ItemRef(number: 12, title: "메모", kind: .text, source: nil)])
+    }
 }

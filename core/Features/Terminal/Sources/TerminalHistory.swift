@@ -80,13 +80,18 @@ extension TerminalViewState.Line {
 private struct StoredRef: Codable {
     let number: Int
     let title: String
+    /// #179 전에 남긴 기록에는 없다. 없으면 글로 되살린다.
+    let kind: ItemKind?
+    let source: String?
 
     init(_ ref: ItemRef) {
         number = ref.number
         title = ref.title
+        kind = ref.kind
+        source = ref.source
     }
 
-    var ref: ItemRef { ItemRef(number: number, title: title) }
+    var ref: ItemRef { ItemRef(number: number, title: title, kind: kind ?? .text, source: source) }
 }
 
 private struct StoredQuery: Codable {

@@ -59,7 +59,8 @@ extension TerminalInteractor {
         bundle: String? = nil
     ) async {
         switch outcome {
-        case .composed(let result):
+        case .composed(let composed):
+            let result = composed.resolvingKinds(from: viewState.selection)
             let copied = await clipboard.copy(result.text)
             guard !Task.isCancelled else { return }
             switch copied {

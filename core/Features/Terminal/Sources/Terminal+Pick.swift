@@ -69,8 +69,8 @@ extension TerminalInteractor {
 
     /// 서버가 돌려주지 않은 번호는 없는 번호다. 고른 자료는 선택 뒤에 친 순서로 붙인다.
     private func showPicked(_ numbers: [Int], found items: [ItemSummary]) {
-        let titles = Dictionary(items.map { ($0.number, $0.title) }) { first, _ in first }
-        let missing = numbers.filter { titles[$0] == nil }
+        let found = Dictionary(items.map { ($0.number, $0) }) { first, _ in first }
+        let missing = numbers.filter { found[$0] == nil }
         guard missing.isEmpty else {
             update(viewState.appending(lines: [.notFound(numbers: missing)]))
             return
@@ -78,7 +78,7 @@ extension TerminalInteractor {
         let selected = Set(viewState.selection.map(\.number))
         let added = numbers
             .filter { !selected.contains($0) }
-            .compactMap { number in titles[number].map { ItemRef(number: number, title: $0) } }
+            .compactMap { found[$0].map(ItemRef.init) }
         let selection = viewState.selection + added
         update(viewState.with(selection: selection).appending(lines: [.picked(selection)]))
     }

@@ -110,14 +110,16 @@ final class TerminalFixture: TerminalDependency {
         )
     }
 
+    /// `item(_:)`과 같은 자료를 가리킨다(링크, `example.com`).
     static func ref(_ number: Int) -> ItemRef {
-        ItemRef(number: number, title: "자료 \(number)")
+        ItemRef(number: number, title: "자료 \(number)", kind: .link, source: "example.com")
     }
 
     static func json(_ item: ItemSummary) -> String {
         let summary = item.listSummary.map { "\"\($0)\"" } ?? "null"
         let summarySource = item.summarySource.map { "\"\($0.rawValue)\"" } ?? "null"
-        return #"{"number":\#(item.number),"kind":"link","title":"\#(item.title)","source":"example.com","#
+        let source = item.source.map { "\"\($0)\"" } ?? "null"
+        return #"{"number":\#(item.number),"kind":"\#(item.kind.rawValue)","title":"\#(item.title)","source":\#(source),"#
             + #""status":"\#(item.status.rawValue)","blockedReason":null,"listSummary":\#(summary),"#
             + #""summarySource":\#(summarySource),"partialNote":null,"tags":[],"matchedIn":null,"#
             + #""savedAt":"2026-11-27T10:00:00+09:00"}"#
