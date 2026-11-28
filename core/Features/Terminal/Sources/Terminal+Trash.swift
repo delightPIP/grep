@@ -199,6 +199,7 @@ extension TerminalInteractor {
                         .with(selection: remainingSelection)
                         .appending(lines: [.dropped(items)])
                 )
+                refreshArchiveIfOpened()
             case .notFound(let missing):
                 update(viewState.appending(lines: [.notFound(numbers: missing)]))
             case .failed(let reason):
@@ -224,6 +225,7 @@ extension TerminalInteractor {
                         .with(itemCount: nextCount)
                         .appending(lines: [.revived(items)])
                 )
+                refreshArchiveIfOpened()
             case .notFound(let missing):
                 update(viewState.appending(lines: [.notFound(numbers: missing)]))
             case .failed(let reason):

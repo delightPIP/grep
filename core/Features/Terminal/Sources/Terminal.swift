@@ -25,6 +25,7 @@ public final class TerminalBuilder: Builder<any TerminalDependency>, TerminalBui
             files: dependency.files,
             historyStore: dependency.historyStore,
             sleeper: dependency.sleeper,
+            deviceTime: dependency.deviceTime,
             listener: listener
         )
         return TerminalBuild(router: TerminalRouter(interactor: interactor, viewController: view), handle: interactor)
@@ -73,6 +74,11 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     let files: any FilePort
     let historyStore: any HistoryStore
     let sleeper: any Sleeper
+    let deviceTime: DeviceTime
+    /// #168 보관함 다음 쪽 커서. 마지막 쪽이면 nil.
+    var archiveCursor: String?
+    /// #168 늦게 온 보관함 응답을 버리기 위한 차례 번호. 새로 받을 때마다 늘린다.
+    var archiveLoad = 0
     private weak var listener: (any TerminalListener)?
     private(set) var viewState = TerminalViewState()
     /// 실패해 입력줄에 되돌린 저장 줄과 그때의 멱등성 키. 같은 줄을 다시 치면 같은 키로 보낸다.
@@ -127,6 +133,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
         files: any FilePort,
         historyStore: any HistoryStore,
         sleeper: any Sleeper,
+        deviceTime: DeviceTime = .system,
         listener: any TerminalListener
     ) {
         self.authService = authService
@@ -136,6 +143,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
         self.files = files
         self.historyStore = historyStore
         self.sleeper = sleeper
+        self.deviceTime = deviceTime
         self.listener = listener
         super.init(presenter: presenter)
     }
@@ -165,7 +173,10 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             submitRevise(number: number, title: title, summary: summary)
         case .reviseCancelled:
             cancelRevise()
-        case .archiveOpen, .archiveSelect, .archiveMore, .settingsOpen:
+        case .archiveOpen: openArchive()
+        case .archiveSelect(let filter): selectArchive(filter)
+        case .archiveMore: loadMoreArchive()
+        case .settingsOpen:
             break
         }
     }
@@ -454,6 +465,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
         case .saved(let item):
             // shortcut: /me 응답과 순서가 엇갈리면 한 건 어긋날 수 있다. 상태줄 갱신을 정하는 #60에서 맞춘다.
             update(viewState.appending(lines: [.saved(item)]).with(itemCount: viewState.itemCount.map { $0 + 1 }))
+            refreshArchiveIfOpened()
         case .duplicate(let item):
             update(viewState.appending(lines: [.alreadySaved(item)]))
         case .inTrash(let item):

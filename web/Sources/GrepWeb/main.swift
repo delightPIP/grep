@@ -38,7 +38,8 @@ private struct JSPlatform {
                 httpTransport: FetchHTTPTransport(baseURL: apiBaseURL),
                 clipboard: JSClipboardPort(port: platform.clipboard),
                 files: JSFilePort(port: platform.files),
-                historyStore: JSHistoryStore(store: platform.historyStore)
+                historyStore: JSHistoryStore(store: platform.historyStore),
+                deviceTime: BrowserTime.deviceTime()
             )
         )
     }
