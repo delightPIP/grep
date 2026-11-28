@@ -33,6 +33,8 @@ public struct TerminalItemRow: Equatable, Sendable, Identifiable {
     public let matchLabel: String?
     public let tags: [String]
     public let isPicked: Bool
+    /// 시점이 여러 주에 걸치면 주가 바뀌는 행 앞에 `── 10/26~11/1 ──`(commands 6절 시점을 붙인 결과). 아니면 nil.
+    public let dividerBefore: String?
 
     public init(
         number: Int,
@@ -42,7 +44,8 @@ public struct TerminalItemRow: Equatable, Sendable, Identifiable {
         summaryIsWarning: Bool,
         matchLabel: String?,
         tags: [String],
-        isPicked: Bool = false
+        isPicked: Bool = false,
+        dividerBefore: String? = nil
     ) {
         self.id = number
         self.number = number
@@ -53,6 +56,22 @@ public struct TerminalItemRow: Equatable, Sendable, Identifiable {
         self.matchLabel = matchLabel
         self.tags = tags
         self.isPicked = isPicked
+        self.dividerBefore = dividerBefore
+    }
+
+    /// 같은 행에 주 구분선만 바꾼 값.
+    public func with(dividerBefore: String?) -> TerminalItemRow {
+        TerminalItemRow(
+            number: number,
+            title: title,
+            meta: meta,
+            summary: summary,
+            summaryIsWarning: summaryIsWarning,
+            matchLabel: matchLabel,
+            tags: tags,
+            isPicked: isPicked,
+            dividerBefore: dividerBefore
+        )
     }
 }
 

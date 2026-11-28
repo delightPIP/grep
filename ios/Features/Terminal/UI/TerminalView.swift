@@ -202,6 +202,13 @@ public struct TerminalView: View {
                         .foregroundStyle(palette.ink)
                 }
                 ForEach(items) { item in
+                    if let divider = item.dividerBefore {
+                        Text(divider)
+                            .font(.system(size: 12, design: .monospaced))
+                            .foregroundStyle(palette.inkMuted)
+                            .padding(.top, 6)
+                            .accessibilityLabel(divider.trimmingCharacters(in: CharacterSet(charactersIn: "─ ")))
+                    }
                     mobileItemRow(item)
                 }
                 if hasMore {
