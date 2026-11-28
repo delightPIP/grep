@@ -23,6 +23,7 @@ enum TerminalDemoScenario: String, CaseIterable, Identifiable {
     case droppedAndRevived = "버리기 1건 · 되살리기 결과"
     case dropConfirm = "버리기 2건 확인 시트 (실제 입력)"
     case binList = "휴지통 목록 (남은 날 · 다음 명령)"
+    case periodSearch = "찾기 … 지난달 (머리 줄 · 주 구분선 · 0건)"
     case pickThenUnpick = "고르기 3건 → 칩 빼기·모두 해제 (실제 입력)"
     case revise = "고치기 131 편집 칸 (실제 입력)"
     case removeTags = "고치기 131 -#가이드 태그 지우기 (실제 입력)"
@@ -296,6 +297,26 @@ final class TerminalExampleHarness: TerminalListener, TerminalDependency {
             currentScreen?.listener?.handle(.submitted("고치기 131"))
         case .removeTags:
             currentScreen?.listener?.handle(.submitted("고치기 131 -#가이드"))
+        case .periodSearch:
+            let lastMonth = Period(label: "지난달", from: "2026-09-30T15:00:00Z", to: "2026-10-31T15:00:00Z")
+            let rows = [(30, "카페 텀블러 할인, 올겨울 캠페인 늘었다", "2026-10-28T01:00:00Z"),
+                        (29, "주간 업무 메모.md", "2026-10-26T00:30:00Z"),
+                        (21, "사무실 비품 주문 목록.txt", "2026-10-20T01:00:00Z")]
+            currentScreen?.render(TerminalViewState(
+                itemCount: 34,
+                lines: [
+                    .prompt("찾기 텀블러 지난달"),
+                    .searchResult(
+                        query: SearchQuery(text: "텀블러 지난달", words: "텀블러", tags: []),
+                        total: 3,
+                        items: rows.map { ItemSummary(number: $0.0, kind: .text, title: $0.1, source: nil, status: .ready, tags: [], savedAt: $0.2) },
+                        hasMore: false,
+                        period: lastMonth
+                    ),
+                    .prompt("찾기 결제 지난달"),
+                    .noResults(query: SearchQuery(text: "결제 지난달", words: "결제", tags: []), recent: [], period: lastMonth),
+                ]
+            ))
         case .binList:
             let trashed = [(29, "주간 업무 메모.md", "md", 30), (21, "사무실 비품 주문 목록.txt", "txt", 12)]
             currentScreen?.render(TerminalViewState(

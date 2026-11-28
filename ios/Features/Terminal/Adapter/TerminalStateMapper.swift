@@ -210,23 +210,21 @@ public enum TerminalStateMapper {
                 result.append(.commandHint(prefix: "→ 다시: ", command: command, suffix: ""))
             }
             return result
-        case .recentList(let items, let hasMore, _, _):
-            return [.list(
-                header: nil,
-                items: items.map { mapRow($0, isPicked: pickedNumbers.contains($0.number)) },
-                hasMore: hasMore
-            )]
-        case .searchResult(_, let total, let items, let hasMore, _, _):
-            let header = countHeader(total: total, shown: items.count)
-            return [.list(
-                header: header,
-                items: items.map { mapRow($0, isPicked: pickedNumbers.contains($0.number)) },
-                hasMore: hasMore
-            )]
-        case .noResults(let query, let recent, _, _):
-            var result: [TerminalOutputBlockLine] = [
-                .status(tone: .info, boldPrefix: nil, body: #"0건: "\#(query.text)""#),
-            ]
+        case .recentList(let items, let hasMore, let total, let period):
+            // 시점이 없는 `최근`은 머리 줄 없이 목록만(commands 6절). 시점이 있으면 찾기와 같은 머리 줄.
+            return [periodList(items: items, total: total ?? items.count, hasMore: hasMore, period: period, pickedNumbers: pickedNumbers, showsCount: period != nil)]
+        case .searchResult(_, let total, let items, let hasMore, let period, _):
+            return [periodList(items: items, total: total, hasMore: hasMore, period: period, pickedNumbers: pickedNumbers, showsCount: true)]
+        case .noResults(let query, let recent, let period, _):
+            var result: [TerminalOutputBlockLine] = []
+            if let period {
+                // commands 6절 시점을 붙인 결과: `· 0건: "결제" (지난달)` 뒤에 `→ 기간 없이: 찾기 결제`.
+                let bare = ([query.words] + query.tags.map { "#\($0)" }).filter { !$0.isEmpty }.joined(separator: " ")
+                result.append(.status(tone: .info, boldPrefix: nil, body: #"0건: "\#(bare)" (\#(period.label))"#))
+                result.append(.commandHint(prefix: "→ 기간 없이: ", command: "찾기 \(bare)", suffix: ""))
+            } else {
+                result.append(.status(tone: .info, boldPrefix: nil, body: #"0건: "\#(query.text)""#))
+            }
             if !recent.isEmpty {
                 result.append(.status(tone: .info, boldPrefix: nil, body: "최근 저장 \(recent.count)건 (검색 결과 아님)"))
                 result.append(.list(
@@ -362,6 +360,25 @@ public enum TerminalStateMapper {
         let title = item.kind == .text ? textTitle(item.title) : item.title
         let metaParts = [item.source, "\(entry.daysLeft)일 남음"].compactMap { $0 }.filter { !$0.isEmpty }
         return TerminalTrashRow(number: item.number, title: title, meta: metaParts.joined(separator: " · "))
+    }
+
+    /// 찾기·최근 목록. 시점이 있으면 머리 줄 뒤에 ` · 지난달 (10/1~10/31)`, 여러 주면 주 구분선(웹 `SearchResultLines`).
+    private static func periodList(
+        items: [ItemSummary],
+        total: Int,
+        hasMore: Bool,
+        period: Period?,
+        pickedNumbers: Set<Int>,
+        showsCount: Bool
+    ) -> TerminalOutputBlockLine {
+        var rows = items.map { mapRow($0, isPicked: pickedNumbers.contains($0.number)) }
+        var header = showsCount ? countHeader(total: total, shown: items.count) : nil
+        if let period {
+            header = [header, PeriodFormat.label(period)].compactMap { $0 }.joined(separator: " · ")
+            let dividers = PeriodFormat.dividers(for: items.map(\.savedAt), in: period)
+            rows = zip(rows, dividers).map { $0.with(dividerBefore: $1) }
+        }
+        return .list(header: header, items: rows, hasMore: hasMore)
     }
 
     private static func mapRow(_ item: ItemSummary, isPicked: Bool) -> TerminalItemRow {
