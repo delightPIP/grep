@@ -50,3 +50,13 @@ extension TerminalViewState {
         return next
     }
 }
+
+extension TerminalViewState {
+    /// `index`의 줄을 바꾼다. 없는 자리면 그대로 둔다.
+    public func replacingLine(at index: Int, with line: Line) -> TerminalViewState {
+        guard lines.indices.contains(index) else { return self }
+        var next = self
+        next.lines[index] = line
+        return next
+    }
+}

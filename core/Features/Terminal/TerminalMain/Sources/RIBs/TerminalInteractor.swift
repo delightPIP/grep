@@ -4,6 +4,8 @@ import FoundationEssentials
 import Foundation
 #endif
 import FeatureTerminalInterface
+import TerminalCommandKit
+import TerminalConnections
 import TerminalDomain
 import GrepCore
 import GrepData
@@ -12,7 +14,8 @@ import RIBs
 /// 터미널 화면. 입력줄의 명령을 해석한다. 자료 수와 되살릴 줄은 부모가 `TerminalHandle`로 넘긴다.
 /// 아는 명령은 `담기`·`최근`·`찾기`·`고르기`·`넘기기`·`도움말`·`설명`·`로그아웃`이다. 붙여 넣기와 끌어다 놓기도 저장한다(#57). 나머지는 없는 명령으로 그린다.
 /// 처리 중 자료가 화면에 있으면 2초마다 상태를 묻고(ARC-005 규칙 10), 서버에 닿지 못하면 5초마다 다시 확인한다(COM-010).
-final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, TerminalPresentableListener, TerminalHandle {
+final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, TerminalPresentableListener, TerminalHandle,
+    TerminalContext {
 
     let authService: any AuthService
     /// ARC-005 규칙 10의 폴링 주기(08 6절 13번).
@@ -22,12 +25,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
 
     /// `더 보기`가 이어 붙일 목록 줄과 다음 쪽을 받는 값.
     struct ListPage: Equatable {
-        enum Source: Equatable {
-            case recent(limit: Int, period: Period?)
-            case search(SearchQuery, period: Period?)
-            case bin
-            case bundle(String)
-        }
+        typealias Source = TerminalListSource
 
         let lineIndex: Int
         let cursor: String
@@ -46,7 +44,9 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     }
 
     let rawTransport: any HTTPTransport
-    let httpTransport: ObservedTransport
+    /// 서버에 닿았는지를 `연결 끊김` 표시에 넣는 전송(COM-010).
+    let observedTransport: ObservedTransport
+    var httpTransport: any HTTPTransport { observedTransport }
     let clipboard: any ClipboardPort
     let files: any FilePort
     let historyStore: any HistoryStore
@@ -74,10 +74,10 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     var isAwaitingImport = false
     /// `가져오기`를 제안한 북마크 파일(#172). 다음 입력이 `가져오기`면 이 파일을 보내고, 다른 입력이면 놓는다.
     var suggestedImport: DroppedFile?
-    /// 답을 기다리는 `연결 끊기 <번호>` 확인(ACC-002 규칙 8, COM-007).
-    var pendingDisconnect: PendingDisconnect?
-    /// 답을 기다리는 `로그아웃 모든기기` 확인(ACC-002 규칙 4, COM-007).
-    var pendingSignOutEverywhere = false
+    /// 명령 모듈. 이 RIB이 쥐고, 모듈은 `TerminalContext`로 이 RIB을 쓴다.
+    private(set) lazy var connections = TerminalConnectionCommands(context: self)
+    /// 확인 대기를 가진 명령 모듈. 입력이 오면 차례로 답인지 묻는다.
+    private var commands: [any TerminalCommand] { [connections] }
     /// 오타 제안(#118, commands.md 207줄). 빈 입력 엔터면 이 문자열을 실행하고, 다른 입력이면 지운다.
     var pendingSuggestion: String?
     /// `POST /samples` 중복 실행 방지.
@@ -109,7 +109,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
     ) {
         self.authService = authService
         self.rawTransport = httpTransport
-        self.httpTransport = ObservedTransport(base: httpTransport)
+        self.observedTransport = ObservedTransport(base: httpTransport)
         self.clipboard = clipboard
         self.files = files
         self.historyStore = historyStore
@@ -120,14 +120,14 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
 
     override func didBecomeActive() {
         presenter.listener = self
-        httpTransport.onReachabilityObserved = { [weak self] in self?.observeReachability($0) }
+        observedTransport.onReachabilityObserved = { [weak self] in self?.observeReachability($0) }
         presenter.render(viewState)
         restoreHistory()
     }
 
     override func willResignActive() {
         presenter.listener = nil
-        httpTransport.onReachabilityObserved = nil
+        observedTransport.onReachabilityObserved = nil
         forgetSuggestedImport()
     }
 
@@ -174,6 +174,20 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             }
             await request(token)
         }
+    }
+
+    func launch(_ operation: @escaping @MainActor () async -> Void) {
+        startTask(operation)
+    }
+
+    func requestSignOutEverywhere() {
+        forgetHistory()
+        listener?.didRequestSignOutEverywhere()
+    }
+
+    func showConnectionNotices(_ notices: [ConnectionNotice]) {
+        guard !notices.isEmpty else { return }
+        update(viewState.appending(lines: notices.map { .connectionEnded(client: $0.client, reason: $0.reason) }))
     }
 
     /// 자료가 바뀌었다(저장·버리기·되살리기·묶음 넣기). 부모가 열린 보관함을 다시 받게 한다.
@@ -227,19 +241,8 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             confirmSavedSearchDelete(pending, typed: text)
             return
         }
-        if let pending = pendingDisconnect, pending.matches(text) {
-            pendingDisconnect = nil
-            confirmDisconnect(pending, typed: text)
+        if commands.contains(where: { $0.answer(text) }) {
             return
-        }
-        if pendingSignOutEverywhere {
-            let answer = text.trimmingWhitespace()
-            if answer == "로그아웃" || answer == "signout" {
-                pendingSignOutEverywhere = false
-                forgetHistory()
-                listener?.didRequestSignOutEverywhere()
-                return
-            }
         }
         cancelPendingConfirmations()
         if FolderHint.matches(text) {
@@ -252,7 +255,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
             forgetHistory()
             listener?.didRequestSignOut()
         case .signOut where command.argument == "모든기기" || command.argument == "all":
-            askSignOutEverywhere(typed: text)
+            connections.askSignOutEverywhere(typed: text)
         case .keep where command.argument.isEmpty:
             update(viewState.appending(lines: [.prompt(text), .missingArgument(.keep)]).with(input: ""))
         case .keep:
@@ -279,7 +282,7 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
         case .gather:
             handleGather(command.argument, typed: text)
         case .plug:
-            handleConnections(command.argument, typed: text)
+            connections.handleConnections(command.argument, typed: text)
         case .bring where command.argument.isEmpty && importSuggested(typed: text):
             break
         case .bring where command.argument.isEmpty:
@@ -493,15 +496,14 @@ final class TerminalInteractor: PresentableInteractor<any TerminalPresentable>, 
 
     func cancelPendingConfirmations() {
         let hadPending = pendingHandoff != nil || pendingDrop != nil || pendingBinEmpty != nil
-            || pendingBundleDelete != nil || pendingSavedSearchDelete != nil || pendingDisconnect != nil
-            || pendingSignOutEverywhere
+            || pendingBundleDelete != nil || pendingSavedSearchDelete != nil
+            || commands.contains(where: \.hasPendingAnswer)
         pendingHandoff = nil
         pendingDrop = nil
         pendingBinEmpty = nil
         pendingBundleDelete = nil
         pendingSavedSearchDelete = nil
-        pendingDisconnect = nil
-        pendingSignOutEverywhere = false
+        commands.forEach { $0.cancelPendingAnswer() }
         if hadPending {
             update(viewState.appending(lines: [.cancelled]).with(input: ""))
         }

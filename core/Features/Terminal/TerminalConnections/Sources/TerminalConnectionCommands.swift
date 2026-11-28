@@ -1,7 +1,8 @@
-import FeatureTerminalInterface
 import TerminalDomain
 import GrepCore
 import GrepData
+import TerminalCommandKit
+import TerminalDomain
 
 // MARK: AI 도구 연결(#124, ACC-002)
 
@@ -17,8 +18,39 @@ struct PendingDisconnect: Equatable {
     }
 }
 
-extension TerminalInteractor {
-    func handleConnections(_ argument: String, typed: String) {
+/// `연결`·`연결 끊기 <번호>`·`로그아웃 모든기기` 확인(ACC-002).
+public final class TerminalConnectionCommands: TerminalCommandBase, TerminalCommand {
+    /// 답을 기다리는 `연결 끊기 <번호>` 확인(ACC-002 규칙 8, COM-007).
+    private var pendingDisconnect: PendingDisconnect?
+    /// 답을 기다리는 `로그아웃 모든기기` 확인(ACC-002 규칙 4, COM-007).
+    private var pendingSignOutEverywhere = false
+
+    public var hasPendingAnswer: Bool { pendingDisconnect != nil || pendingSignOutEverywhere }
+
+    public func answer(_ text: String) -> Bool {
+        if let pending = pendingDisconnect, pending.matches(text) {
+            pendingDisconnect = nil
+            confirmDisconnect(pending, typed: text)
+            return true
+        }
+        if pendingSignOutEverywhere {
+            let answer = text.trimmingWhitespace()
+            if answer == "로그아웃" || answer == "signout" {
+                pendingSignOutEverywhere = false
+                context.requestSignOutEverywhere()
+                return true
+            }
+        }
+        return false
+    }
+
+    public func cancelPendingAnswer() {
+        pendingDisconnect = nil
+        pendingSignOutEverywhere = false
+    }
+
+    /// `연결` 뒤의 인자를 처리한다.
+    public func handleConnections(_ argument: String, typed: String) {
         guard !argument.isEmpty else {
             showConnections(typed: typed)
             return
@@ -40,7 +72,7 @@ extension TerminalInteractor {
         }
     }
 
-    func confirmDisconnect(_ pending: PendingDisconnect, typed: String) {
+    private func confirmDisconnect(_ pending: PendingDisconnect, typed: String) {
         run(typed: typed) { [weak self] token in
             guard let self else { return }
             let outcome = await ConnectionsAPI.end(number: pending.number, transport: httpTransport, accessToken: token)
@@ -63,7 +95,7 @@ extension TerminalInteractor {
 
     /// `로그아웃 모든기기` 확인 줄을 바로 찍고, 끊길 연결 수를 받으면 그 줄을 고친다(ACC-002 사용자 문구).
     /// 연결 수를 받지 못해도 확인은 그대로 받는다.
-    func askSignOutEverywhere(typed: String) {
+    public func askSignOutEverywhere(typed: String) {
         pendingSignOutEverywhere = true
         update(viewState.appending(lines: [.prompt(typed), .signOutEverywhereConfirm(connectionCount: nil)]).with(input: ""))
         let confirmIndex = viewState.lines.count - 1
@@ -78,11 +110,6 @@ extension TerminalInteractor {
                 at: confirmIndex, with: .signOutEverywhereConfirm(connectionCount: list.connections.count)
             ))
         }
-    }
-
-    func showConnectionNotices(_ notices: [ConnectionNotice]) {
-        guard !notices.isEmpty else { return }
-        update(viewState.appending(lines: notices.map { .connectionEnded(client: $0.client, reason: $0.reason) }))
     }
 
     private func showConnections(typed: String) {
