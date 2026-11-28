@@ -34,9 +34,13 @@ import type {
   TrashEntry,
 } from "../../support/view-state";
 import { Burrow, type MoleAction } from "../../ui/burrow";
+import type { PickedRef } from "./contract";
+import { pickWords } from "./pick-word";
 import { Banner, DockInput, Line, Prompt, StatusBar, Window, type StatusItem } from "../../ui/grep";
 
-export type TerminalScreenProps = LoggedInState & {
+export type TerminalScreenProps = Omit<LoggedInState, "selection"> & {
+  /** 고른 자료. #179 kind·source가 오면 선택 줄에 종류 낱말로 쓴다. */
+  selection: PickedRef[];
   onInputChange: (text: string) => void;
   onSubmit: (text: string) => void;
   /** 입력줄이 빈 채로 붙여 넣었다. 붙여 넣기만 해도 저장한다(commands 3절 담기). */
@@ -1516,10 +1520,10 @@ function DropGuide() {
   );
 }
 
-/** 입력줄 바로 위 `선택 2  <제목> · <제목>`(commands 6절 고르기). 선택이 없으면 없다. */
-function SelectionLine({ selection }: { selection: ItemRef[] }) {
+/** 입력줄 바로 위 `선택 3  PDF 25 · 글 12 · example.com 3`(commands 6절 고르기, ARC-003 규칙 14). 선택이 없으면 없다. */
+function SelectionLine({ selection }: { selection: PickedRef[] }) {
   if (selection.length === 0) return null;
-  return <div className="gt-selection">{`선택 ${selection.length}  ${titles(selection)}`}</div>;
+  return <div className="gt-selection">{`선택 ${selection.length}  ${pickWords(selection)}`}</div>;
 }
 
 /** 상태줄 `자료 131 · 선택 2 · 요약 생성 중 1 · 연결 끊김`(commands 6절, ARC-005, COM-010). `묶음` 칸은 그 명령 이슈에서. */

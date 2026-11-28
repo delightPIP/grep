@@ -817,6 +817,22 @@ describe("LoggedInView", () => {
       );
     });
 
+    it("종류를아는자료를골랐을때_화면을그리면_선택줄에종류낱말과번호를보이는지", () => {
+      // given
+      const selection = [
+        { number: 25, title: "보고서.pdf", kind: "file" as const, source: null },
+        { number: 12, title: "회의 메모", kind: "text" as const, source: null },
+        { number: 3, title: "결제 가이드", kind: "link" as const, source: "example.com" },
+        { number: 9, title: "화면.png", kind: "file" as const, source: null },
+      ];
+
+      // when
+      const { container } = renderView({ selection } as Partial<LoggedInState>);
+
+      // then
+      expect(container.querySelector(".gt-selection")!.textContent).toBe("선택 4  PDF 25 · 글 12 · example.com 3 · PNG 9");
+    });
+
     it("선택이없을때_화면을그리면_선택줄이없는지", () => {
       // given
       // when
