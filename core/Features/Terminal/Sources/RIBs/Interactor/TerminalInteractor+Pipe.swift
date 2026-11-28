@@ -1,5 +1,6 @@
 import FeatureTerminalInterface
 import GrepCore
+import GrepData
 
 // MARK: 이어 쓰기 `찾기 … | 넘기기`(#66)
 

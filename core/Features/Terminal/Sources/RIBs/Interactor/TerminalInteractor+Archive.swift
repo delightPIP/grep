@@ -1,5 +1,6 @@
 import FeatureTerminalInterface
 import GrepCore
+import GrepData
 
 // MARK: 보관함 탭(#168, ARC-007)
 

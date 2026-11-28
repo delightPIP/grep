@@ -1,4 +1,3 @@
-import GrepCore
 
 // 계약 2(#157) 묶음·자세히 보기·찾아두기·연결 줄에 담는 값. 이름은 `web/support/view-state.ts`와 같다.
 

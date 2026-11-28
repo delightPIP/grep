@@ -1,5 +1,6 @@
 import FeatureTerminalInterface
 import GrepCore
+import GrepData
 
 // MARK: 고치기(#99, ARC-002·004)
 

@@ -1,5 +1,6 @@
 import FeatureTerminalInterface
 import GrepCore
+import GrepData
 
 // MARK: 설정 탭(#168)
 

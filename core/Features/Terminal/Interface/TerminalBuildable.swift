@@ -3,7 +3,7 @@ import FoundationEssentials
 #else
 import Foundation
 #endif
-import GrepCore
+@_exported import GrepCore
 import RIBs
 
 @MainActor

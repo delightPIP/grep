@@ -3,12 +3,12 @@ import FoundationEssentials
 #else
 import Foundation
 #endif
-import FeatureTerminalInterface
+
 import GrepCore
 
 /// 묶음 API(api/openapi.yaml `listBundles`·`getBundle`·`deleteBundle`·`addToBundle`·`removeFromBundle`). 응답 해석까지만 한다.
-enum BundleAPI {
-    enum Outcome<Value: Equatable>: Equatable {
+public enum BundleAPI {
+    public enum Outcome<Value: Equatable>: Equatable {
         case success(Value)
         case rejected(Rejection)
         case sessionExpired
@@ -17,7 +17,7 @@ enum BundleAPI {
     }
 
     /// 서버가 거절한 이유(api `Error`).
-    enum Rejection: Equatable {
+    public enum Rejection: Equatable {
         /// 404이고 번호가 없다: 그 이름의 묶음이 없다.
         case bundleNotFound
         /// 404이고 번호가 있다: 없거나 휴지통에 있는 자료(ARC-001 규칙 10).
@@ -26,17 +26,17 @@ enum BundleAPI {
         case notInBundle(numbers: [Int])
     }
 
-    struct Page: Equatable {
-        let name: String
-        let total: Int
-        let items: [ItemSummary]
-        let nextCursor: String?
+    public struct Page: Equatable {
+        public let name: String
+        public let total: Int
+        public let items: [ItemSummary]
+        public let nextCursor: String?
     }
 
-    struct Added: Equatable {
-        let name: String
-        let count: Int
-        let alreadyCount: Int
+    public struct Added: Equatable {
+        public let name: String
+        public let count: Int
+        public let alreadyCount: Int
     }
 
     private static let bundlesPath = "/bundles"
@@ -45,44 +45,44 @@ enum BundleAPI {
     private static let successStatuses = 200..<300
 
     private struct NumbersBody: Encodable {
-        let numbers: [Int]
+        public let numbers: [Int]
     }
 
     private struct ListBody: Decodable {
-        let bundles: [BundleEntry]
+        public let bundles: [BundleEntry]
     }
 
     private struct PageBody: Decodable {
-        let name: String
-        let total: Int
-        let items: [ItemSummary]
-        let nextCursor: String?
+        public let name: String
+        public let total: Int
+        public let items: [ItemSummary]
+        public let nextCursor: String?
     }
 
     private struct AddedBody: Decodable {
-        let name: String
-        let count: Int
-        let alreadyCount: Int
+        public let name: String
+        public let count: Int
+        public let alreadyCount: Int
     }
 
     private struct CountBody: Decodable {
-        let count: Int
+        public let count: Int
     }
 
     private struct ErrorBody: Decodable {
-        let code: String
-        let reason: String?
-        let numbers: [Int]?
+        public let code: String
+        public let reason: String?
+        public let numbers: [Int]?
     }
 
     @MainActor
-    static func list(transport: any HTTPTransport, accessToken: String) async -> Outcome<[BundleEntry]> {
+    public static func list(transport: any HTTPTransport, accessToken: String) async -> Outcome<[BundleEntry]> {
         let result = await send(.get, bundlesPath, transport: transport, accessToken: accessToken)
         return outcome(of: result) { ItemsAPI.decode(ListBody.self, from: $0)?.bundles }
     }
 
     @MainActor
-    static func page(
+    public static func page(
         name: String,
         limit: Int,
         cursor: String?,
@@ -99,13 +99,13 @@ enum BundleAPI {
     }
 
     @MainActor
-    static func delete(name: String, transport: any HTTPTransport, accessToken: String) async -> Outcome<Bool> {
+    public static func delete(name: String, transport: any HTTPTransport, accessToken: String) async -> Outcome<Bool> {
         let result = await send(.delete, path(of: name), transport: transport, accessToken: accessToken)
         return outcome(of: result) { _ in true }
     }
 
     @MainActor
-    static func add(
+    public static func add(
         name: String,
         numbers: [Int],
         transport: any HTTPTransport,
@@ -124,7 +124,7 @@ enum BundleAPI {
 
     /// 뺀 뒤 남은 건수.
     @MainActor
-    static func remove(
+    public static func remove(
         name: String,
         numbers: [Int],
         transport: any HTTPTransport,

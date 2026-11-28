@@ -3,12 +3,12 @@ import FoundationEssentials
 #else
 import Foundation
 #endif
-import FeatureTerminalInterface
+
 import GrepCore
 
 /// 휴지통 API(api/openapi.yaml `trashItems`·`restoreItems`·`listTrash`·`emptyTrash`). 응답 해석까지만 한다.
-enum TrashAPI {
-    enum MoveOutcome: Equatable {
+public enum TrashAPI {
+    public enum MoveOutcome: Equatable {
         case moved([ItemRef])
         case notFound(numbers: [Int])
         case sessionExpired
@@ -16,14 +16,14 @@ enum TrashAPI {
         case cancelled
     }
 
-    enum ListOutcome: Equatable {
+    public enum ListOutcome: Equatable {
         case page(total: Int, items: [TrashEntry], nextCursor: String?)
         case sessionExpired
         case failed(CommandFailure)
         case cancelled
     }
 
-    enum EmptyOutcome: Equatable {
+    public enum EmptyOutcome: Equatable {
         case emptied(count: Int)
         case sessionExpired
         case failed(CommandFailure)
@@ -37,44 +37,44 @@ enum TrashAPI {
     private static let unreservedBytes = Set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~".utf8)
 
     private struct NumbersBody: Encodable {
-        let numbers: [Int]
+        public let numbers: [Int]
     }
 
     private struct ItemRefListBody: Decodable {
-        struct Item: Decodable {
-            let number: Int
-            let title: String
+        public struct Item: Decodable {
+            public let number: Int
+            public let title: String
         }
 
-        let items: [Item]
+        public let items: [Item]
     }
 
     private struct NotFoundBody: Decodable {
-        let numbers: [Int]
+        public let numbers: [Int]
     }
 
     private struct TrashPageBody: Decodable {
-        let items: [TrashEntry]
-        let total: Int
-        let nextCursor: String?
+        public let items: [TrashEntry]
+        public let total: Int
+        public let nextCursor: String?
     }
 
     private struct CountBody: Decodable {
-        let count: Int
+        public let count: Int
     }
 
     @MainActor
-    static func trash(numbers: [Int], transport: any HTTPTransport, accessToken: String) async -> MoveOutcome {
+    public static func trash(numbers: [Int], transport: any HTTPTransport, accessToken: String) async -> MoveOutcome {
         await move(path: trashPath, numbers: numbers, transport: transport, accessToken: accessToken)
     }
 
     @MainActor
-    static func restore(numbers: [Int], transport: any HTTPTransport, accessToken: String) async -> MoveOutcome {
+    public static func restore(numbers: [Int], transport: any HTTPTransport, accessToken: String) async -> MoveOutcome {
         await move(path: restorePath, numbers: numbers, transport: transport, accessToken: accessToken)
     }
 
     @MainActor
-    static func list(
+    public static func list(
         limit: Int,
         cursor: String?,
         transport: any HTTPTransport,
@@ -105,7 +105,7 @@ enum TrashAPI {
     }
 
     @MainActor
-    static func empty(transport: any HTTPTransport, accessToken: String) async -> EmptyOutcome {
+    public static func empty(transport: any HTTPTransport, accessToken: String) async -> EmptyOutcome {
         let request = HTTPRequest(
             method: .delete,
             path: trashPath,

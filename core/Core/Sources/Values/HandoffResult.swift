@@ -1,5 +1,3 @@
-import GrepCore
-import RIBs
 
 /// 서버 `POST /handoff` 결과(api/openapi.yaml `Handoff`).
 public struct HandoffResult: Equatable, Sendable {

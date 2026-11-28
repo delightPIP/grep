@@ -3,12 +3,12 @@ import FoundationEssentials
 #else
 import Foundation
 #endif
-import FeatureTerminalInterface
+
 import GrepCore
 
 /// 자료 조회 API(api/openapi.yaml `listRecentItems`·`searchItems`·`getItemStatuses`·`getHealth`). 응답 해석까지만 한다.
-enum BrowseAPI {
-    enum PageOutcome: Equatable {
+public enum BrowseAPI {
+    public enum PageOutcome: Equatable {
         /// `nextCursor`가 nil이면 마지막 쪽이다. `total`은 기간 조건이 있을 때만 내려온다(#114).
         case page(items: [ItemSummary], total: Int?, nextCursor: String?)
         case sessionExpired
@@ -16,7 +16,7 @@ enum BrowseAPI {
         case cancelled
     }
 
-    enum SearchOutcome: Equatable {
+    public enum SearchOutcome: Equatable {
         /// `total`은 조건에 맞는 전체 건수다. `nextCursor`가 nil이면 마지막 쪽이다.
         /// `isSavedSearch`는 같은 검색어를 찾아뒀는지(계약 2, #134). 서버가 주지 않으면 nil.
         /// `related`는 0건일 때만 오는 뜻이 가까운 자료(최대 3건, #128). 없으면 빈 배열.
@@ -26,7 +26,7 @@ enum BrowseAPI {
         case cancelled
     }
 
-    enum LookupOutcome: Equatable {
+    public enum LookupOutcome: Equatable {
         /// `missing`은 없거나 휴지통에 있는 번호다.
         case found(items: [ItemSummary], missing: [Int])
         case sessionExpired
@@ -47,29 +47,29 @@ enum BrowseAPI {
     private static let unreservedBytes = Set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~".utf8)
 
     private struct PageBody: Decodable {
-        let items: [ItemSummary]
-        let total: Int?
-        let nextCursor: String?
+        public let items: [ItemSummary]
+        public let total: Int?
+        public let nextCursor: String?
     }
 
     private struct SearchBody: Decodable {
-        let items: [ItemSummary]
-        let total: Int
-        let nextCursor: String?
-        let isSavedSearch: Bool?
-        let related: [ItemSummary]?
+        public let items: [ItemSummary]
+        public let total: Int
+        public let nextCursor: String?
+        public let isSavedSearch: Bool?
+        public let related: [ItemSummary]?
     }
 
     private struct LookupBody: Decodable {
-        let items: [ItemSummary]
-        let missing: [Int]
+        public let items: [ItemSummary]
+        public let missing: [Int]
     }
 
     private struct ErrorBody: Decodable {
-        let code: String
+        public let code: String
     }
 
-    enum Reply<Body> {
+    public enum Reply<Body> {
         case body(Body)
         case sessionExpired
         case unauthorized
@@ -79,7 +79,7 @@ enum BrowseAPI {
 
     /// 최근 저장 순 한 쪽. `cursor`는 앞 응답의 `nextCursor`다.
     @MainActor
-    static func recent(
+    public static func recent(
         limit: Int,
         cursor: String?,
         period: Period? = nil,
@@ -97,7 +97,7 @@ enum BrowseAPI {
 
     /// `GET /items?<params>`. `params`는 퍼센트 인코딩한 `이름=값`이다. 보관함 자동 묶음 조건(#168)도 여기로 보낸다.
     @MainActor
-    static func items(_ params: [String], transport: any HTTPTransport, accessToken: String) async -> PageOutcome {
+    public static func items(_ params: [String], transport: any HTTPTransport, accessToken: String) async -> PageOutcome {
         switch await get("\(itemsPath)?\(params.joined(separator: "&"))", as: PageBody.self, transport: transport, accessToken: accessToken) {
         case .body(let page): return .page(items: page.items, total: page.total, nextCursor: page.nextCursor)
         case .sessionExpired: return .sessionExpired
@@ -110,7 +110,7 @@ enum BrowseAPI {
 
     /// 찾기 한 쪽. `q`는 검색어, `tag`는 `#` 없는 태그를 조건마다 한 번씩 준다(ARC-002 규칙 5~7).
     @MainActor
-    static func search(
+    public static func search(
         _ query: SearchQuery,
         limit: Int,
         cursor: String?,
@@ -142,7 +142,7 @@ enum BrowseAPI {
 
     /// 번호로 자료를 다시 받는다. 처리 중 자료 폴링에 쓴다(ARC-005 규칙 10).
     @MainActor
-    static func statuses(
+    public static func statuses(
         of numbers: [Int],
         transport: any HTTPTransport,
         accessToken: String
@@ -159,12 +159,12 @@ enum BrowseAPI {
 
     /// 서버가 답하는지만 본다(COM-010). 답이 왔는지는 전송 계층을 지켜보는 쪽이 안다.
     @MainActor
-    static func checkHealth(transport: any HTTPTransport) async {
+    public static func checkHealth(transport: any HTTPTransport) async {
         _ = try? await transport.send(HTTPRequest(method: .get, path: healthPath))
     }
 
     @MainActor
-    static func get<Body: Decodable>(
+    public static func get<Body: Decodable>(
         _ path: String,
         as type: Body.Type,
         transport: any HTTPTransport,
@@ -192,7 +192,7 @@ enum BrowseAPI {
     }
 
     /// 경로 조각·쿼리 값용. RFC 3986 unreserved 밖은 모두 %XX로 바꾼다.
-    static func percentEncoded(_ value: String) -> String {
+    public static func percentEncoded(_ value: String) -> String {
         value.utf8.map { byte in
             unreservedBytes.contains(byte)
                 ? String(UnicodeScalar(byte))

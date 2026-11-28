@@ -1,5 +1,6 @@
 import FeatureTerminalInterface
 import GrepCore
+import GrepData
 
 // MARK: 터미널 기록(#68, COM-009)
 

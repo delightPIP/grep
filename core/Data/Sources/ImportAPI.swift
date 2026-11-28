@@ -1,23 +1,23 @@
-import FeatureTerminalInterface
+
 import GrepCore
 
 /// 북마크 가져오기 API(api/openapi.yaml `startImport`·`getImport`). 응답 해석까지만 한다.
-enum ImportAPI {
-    struct Status: Equatable, Decodable {
-        let id: String
-        let state: String
-        let total: Int
-        let done: Int
-        let saved: Int
-        let skipped: Int
-        let failed: Int
-        let overLimit: Int
-        let failedUrls: [String]
+public enum ImportAPI {
+    public struct Status: Equatable, Decodable {
+        public let id: String
+        public let state: String
+        public let total: Int
+        public let done: Int
+        public let saved: Int
+        public let skipped: Int
+        public let failed: Int
+        public let overLimit: Int
+        public let failedUrls: [String]
 
-        var isFinished: Bool { state == "finished" }
+        public var isFinished: Bool { state == "finished" }
     }
 
-    enum Outcome: Equatable {
+    public enum Outcome: Equatable {
         case status(Status)
         /// 404. 진행을 더 물을 수 없다.
         case notFound
@@ -31,11 +31,11 @@ enum ImportAPI {
     private static let successStatuses = 200..<300
 
     private struct StartBody: Encodable {
-        let html: String
+        public let html: String
     }
 
     @MainActor
-    static func start(html: String, transport: any HTTPTransport, accessToken: String) async -> Outcome {
+    public static func start(html: String, transport: any HTTPTransport, accessToken: String) async -> Outcome {
         let result = await ItemsAPI.post(
             path, body: StartBody(html: html), headers: [:], transport: transport, accessToken: accessToken
         )
@@ -43,7 +43,7 @@ enum ImportAPI {
     }
 
     @MainActor
-    static func status(id: String, transport: any HTTPTransport, accessToken: String) async -> Outcome {
+    public static func status(id: String, transport: any HTTPTransport, accessToken: String) async -> Outcome {
         let request = HTTPRequest(
             method: .get,
             path: "\(path)/\(BrowseAPI.percentEncoded(id))",

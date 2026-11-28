@@ -5,6 +5,7 @@ import Foundation
 #endif
 import FeatureTerminalInterface
 import GrepCore
+import GrepData
 import RIBs
 
 /// 터미널 화면. 입력줄의 명령을 해석한다. 자료 수와 되살릴 줄은 부모가 `TerminalHandle`로 넘긴다.

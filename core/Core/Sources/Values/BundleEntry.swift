@@ -1,4 +1,3 @@
-import GrepCore
 
 /// `묶음` 목록 한 줄(ARC-003).
 public struct BundleEntry: Equatable, Sendable, Codable {

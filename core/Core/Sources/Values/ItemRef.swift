@@ -1,5 +1,3 @@
-import GrepCore
-import RIBs
 
 /// 자료를 가리키는 최소 값. 선택 줄·넘긴 자료 줄에 쓴다.
 /// `kind`·`source`는 선택 칩의 종류 낱말(ARC-003 규칙 14)에 쓴다. 고를 때 받은 `ItemSummary`에서 채운다.

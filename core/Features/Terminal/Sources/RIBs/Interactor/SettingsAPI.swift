@@ -1,5 +1,6 @@
 import FeatureTerminalInterface
 import GrepCore
+import GrepData
 
 /// 설정 탭의 계정 칸(api/openapi.yaml `getMe`). `/me`에 있는 값만 쓴다.
 enum SettingsAPI {

@@ -1,5 +1,3 @@
-import GrepCore
-import RIBs
 
 /// 저장 실패 이유.
 public enum SaveFailure: Equatable, Sendable {

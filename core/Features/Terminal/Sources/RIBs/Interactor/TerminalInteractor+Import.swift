@@ -1,5 +1,6 @@
 import FeatureTerminalInterface
 import GrepCore
+import GrepData
 
 // MARK: 북마크 가져오기(#127, F8, user-flow 10절)
 

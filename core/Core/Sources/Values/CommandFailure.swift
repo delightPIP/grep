@@ -1,5 +1,3 @@
-import GrepCore
-import RIBs
 
 /// 명령 실패 이유(COM-008, COM-010).
 public enum CommandFailure: Equatable, Sendable {

@@ -3,12 +3,12 @@ import FoundationEssentials
 #else
 import Foundation
 #endif
-import FeatureTerminalInterface
+
 import GrepCore
 
 /// 자료 고치기 API(api/openapi.yaml `reviseItem`). 응답 해석까지만 한다.
-enum ReviseAPI {
-    enum Outcome: Equatable {
+public enum ReviseAPI {
+    public enum Outcome: Equatable {
         case revised(ItemSummary)
         case notFound
         case sessionExpired
@@ -20,13 +20,13 @@ enum ReviseAPI {
     private static let successStatuses = 200..<300
 
     private struct RequestBody: Encodable {
-        let title: String?
-        let summary: String?
-        let removeTags: [String]?
+        public let title: String?
+        public let summary: String?
+        public let removeTags: [String]?
     }
 
     @MainActor
-    static func revise(
+    public static func revise(
         number: Int,
         title: String? = nil,
         summary: String? = nil,

@@ -1,5 +1,3 @@
-import GrepCore
-import RIBs
 
 /// `찾기`의 조건. 태그는 `#` 없이(ARC-002 규칙 5~8).
 public struct SearchQuery: Equatable, Sendable {

@@ -1,9 +1,9 @@
-import FeatureTerminalInterface
+
 import GrepCore
 
 /// 넘길 글 API(api/openapi.yaml `createHandoff`). 응답 해석까지만 한다.
-enum HandoffAPI {
-    enum Outcome: Equatable {
+public enum HandoffAPI {
+    public enum Outcome: Equatable {
         case composed(HandoffResult)
         /// 번호 중 하나라도 없거나 휴지통에 있다. 서버는 아무것도 만들지 않았다(ARC-001 규칙 10).
         case notFound(numbers: [Int])
@@ -20,37 +20,37 @@ enum HandoffAPI {
 
     /// `numbers`와 `bundle` 중 하나만 준다. nil인 칸은 보내지 않는다.
     private struct RequestBody: Encodable {
-        var numbers: [Int]?
-        var bundle: String?
+        public var numbers: [Int]?
+        public var bundle: String?
     }
 
     private struct Body: Decodable {
-        struct Item: Decodable {
-            let number: Int
-            let title: String
+        public struct Item: Decodable {
+            public let number: Int
+            public let title: String
         }
 
-        let text: String
-        let charCount: Int
-        let items: [Item]
-        let missingSummaryCount: Int
-        let bundle: String?
-        let removedCount: Int?
+        public let text: String
+        public let charCount: Int
+        public let items: [Item]
+        public let missingSummaryCount: Int
+        public let bundle: String?
+        public let removedCount: Int?
     }
 
     private struct NotFoundBody: Decodable {
-        let numbers: [Int]?
+        public let numbers: [Int]?
     }
 
     /// `numbers`의 순서대로 넘길 글을 받는다. 글과 글자 수는 서버가 준 그대로 쓴다(AC-13).
     @MainActor
-    static func compose(numbers: [Int], transport: any HTTPTransport, accessToken: String) async -> Outcome {
+    public static func compose(numbers: [Int], transport: any HTTPTransport, accessToken: String) async -> Outcome {
         await compose(RequestBody(numbers: numbers), transport: transport, accessToken: accessToken)
     }
 
     /// 묶음 자료를 번호 큰 순으로 넘긴다. 빠진 자료 수는 `removedCount`(ARC-003 규칙 10).
     @MainActor
-    static func compose(bundle: String, transport: any HTTPTransport, accessToken: String) async -> Outcome {
+    public static func compose(bundle: String, transport: any HTTPTransport, accessToken: String) async -> Outcome {
         await compose(RequestBody(bundle: bundle), transport: transport, accessToken: accessToken)
     }
 

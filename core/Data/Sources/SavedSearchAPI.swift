@@ -3,12 +3,12 @@ import FoundationEssentials
 #else
 import Foundation
 #endif
-import FeatureTerminalInterface
+
 import GrepCore
 
 /// 찾아두기 API(api/openapi.yaml `listSavedSearches`·`saveSearch`·`deleteSavedSearch`). 응답 해석까지만 한다.
-enum SavedSearchAPI {
-    enum Outcome<Value: Equatable>: Equatable {
+public enum SavedSearchAPI {
+    public enum Outcome<Value: Equatable>: Equatable {
         case success(Value)
         /// 404. 지울 저장한 찾기가 없다.
         case notFound
@@ -19,11 +19,11 @@ enum SavedSearchAPI {
         case cancelled
     }
 
-    struct Saved: Equatable {
-        let query: String
-        let count: Int
+    public struct Saved: Equatable {
+        public let query: String
+        public let count: Int
         /// 200(이미 찾아둠). 201이면 false.
-        let already: Bool
+        public let already: Bool
     }
 
     private static let path = "/saved-searches"
@@ -33,21 +33,21 @@ enum SavedSearchAPI {
     private static let successStatuses = 200..<300
 
     private struct QueryBody: Encodable {
-        let query: String
+        public let query: String
     }
 
     private struct ListBody: Decodable {
-        let searches: [SavedSearchEntry]
+        public let searches: [SavedSearchEntry]
     }
 
     @MainActor
-    static func list(transport: any HTTPTransport, accessToken: String) async -> Outcome<[SavedSearchEntry]> {
+    public static func list(transport: any HTTPTransport, accessToken: String) async -> Outcome<[SavedSearchEntry]> {
         let result = await send(HTTPRequest(method: .get, path: path), transport: transport, accessToken: accessToken)
         return outcome(of: result) { _, body in ItemsAPI.decode(ListBody.self, from: body)?.searches }
     }
 
     @MainActor
-    static func save(query: String, transport: any HTTPTransport, accessToken: String) async -> Outcome<Saved> {
+    public static func save(query: String, transport: any HTTPTransport, accessToken: String) async -> Outcome<Saved> {
         let body = String(decoding: (try? JSONEncoder().encode(QueryBody(query: query))) ?? Data(), as: UTF8.self)
         let request = HTTPRequest(method: .put, path: path, headers: ["Content-Type": "application/json"], body: body)
         let result = await send(request, transport: transport, accessToken: accessToken)
@@ -59,7 +59,7 @@ enum SavedSearchAPI {
     }
 
     @MainActor
-    static func delete(query: String, transport: any HTTPTransport, accessToken: String) async -> Outcome<Bool> {
+    public static func delete(query: String, transport: any HTTPTransport, accessToken: String) async -> Outcome<Bool> {
         let request = HTTPRequest(method: .delete, path: "\(path)?query=\(BrowseAPI.percentEncoded(query))")
         let result = await send(request, transport: transport, accessToken: accessToken)
         return outcome(of: result) { _, _ in true }

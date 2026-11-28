@@ -1,9 +1,9 @@
-import FeatureTerminalInterface
+
 import GrepCore
 
 /// 자세히 보기 API(api/openapi.yaml `getItemDetail`). 응답 해석까지만 한다.
-enum ItemDetailAPI {
-    enum Outcome: Equatable {
+public enum ItemDetailAPI {
+    public enum Outcome: Equatable {
         case detail(ItemDetail)
         case notFound(numbers: [Int])
         case sessionExpired
@@ -15,7 +15,7 @@ enum ItemDetailAPI {
     private static let successStatuses = 200..<300
 
     @MainActor
-    static func fetch(number: Int, transport: any HTTPTransport, accessToken: String) async -> Outcome {
+    public static func fetch(number: Int, transport: any HTTPTransport, accessToken: String) async -> Outcome {
         let request = HTTPRequest(
             method: .get, path: "/items/\(number)", headers: ["Authorization": "Bearer \(accessToken)"]
         )

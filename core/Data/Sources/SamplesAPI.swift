@@ -1,9 +1,9 @@
-import FeatureTerminalInterface
+
 import GrepCore
 
 /// 샘플 8건 저장 API(api/openapi.yaml `saveSamples`). 응답 해석까지만 한다.
-enum SamplesAPI {
-    enum Outcome: Equatable {
+public enum SamplesAPI {
+    public enum Outcome: Equatable {
         case saved(firstNumber: Int, lastNumber: Int, created: Bool)
         case sessionExpired
         case failed(CommandFailure)
@@ -15,12 +15,12 @@ enum SamplesAPI {
     private static let successStatuses = 200..<300
 
     private struct Body: Decodable {
-        let firstNumber: Int
-        let lastNumber: Int
+        public let firstNumber: Int
+        public let lastNumber: Int
     }
 
     @MainActor
-    static func save(transport: any HTTPTransport, accessToken: String) async -> Outcome {
+    public static func save(transport: any HTTPTransport, accessToken: String) async -> Outcome {
         let request = HTTPRequest(
             method: .post,
             path: path,

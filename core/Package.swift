@@ -5,6 +5,7 @@ import PackageDescription
 // carti-RIBs-Swift Samples/TodoModular/Shared 구조를 따른다: 피처마다 Interface·Impl·Testing·Tests.
 //   GrepCore                     플랫폼이 구현해 주입하는 계약(AuthService, HTTPTransport)과 도메인 값
 //   GrepCoreTesting              계약의 가짜 구현과 테스트 도구
+//   GrepData                     서버 API 클라이언트(요청을 만들고 응답을 해석한다). 피처 Impl이 같이 쓴다
 //   FeatureLoggedOutInterface    로그인 화면 계약(ViewState·ViewAction·Presentable)
 //   FeatureTerminalInterface     터미널 화면 계약(상태·동작·뷰 계약)
 //   FeatureLoggedInInterface     로그인한 동안의 컨테이너 계약. 자식 Terminal을 붙인다(ADR-0015)
@@ -25,7 +26,7 @@ func feature(_ name: String, children: [String] = []) -> [Target] {
         .target(name: interface, dependencies: [ribs, "GrepCore"], path: "\(path)/Interface"),
         .target(
             name: "Feature\(name)",
-            dependencies: [ribs, "GrepCore", .target(name: interface)] + childInterfaces,
+            dependencies: [ribs, "GrepCore", "GrepData", .target(name: interface)] + childInterfaces,
             path: "\(path)/Sources"
         ),
         .target(
@@ -36,7 +37,7 @@ func feature(_ name: String, children: [String] = []) -> [Target] {
         .testTarget(
             name: "Feature\(name)Tests",
             dependencies: [
-                ribs, "GrepCore", "GrepCoreTesting",
+                ribs, "GrepCore", "GrepCoreTesting", "GrepData",
                 .target(name: interface), .target(name: "Feature\(name)"), .target(name: "Feature\(name)Testing"),
             ] + childInterfaces + childImpls,
             path: "\(path)/Tests"
@@ -53,7 +54,7 @@ let featureTargets: [Target] = features.flatMap { (name: String) -> [Target] in
 }
 
 /// 플랫폼이 모듈별로 받을 수 있도록 테스트가 아닌 타깃마다 제품을 둔다.
-let libraryNames = ["GrepCore", "GrepCoreTesting", "GrepAppRoot"]
+let libraryNames = ["GrepCore", "GrepCoreTesting", "GrepData", "GrepAppRoot"]
     + features.flatMap { ["Feature\($0)Interface", "Feature\($0)", "Feature\($0)Testing"] }
 
 let appRootDependencies: [Target.Dependency] = [ribs, "GrepCore"] + features.flatMap {
@@ -68,6 +69,7 @@ let appRootTestDependencies: [Target.Dependency] = [ribs, "GrepCore", "GrepCoreT
 let baseTargets: [Target] = [
     .target(name: "GrepCore", dependencies: [ribs], path: "Core/Sources"),
     .target(name: "GrepCoreTesting", dependencies: [ribs, "GrepCore"], path: "Core/Testing"),
+    .target(name: "GrepData", dependencies: ["GrepCore"], path: "Data/Sources"),
     .testTarget(name: "GrepCoreTests", dependencies: ["GrepCore"], path: "Core/Tests"),
     .target(name: "GrepAppRoot", dependencies: appRootDependencies, path: "App/Sources"),
     .testTarget(name: "GrepAppRootTests", dependencies: appRootTestDependencies, path: "App/Tests"),

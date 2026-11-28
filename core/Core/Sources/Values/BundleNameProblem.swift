@@ -1,4 +1,3 @@
-import GrepCore
 
 /// `✗ 묶음 이름: …` 이유(ARC-003).
 public enum BundleNameProblem: String, Equatable, Sendable, Codable {

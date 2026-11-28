@@ -1,4 +1,5 @@
 import FeatureTerminalInterface
+import GrepData
 
 extension HandoffResult {
     /// 서버는 넘긴 자료의 번호·제목만 준다. 고를 때 받은 종류·출처를 번호로 찾아 채운다(ARC-003 규칙 14).

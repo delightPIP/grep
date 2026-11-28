@@ -1,4 +1,3 @@
-import GrepCore
 
 /// `찾아두기` 목록 한 줄(ARC-012).
 public struct SavedSearchEntry: Equatable, Sendable, Codable {

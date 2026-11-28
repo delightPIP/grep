@@ -1,5 +1,6 @@
 import FeatureTerminalInterface
 import GrepCore
+import GrepData
 
 // MARK: 넘기기(#64), 실패(#65), 측정 이벤트(#105)
 

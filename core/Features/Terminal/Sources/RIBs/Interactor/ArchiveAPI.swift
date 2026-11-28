@@ -1,5 +1,6 @@
 import FeatureTerminalInterface
 import GrepCore
+import GrepData
 
 /// 보관함 API(api/openapi.yaml `listAutoGroups`·`listRecentItems`·`getBundle`·`searchItems`). 응답 해석까지만 한다.
 enum ArchiveAPI {

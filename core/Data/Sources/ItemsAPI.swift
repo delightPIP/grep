@@ -3,19 +3,19 @@ import FoundationEssentials
 #else
 import Foundation
 #endif
-import FeatureTerminalInterface
+
 import GrepCore
 
 /// 자료 API(api/openapi.yaml `saveItem`). 응답 해석까지만 하고 화면은 모른다.
-enum ItemsAPI {
-    enum SaveRequest: Equatable {
+public enum ItemsAPI {
+    public enum SaveRequest: Equatable {
         case link(url: String)
         case text(String)
         /// `POST /uploads`로 받은 자리에 올린 파일.
         case file(uploadID: String)
     }
 
-    enum UploadOutcome: Equatable {
+    public enum UploadOutcome: Equatable {
         /// 이 URL로 바이트를 올린 뒤 `uploadID`로 저장한다.
         case created(uploadID: String, uploadURL: String)
         case sessionExpired
@@ -23,7 +23,7 @@ enum ItemsAPI {
         case cancelled
     }
 
-    enum SaveOutcome: Equatable {
+    public enum SaveOutcome: Equatable {
         case saved(ItemSummary)
         /// COM-001: 같은 자료가 있어 새로 만들지 않았다.
         case duplicate(ItemSummary)
@@ -43,43 +43,43 @@ enum ItemsAPI {
     private static let sessionExpiredCode = "session_expired"
 
     private struct SaveBody: Encodable {
-        let kind: String
-        let url: String?
-        let text: String?
-        let uploadId: String?
+        public let kind: String
+        public let url: String?
+        public let text: String?
+        public let uploadId: String?
     }
 
     private struct CreateUploadBody: Encodable {
-        let fileName: String
-        let size: Int
+        public let fileName: String
+        public let size: Int
     }
 
     private struct UploadBody: Decodable {
-        let uploadId: String
-        let uploadUrl: String
+        public let uploadId: String
+        public let uploadUrl: String
     }
 
     private struct SaveResultBody: Decodable {
-        enum Result: String, Decodable {
+        public enum Result: String, Decodable {
             case saved
             case duplicate
             case inTrash
         }
 
-        let result: Result
-        let item: ItemSummary
+        public let result: Result
+        public let item: ItemSummary
     }
 
     /// api/openapi.yaml `Error`. 413은 `fileName`·`bytes`, 415는 `fileExtension`을 함께 준다.
     private struct ErrorBody: Decodable {
-        let code: String
-        let fileName: String?
-        let bytes: Int?
-        let fileExtension: String?
+        public let code: String
+        public let fileName: String?
+        public let bytes: Int?
+        public let fileExtension: String?
     }
 
     @MainActor
-    static func save(
+    public static func save(
         _ save: SaveRequest,
         transport: any HTTPTransport,
         accessToken: String,
@@ -95,7 +95,7 @@ enum ItemsAPI {
 
     /// 파일 업로드 자리를 받는다. 여기서는 크기만 거른다(형식은 저장 때 판정).
     @MainActor
-    static func createUpload(
+    public static func createUpload(
         fileName: String,
         size: Int,
         transport: any HTTPTransport,
@@ -117,7 +117,7 @@ enum ItemsAPI {
     }
 
     @MainActor
-    static func post(
+    public static func post(
         _ path: String,
         body: some Encodable,
         headers: [String: String],
@@ -162,7 +162,7 @@ enum ItemsAPI {
         }
     }
 
-    static func isSessionExpired(_ response: HTTPResponse) -> Bool {
+    public static func isSessionExpired(_ response: HTTPResponse) -> Bool {
         response.status == unauthorizedStatus
             && decode(ErrorBody.self, from: response.body)?.code == sessionExpiredCode
     }
@@ -199,7 +199,7 @@ enum ItemsAPI {
         return String(decoding: data, as: UTF8.self)
     }
 
-    static func decode<T: Decodable>(_ type: T.Type, from body: [UInt8]) -> T? {
+    public static func decode<T: Decodable>(_ type: T.Type, from body: [UInt8]) -> T? {
         try? JSONDecoder().decode(type, from: Data(body))
     }
 }
